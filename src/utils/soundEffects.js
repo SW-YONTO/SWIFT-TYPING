@@ -277,3 +277,26 @@ class SoundEffectsManager {
 // Export singleton instance
 export const soundEffects = new SoundEffectsManager();
 export default soundEffects;
+
+// Helper function for playing sounds by name
+export const playSound = (soundName) => {
+  switch (soundName) {
+    case 'correct':
+      soundEffects.playSuccess();
+      break;
+    case 'error':
+      soundEffects.playError();
+      break;
+    case 'levelUp':
+      soundEffects.playAchievement();
+      break;
+    case 'keypress':
+      soundEffects.playKeypress();
+      break;
+    case 'streak':
+      soundEffects.playStreak();
+      break;
+    default:
+      soundEffects.playKeypress();
+  }
+};

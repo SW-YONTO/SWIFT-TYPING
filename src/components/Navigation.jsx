@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Book, Trophy, Zap, Settings, User, LogOut, ChevronDown, Palette } from 'lucide-react';
+import { Book, Trophy, Zap, Settings, User, LogOut, ChevronDown, Palette, Gamepad2 } from 'lucide-react';
 import { themes } from '../utils/storage';
 import { useTheme } from '../contexts/ThemeContext';
 
@@ -13,6 +13,7 @@ const Navigation = ({ currentUser, onLogout, onThemeChange, currentTheme }) => {
   const navItems = [
     { id: 'lessons', label: 'Typing Lessons', icon: Book, path: '/lessons' },
     { id: 'courses', label: 'Typing Courses', icon: Trophy, path: '/courses' },
+    { id: 'games', label: 'Typing Games', icon: Gamepad2, path: '/games' },
     { id: 'tests', label: 'Typing Tests', icon: Zap, path: '/tests' },
     { id: 'settings', label: 'Settings', icon: Settings, path: '/settings' }
   ];

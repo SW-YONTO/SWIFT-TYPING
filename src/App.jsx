@@ -7,6 +7,7 @@ import Navigation from './components/Navigation';
 import TypingLessons from './pages/TypingLessons';
 import TypingCourses from './pages/TypingCourses';
 import TypingTests from './pages/TypingTests';
+import TypingGames from './pages/TypingGames';
 import Settings from './pages/Settings';
 import Results from './pages/Results';
 import About from './pages/About';
@@ -99,6 +100,15 @@ function App() {
                 path="/courses" 
                 element={
                   <TypingCourses 
+                    currentUser={currentUser}
+                    settings={userSettings}
+                  />
+                } 
+              />
+              <Route 
+                path="/games" 
+                element={
+                  <TypingGames 
                     currentUser={currentUser}
                     settings={userSettings}
                   />
