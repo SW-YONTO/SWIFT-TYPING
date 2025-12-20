@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { 
   Settings as SettingsIcon, 
   Palette, 
@@ -13,11 +13,29 @@ import {
   X,
   Sliders,
   Monitor,
-  Smartphone
+  Smartphone,
+  Hand,
+  RotateCcw,
+  Laptop,
+  MonitorSpeaker,
+  Calendar,
+  TrendingUp,
+  Volume2,
+  VolumeX,
+  Trophy,
+  Star,
+  Download,
+  Upload,
+  Flame,
+  AlertCircle
 } from 'lucide-react';
-import { progressManager, themes, userManager } from '../utils/storage';
+import { progressManager, themes, userManager, streakManager, dataManager } from '../utils/storage';
 import { useTheme } from '../contexts/ThemeContext';
 import Footer from '../components/Footer';
+import AnalyticsCalendar from '../components/AnalyticsCalendar';
+import AchievementsPanel from '../components/AchievementsPanel';
+import { soundEffects } from '../utils/soundEffects';
+import { achievementManager } from '../utils/achievements';
 
 const Settings = ({ currentUser, settings, onSettingsChange }) => {
   const [localSettings, setLocalSettings] = useState({
@@ -27,11 +45,76 @@ const Settings = ({ currentUser, settings, onSettingsChange }) => {
     practiceMode: settings.practiceMode || 'time',
     timeLimit: settings.timeLimit || 60,
     wordLimit: settings.wordLimit || 50,
+    showVirtualHand: settings.showVirtualHand === true, // Strict boolean check
+    handPositionHeight: settings.handPositionHeight || '100%',
+    handPositionBottom: settings.handPositionBottom || '35%',
+    handPositionLeft: settings.handPositionLeft || '56%',
     userName: currentUser?.username || ''
   });
   const [saved, setSaved] = useState(false);
   const [editingUsername, setEditingUsername] = useState(false);
   const [newUsername, setNewUsername] = useState(currentUser?.username || '');
+  const [showAnalytics, setShowAnalytics] = useState(false);
+  const [showAchievements, setShowAchievements] = useState(false);
+  const [soundEnabled, setSoundEnabled] = useState(() => soundEffects.getConfig().enabled);
+  const [soundVolume, setSoundVolume] = useState(() => soundEffects.getConfig().volume);
+  const [streakData, setStreakData] = useState(() => streakManager.checkStreak(currentUser?.id));
+  const [importStatus, setImportStatus] = useState(null);
+  const fileInputRef = useRef(null);
+
+  // Update streak data on mount
+  useEffect(() => {
+    if (currentUser?.id) {
+      setStreakData(streakManager.checkStreak(currentUser.id));
+    }
+  }, [currentUser?.id]);
+
+  // Handle export
+  const handleExport = () => {
+    if (currentUser) {
+      dataManager.downloadExport(currentUser.id, currentUser.username);
+      soundEffects.playSuccess();
+    }
+  };
+
+  // Handle import
+  const handleImport = (event) => {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const result = dataManager.importUserData(currentUser.id, e.target.result);
+      setImportStatus(result);
+      if (result.success) {
+        soundEffects.playAchievement();
+        // Refresh the page after successful import
+        setTimeout(() => window.location.reload(), 1500);
+      } else {
+        soundEffects.playError();
+      }
+    };
+    reader.readAsText(file);
+    event.target.value = ''; // Reset input
+  };
+
+  // Handle manual input changes for hand position
+  const handleManualPositionInput = (key, value) => {
+    // Validate and format the input
+    let numValue = parseInt(value.replace(/[^0-9]/g, ''));
+    if (isNaN(numValue)) return;
+    
+    // Apply constraints based on the setting type
+    if (key === 'handPositionHeight') {
+      numValue = Math.max(70, Math.min(130, numValue));
+    } else if (key === 'handPositionBottom') {
+      numValue = Math.max(5, Math.min(50, numValue));
+    } else if (key === 'handPositionLeft') {
+      numValue = Math.max(45, Math.min(65, numValue));
+    }
+    
+    handleSettingChange(key, `${numValue}%`);
+  };
   const { 
     theme, 
     themeKey, 
@@ -51,6 +134,10 @@ const Settings = ({ currentUser, settings, onSettingsChange }) => {
       practiceMode: settings.practiceMode || 'time',
       timeLimit: settings.timeLimit || 60,
       wordLimit: settings.wordLimit || 50,
+      showVirtualHand: settings.showVirtualHand === true, // Strict boolean check
+      handPositionHeight: settings.handPositionHeight || '100%',
+      handPositionBottom: settings.handPositionBottom || '35%',
+      handPositionLeft: settings.handPositionLeft || '56%',
       userName: currentUser?.username || ''
     });
   }, [settings, themeKey, fontSize, fontFamily, currentUser]);
@@ -67,6 +154,10 @@ const Settings = ({ currentUser, settings, onSettingsChange }) => {
       changeFontSize(value);
     } else if (key === 'fontFamily') {
       changeFontFamily(value);
+    } else if (key === 'showVirtualHand') {
+      // Immediately save showVirtualHand to storage and notify parent
+      progressManager.updateSettings(currentUser.id, newSettings);
+      onSettingsChange(newSettings);
     }
   };
 
@@ -161,6 +252,14 @@ const Settings = ({ currentUser, settings, onSettingsChange }) => {
                           className={`flex-1 px-4 py-3 border ${theme.border} rounded-xl ${theme.inputBg} ${theme.text} focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all`}
                           placeholder="Enter username"
                           autoFocus
+                          // Disable auto-suggestions for username input
+                          autoComplete="username"
+                          autoCorrect="off"
+                          autoCapitalize="off"
+                          spellCheck="false"
+                          data-gramm="false"
+                          data-gramm_editor="false"
+                          data-enable-grammarly="false"
                         />
                         <button
                           onClick={handleUsernameSave}
@@ -417,6 +516,303 @@ const Settings = ({ currentUser, settings, onSettingsChange }) => {
                     </select>
                   </div>
                 </div>
+
+                {/* Virtual Hand Setting */}
+                <div>
+                  <label className={`block text-sm font-medium ${theme.text} mb-3 flex items-center gap-2`}>
+                    <Hand className="w-4 h-4" />
+                    Virtual Hand Guide
+                  </label>
+                  <div
+                    className={`p-4 rounded-xl border-2 cursor-pointer transition-all ${
+                      localSettings.showVirtualHand
+                        ? `${theme.primary} border-transparent text-white shadow-lg`
+                        : `${theme.inputBg} ${theme.border} ${theme.text} hover:border-blue-300`
+                    }`}
+                    onClick={() => handleSettingChange('showVirtualHand', !localSettings.showVirtualHand)}
+                  >
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <div className="font-semibold mb-1">Show Virtual Hand</div>
+                        <div className="text-xs opacity-75">Display hand diagram showing proper finger placement for beginners</div>
+                      </div>
+                      <div className={`relative w-12 h-6 rounded-full transition-all ${
+                        localSettings.showVirtualHand 
+                          ? 'bg-white/20' 
+                          : theme.mode === 'dark' ? 'bg-gray-600' : 'bg-gray-300'
+                      }`}>
+                        <div className={`absolute top-0.5 w-5 h-5 rounded-full transition-all transform ${
+                          localSettings.showVirtualHand 
+                            ? 'translate-x-6 bg-white' 
+                            : 'translate-x-0.5 bg-white'
+                        }`}></div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Hand Position Adjustment */}
+                {localSettings.showVirtualHand && (
+                  <div>
+                    <label className={`block text-sm font-medium ${theme.text} mb-3 flex items-center gap-2`}>
+                      <Sliders className="w-4 h-4" />
+                      Hand Position Adjustment
+                    </label>
+                    <div className={`p-6 rounded-xl border ${theme.border} ${theme.cardBg}`}>
+                      <div className="space-y-6">
+                        {/* Height Control */}
+                        <div>
+                          <label className={`block text-sm font-medium ${theme.text} mb-3 flex items-center justify-between`}>
+                            <span>Hand Height</span>
+                            <input
+                              type="text"
+                              value={localSettings.handPositionHeight || '100%'}
+                              onChange={(e) => handleManualPositionInput('handPositionHeight', e.target.value)}
+                              className={`w-20 text-sm font-mono px-2 py-1 rounded border ${theme.border} ${theme.inputBg} ${theme.text} text-center`}
+                              placeholder="100%"
+                              autoComplete="off"
+                              spellCheck="false"
+                              autoCorrect="off"
+                            />
+                          </label>
+                          <div className="space-y-3">
+                            <input
+                              type="range"
+                              min="70"
+                              max="130"
+                              step="1"
+                              value={parseInt(localSettings.handPositionHeight?.replace('%', '')) || 100}
+                              onChange={(e) => handleSettingChange('handPositionHeight', `${e.target.value}%`)}
+                              className={`w-full h-2 rounded-lg appearance-none cursor-pointer hand-slider settings-slider ${theme.mode === 'dark' ? 'hand-slider-dark' : 'hand-slider-light'}`}
+                              style={{ pointerEvents: 'auto' }}
+                            />
+                            <div className={`flex justify-between text-xs ${theme.textSecondary}`}>
+                              <span>70% (Small)</span>
+                              <span>100% (Normal)</span>
+                              <span>130% (Large)</span>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Bottom Position Control */}
+                        <div>
+                          <label className={`block text-sm font-medium ${theme.text} mb-3 flex items-center justify-between`}>
+                            <span>Vertical Position (from bottom)</span>
+                            <input
+                              type="text"
+                              value={localSettings.handPositionBottom || '35%'}
+                              onChange={(e) => handleManualPositionInput('handPositionBottom', e.target.value)}
+                              className={`w-20 text-sm font-mono px-2 py-1 rounded border ${theme.border} ${theme.inputBg} ${theme.text} text-center`}
+                              placeholder="35%"
+                              autoComplete="off"
+                              spellCheck="false"
+                              autoCorrect="off"
+                            />
+                          </label>
+                          <div className="space-y-3">
+                            <input
+                              type="range"
+                              min="5"
+                              max="50"
+                              step="1"
+                              value={parseInt(localSettings.handPositionBottom?.replace('%', '')) || 35}
+                              onChange={(e) => handleSettingChange('handPositionBottom', `${e.target.value}%`)}
+                              className={`w-full h-2 rounded-lg appearance-none cursor-pointer hand-slider settings-slider ${theme.mode === 'dark' ? 'hand-slider-dark' : 'hand-slider-light'}`}
+                              style={{ pointerEvents: 'auto' }}
+                            />
+                            <div className={`flex justify-between text-xs ${theme.textSecondary}`}>
+                              <span>5% (Higher)</span>
+                              <span>25% (Middle)</span>
+                              <span>50% (Lower)</span>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Left Position Control */}
+                        <div>
+                          <label className={`block text-sm font-medium ${theme.text} mb-3 flex items-center justify-between`}>
+                            <span>Horizontal Position (from left)</span>
+                            <input
+                              type="text"
+                              value={localSettings.handPositionLeft || '56%'}
+                              onChange={(e) => handleManualPositionInput('handPositionLeft', e.target.value)}
+                              className={`w-20 text-sm font-mono px-2 py-1 rounded border ${theme.border} ${theme.inputBg} ${theme.text} text-center`}
+                              placeholder="56%"
+                              autoComplete="off"
+                              spellCheck="false"
+                              autoCorrect="off"
+                            />
+                          </label>
+                          <div className="space-y-3">
+                            <input
+                              type="range"
+                              min="45"
+                              max="65"
+                              step="1"
+                              value={parseInt(localSettings.handPositionLeft?.replace('%', '')) || 56}
+                              onChange={(e) => handleSettingChange('handPositionLeft', `${e.target.value}%`)}
+                              className={`w-full h-2 rounded-lg appearance-none cursor-pointer hand-slider settings-slider ${theme.mode === 'dark' ? 'hand-slider-dark' : 'hand-slider-light'}`}
+                              style={{ pointerEvents: 'auto' }}
+                            />
+                            <div className={`flex justify-between text-xs ${theme.textSecondary}`}>
+                              <span>45% (Left)</span>
+                              <span>56% (Center)</span>
+                              <span>65% (Right)</span>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Reset and Preset Buttons */}
+                        <div className={`flex flex-wrap gap-3 pt-4 border-t ${theme.border}`}>
+                          <button
+                            onClick={() => {
+                              handleSettingChange('handPositionHeight', '100%');
+                              handleSettingChange('handPositionBottom', '35%');
+                              handleSettingChange('handPositionLeft', '56%');
+                            }}
+                            className={`flex items-center gap-2 px-4 py-2 rounded-lg border ${theme.border} ${theme.text} ${theme.inputBg} hover:${theme.secondary} transition-colors text-sm`}
+                          >
+                            <RotateCcw className="w-4 h-4" />
+                            Reset to Default
+                          </button>
+                          
+                          <button
+                            onClick={() => {
+                              handleSettingChange('handPositionHeight', '85%');
+                              handleSettingChange('handPositionBottom', '40%');
+                              handleSettingChange('handPositionLeft', '58%');
+                            }}
+                            className={`flex items-center gap-2 px-4 py-2 rounded-lg border ${theme.border} ${theme.text} ${theme.inputBg} hover:${theme.secondary} transition-colors text-sm`}
+                          >
+                            <Smartphone className="w-4 h-4" />
+                            720p Preset
+                          </button>
+                          
+                          <button
+                            onClick={() => {
+                              handleSettingChange('handPositionHeight', '115%');
+                              handleSettingChange('handPositionBottom', '30%');
+                              handleSettingChange('handPositionLeft', '54%');
+                            }}
+                            className={`flex items-center gap-2 px-4 py-2 rounded-lg border ${theme.border} ${theme.text} ${theme.inputBg} hover:${theme.secondary} transition-colors text-sm`}
+                          >
+                            <MonitorSpeaker className="w-4 h-4" />
+                            1080p+ Preset
+                          </button>
+                        </div>
+
+                        <div className={`text-xs ${theme.textSecondary} p-4 rounded-lg ${theme.mode === 'dark' ? 'bg-blue-900/20' : 'bg-blue-50'}`}>
+                          <div className="flex items-start gap-2">
+                            <div className="w-4 h-4 rounded-full bg-blue-500 flex items-center justify-center text-white text-xs font-bold mt-0.5">i</div>
+                            <div>
+                              <strong className={theme.text}>Tips:</strong>
+                              <ul className="mt-1 space-y-1">
+                                <li>• Height: Adjust hand size relative to keyboard</li>
+                                <li>• Bottom: Higher values move hands lower on screen</li>
+                                <li>• Left: Fine-tune horizontal alignment</li>
+                                <li>• Use presets for common screen resolutions</li>
+                              </ul>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Sound Settings */}
+                <div>
+                  <label className={`block text-sm font-medium ${theme.text} mb-3 flex items-center gap-2`}>
+                    <Volume2 className="w-4 h-4" />
+                    Sound Effects
+                  </label>
+                  <div className={`p-6 rounded-xl border ${theme.border} ${theme.cardBg}`}>
+                    <div className="space-y-6">
+                      {/* Sound Toggle */}
+                      <div
+                        className={`p-4 rounded-xl border-2 cursor-pointer transition-all ${
+                          soundEnabled
+                            ? `${theme.primary} border-transparent text-white shadow-lg`
+                            : `${theme.inputBg} ${theme.border} ${theme.text} hover:border-blue-300`
+                        }`}
+                        onClick={() => {
+                          const newState = soundEffects.toggle();
+                          setSoundEnabled(newState);
+                        }}
+                      >
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <div className="font-semibold mb-1">Enable Sound Effects</div>
+                            <div className="text-xs opacity-75">Play sounds on keypress, errors, and achievements</div>
+                          </div>
+                          <div className={`relative w-12 h-6 rounded-full transition-all ${
+                            soundEnabled 
+                              ? 'bg-white/20' 
+                              : theme.mode === 'dark' ? 'bg-gray-600' : 'bg-gray-300'
+                          }`}>
+                            <div className={`absolute top-0.5 w-5 h-5 rounded-full transition-all transform ${
+                              soundEnabled 
+                                ? 'translate-x-6 bg-white' 
+                                : 'translate-x-0.5 bg-white'
+                            }`}></div>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Volume Control */}
+                      {soundEnabled && (
+                        <div>
+                          <label className={`block text-sm font-medium ${theme.text} mb-3 flex items-center justify-between`}>
+                            <span>Volume</span>
+                            <span className={`text-sm font-mono ${theme.textSecondary}`}>{Math.round(soundVolume * 100)}%</span>
+                          </label>
+                          <div className="space-y-3">
+                            <input
+                              type="range"
+                              min="0"
+                              max="100"
+                              step="5"
+                              value={soundVolume * 100}
+                              onChange={(e) => {
+                                const newVolume = e.target.value / 100;
+                                soundEffects.setVolume(newVolume);
+                                setSoundVolume(newVolume);
+                              }}
+                              className={`w-full h-2 rounded-lg appearance-none cursor-pointer hand-slider settings-slider ${theme.mode === 'dark' ? 'hand-slider-dark' : 'hand-slider-light'}`}
+                            />
+                            <div className={`flex justify-between text-xs ${theme.textSecondary}`}>
+                              <span>0%</span>
+                              <span>50%</span>
+                              <span>100%</span>
+                            </div>
+                          </div>
+                          
+                          {/* Sound Test Buttons */}
+                          <div className="flex gap-2 mt-4">
+                            <button
+                              onClick={() => soundEffects.playKeypress()}
+                              className={`flex-1 py-2 rounded-lg border ${theme.border} ${theme.text} ${theme.inputBg} hover:${theme.secondary} transition-colors text-sm`}
+                            >
+                              Test Keypress
+                            </button>
+                            <button
+                              onClick={() => soundEffects.playError()}
+                              className={`flex-1 py-2 rounded-lg border ${theme.border} ${theme.text} ${theme.inputBg} hover:${theme.secondary} transition-colors text-sm`}
+                            >
+                              Test Error
+                            </button>
+                            <button
+                              onClick={() => soundEffects.playSuccess()}
+                              className={`flex-1 py-2 rounded-lg border ${theme.border} ${theme.text} ${theme.inputBg} hover:${theme.secondary} transition-colors text-sm`}
+                            >
+                              Test Success
+                            </button>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
 
@@ -509,10 +905,214 @@ const Settings = ({ currentUser, settings, onSettingsChange }) => {
                   </div>
                 )}
               </div>
+              
+              {/* View Analytics Button */}
+              <button
+                onClick={() => setShowAnalytics(true)}
+                className={`w-full mt-6 flex items-center justify-center gap-2 ${theme.primary} text-white px-4 py-3 rounded-xl ${theme.primaryHover} transition-all duration-200 hover:scale-[1.02] hover:shadow-lg`}
+              >
+                <Calendar className="w-5 h-5" />
+                <span className="font-medium">View Analytics</span>
+                <TrendingUp className="w-4 h-4" />
+              </button>
             </div>
+            
+            {/* Achievements Card */}
+            <div className={`${theme.cardBg} rounded-2xl shadow-lg border ${theme.border} p-6`}>
+              <div className="flex items-center gap-3 mb-6">
+                <div className={`p-2 ${theme.mode === 'dark' ? 'bg-yellow-900/40' : 'bg-yellow-100'} rounded-lg`}>
+                  <Trophy className={`w-5 h-5 ${theme.mode === 'dark' ? 'text-yellow-400' : 'text-yellow-600'}`} />
+                </div>
+                <h2 className={`text-xl font-semibold ${theme.text}`}>Achievements</h2>
+              </div>
+              
+              <div className="space-y-4">
+                {(() => {
+                  const userData = achievementManager.getUserAchievements(currentUser?.id);
+                  const allAchievements = achievementManager.getAllAchievements(currentUser?.id);
+                  const unlockedCount = allAchievements.filter(a => a.unlocked).length;
+                  const xpProgress = achievementManager.getXPProgress(userData.totalXP);
+                  
+                  return (
+                    <>
+                      <div className="flex justify-between items-center py-2">
+                        <span className={`${theme.textSecondary} text-sm`}>Level</span>
+                        <span className={`font-bold ${theme.mode === 'dark' ? 'text-purple-400' : 'text-purple-600'} text-lg`}>
+                          {userData.level}
+                        </span>
+                      </div>
+                      
+                      <div className="flex justify-between items-center py-2">
+                        <span className={`${theme.textSecondary} text-sm`}>Total XP</span>
+                        <span className={`font-bold ${theme.mode === 'dark' ? 'text-yellow-400' : 'text-yellow-600'} text-lg`}>
+                          {userData.totalXP.toLocaleString()}
+                        </span>
+                      </div>
+                      
+                      <div className="flex justify-between items-center py-2">
+                        <span className={`${theme.textSecondary} text-sm`}>Achievements</span>
+                        <span className={`font-bold ${theme.mode === 'dark' ? 'text-green-400' : 'text-green-600'} text-lg`}>
+                          {unlockedCount}/{allAchievements.length}
+                        </span>
+                      </div>
+                      
+                      {/* XP Progress Bar */}
+                      <div className={`pt-2 border-t ${theme.border}`}>
+                        <div className="flex justify-between text-xs mb-1">
+                          <span className={theme.textSecondary}>Level Progress</span>
+                          <span className={theme.textSecondary}>{Math.round(xpProgress.percentage)}%</span>
+                        </div>
+                        <div className={`w-full h-2 rounded-full ${theme.mode === 'dark' ? 'bg-gray-700' : 'bg-gray-200'}`}>
+                          <div 
+                            className="h-full rounded-full bg-linear-to-r from-purple-500 to-pink-500 transition-all duration-500"
+                            style={{ width: `${xpProgress.percentage}%` }}
+                          />
+                        </div>
+                      </div>
+                    </>
+                  );
+                })()}
+              </div>
+              
+              {/* View Achievements Button */}
+              <button
+                onClick={() => setShowAchievements(true)}
+                className={`w-full mt-6 flex items-center justify-center gap-2 bg-linear-to-r from-amber-400 via-yellow-500 to-amber-400 hover:from-amber-300 hover:via-yellow-400 hover:to-amber-300 text-amber-900 font-semibold px-4 py-3 rounded-xl transition-all duration-200 hover:scale-[1.02] shadow-lg shadow-amber-400/40 hover:shadow-amber-400/60 border border-amber-300/50`}
+              >
+                <Trophy className="w-5 h-5 text-amber-800" />
+                <span className="font-bold">View All Achievements</span>
+                <Star className="w-4 h-4 text-amber-800" />
+              </button>
+            </div>
+          </div>
+
+          {/* Daily Streak Card */}
+          <div className={`${theme.cardBg} rounded-2xl p-6 border ${theme.border} shadow-lg`}>
+            <div className="flex items-center gap-3 mb-6">
+              <div className={`p-3 ${theme.mode === 'dark' ? 'bg-orange-900/40' : 'bg-orange-100'} rounded-xl`}>
+                <Flame className={`w-6 h-6 ${theme.mode === 'dark' ? 'text-orange-400' : 'text-orange-500'}`} />
+              </div>
+              <div>
+                <h3 className={`font-semibold ${theme.text}`}>Daily Streak</h3>
+                <p className={`text-sm ${theme.textSecondary}`}>Keep practicing every day!</p>
+              </div>
+            </div>
+            
+            <div className="text-center py-4">
+              <div className={`text-6xl font-bold ${
+                streakData.currentStreak > 0 
+                  ? theme.mode === 'dark' ? 'text-orange-400' : 'text-orange-500'
+                  : theme.textSecondary
+              } mb-2`}>
+                {streakData.currentStreak}
+              </div>
+              <div className={`${theme.textSecondary} text-sm font-medium`}>
+                {streakData.currentStreak === 1 ? 'Day' : 'Days'} Current Streak
+              </div>
+              {streakData.currentStreak > 0 && (
+                <div className="flex items-center justify-center gap-1 mt-2">
+                  <Flame className="w-4 h-4 text-orange-500 animate-pulse" />
+                  <span className={`text-sm ${theme.mode === 'dark' ? 'text-orange-400' : 'text-orange-600'}`}>
+                    On Fire!
+                  </span>
+                </div>
+              )}
+            </div>
+            
+            <div className={`border-t ${theme.border} pt-4 mt-4`}>
+              <div className="flex justify-between items-center py-2">
+                <span className={`${theme.textSecondary} text-sm`}>Longest Streak</span>
+                <span className={`font-bold ${theme.text}`}>{streakData.longestStreak} days</span>
+              </div>
+              <div className="flex justify-between items-center py-2">
+                <span className={`${theme.textSecondary} text-sm`}>Practice Days</span>
+                <span className={`font-bold ${theme.text}`}>{streakData.practiceHistory?.length || 0}</span>
+              </div>
+              {streakData.lastPracticeDate && (
+                <div className="flex justify-between items-center py-2">
+                  <span className={`${theme.textSecondary} text-sm`}>Last Practice</span>
+                  <span className={`font-medium ${theme.text}`}>
+                    {streakData.lastPracticeDate === new Date().toISOString().split('T')[0] 
+                      ? 'Today' 
+                      : new Date(streakData.lastPracticeDate).toLocaleDateString()}
+                  </span>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Data Backup Card */}
+          <div className={`${theme.cardBg} rounded-2xl p-6 border ${theme.border} shadow-lg`}>
+            <div className="flex items-center gap-3 mb-6">
+              <div className={`p-3 ${theme.mode === 'dark' ? 'bg-cyan-900/40' : 'bg-cyan-100'} rounded-xl`}>
+                <Download className={`w-6 h-6 ${theme.mode === 'dark' ? 'text-cyan-400' : 'text-cyan-500'}`} />
+              </div>
+              <div>
+                <h3 className={`font-semibold ${theme.text}`}>Data Backup</h3>
+                <p className={`text-sm ${theme.textSecondary}`}>Export or import your progress</p>
+              </div>
+            </div>
+            
+            {/* Import Status Message */}
+            {importStatus && (
+              <div className={`mb-4 p-3 rounded-lg flex items-center gap-2 ${
+                importStatus.success 
+                  ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400'
+                  : 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400'
+              }`}>
+                {importStatus.success ? <Check className="w-5 h-5" /> : <AlertCircle className="w-5 h-5" />}
+                <span className="text-sm font-medium">{importStatus.message}</span>
+              </div>
+            )}
+            
+            <div className="space-y-3">
+              <button
+                onClick={handleExport}
+                className={`w-full flex items-center justify-center gap-2 ${theme.primary} text-white px-4 py-3 rounded-xl ${theme.primaryHover} transition-all duration-200 hover:scale-[1.02]`}
+              >
+                <Download className="w-5 h-5" />
+                <span className="font-medium">Export Progress</span>
+              </button>
+              
+              <input
+                type="file"
+                ref={fileInputRef}
+                onChange={handleImport}
+                accept=".json"
+                className="hidden"
+              />
+              
+              <button
+                onClick={() => fileInputRef.current?.click()}
+                className={`w-full flex items-center justify-center gap-2 ${theme.secondary} ${theme.text} px-4 py-3 rounded-xl ${theme.secondaryHover} transition-all duration-200 hover:scale-[1.02] border ${theme.border}`}
+              >
+                <Upload className="w-5 h-5" />
+                <span className="font-medium">Import Backup</span>
+              </button>
+            </div>
+            
+            <p className={`${theme.textSecondary} text-xs mt-4 text-center`}>
+              Backups include progress, achievements, and streak data
+            </p>
           </div>
         </div>
       </div>
+      
+      {/* Analytics Calendar Modal */}
+      {showAnalytics && (
+        <AnalyticsCalendar 
+          testResults={userProgress.testResults} 
+          onClose={() => setShowAnalytics(false)} 
+        />
+      )}
+      
+      {/* Achievements Panel Modal */}
+      <AchievementsPanel
+        userId={currentUser?.id}
+        isOpen={showAchievements}
+        onClose={() => setShowAchievements(false)}
+      />
+      
       <Footer />
     </div>
   );

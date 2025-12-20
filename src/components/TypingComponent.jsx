@@ -1,19 +1,35 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
-import { Clock, RotateCcw, Play, Pause, Target, Zap, Eye, EyeOff, Settings, Award, TrendingUp } from 'lucide-react';
+import { Clock, RotateCcw, Play, Pause, Target, Zap, Eye, EyeOff, Settings, Award, TrendingUp, Trophy, Volume2, VolumeX, ArrowBigUp } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import Keyboard from './Keyboard';
+import ThemedKeyboard from './ThemedKeyboard';
+import SingleHandDisplay from './SingleHandDisplay';
 import CustomizeModal from './CustomizeModal';
-import { calculateWPM, calculateGrossWPM, calculateWordsTyped, calculateAccuracy, formatTime } from '../utils/storage';
+import { calculateWPM, calculateGrossWPM, calculateWordsTyped, calculateAccuracy, formatTime, streakManager } from '../utils/storage';
 import { useTheme } from '../contexts/ThemeContext';
+import { soundEffects } from '../utils/soundEffects';
+import { achievementManager, ACHIEVEMENTS } from '../utils/achievements';
+import { AchievementToast } from './AchievementsPanel';
 
-// Memoized Character Component for better performance with offline fonts
-const CharacterComponent = React.memo(({ char, index, currentIndex, errors, theme, fontSize, fontFamily, showCursor }) => {
+// MONKEYTYPE-STYLE: Line-by-line rendering with smooth vertical scroll
+// Shows 3 lines at a time, scrolls as user types
+const MonkeyTypeText = React.memo(({ 
+  content, 
+  currentIndex, 
+  errors, 
+  theme, 
+  fontSize, 
+  fontFamily,
+  containerWidth
+}) => {
+  const containerRef = useRef(null);
+  const [currentLineIndex, setCurrentLineIndex] = useState(0);
+  
   const getTypingFontSize = () => {
     const fontSizeMap = {
-      'small': 'text-xl',
-      'medium': 'text-2xl',
-      'large': 'text-3xl',
-      'xl': 'text-4xl'
+      'small': 'text-lg',
+      'medium': 'text-xl',
+      'large': 'text-2xl',
+      'xl': 'text-3xl'
     };
     return fontSizeMap[fontSize] || fontSizeMap['medium'];
   };
@@ -28,55 +44,207 @@ const CharacterComponent = React.memo(({ char, index, currentIndex, errors, them
     return fontFamilyMap[fontFamily] || fontFamilyMap['mono'];
   };
 
-  const baseClass = `${getTypingFontSize()} inline-block relative`;
-  const fontStyle = { fontFamily: getTypingFontFamily() };
-  
-  let charClass = '';
-  if (index < currentIndex) {
-    if (errors.has(index)) {
-      charClass = 'text-red-500';
-    } else {
-      // Typed correctly - use theme color
-      if (theme.mode === 'dark') {
-        // For dark mode, use the accent color which is properly defined
-        charClass = theme.accent;
+  // Split content into words for word-based line wrapping
+  const words = useMemo(() => {
+    const result = [];
+    let currentWord = '';
+    let startIndex = 0;
+    
+    for (let i = 0; i < content.length; i++) {
+      const char = content[i];
+      if (char === ' ' || char === '\n') {
+        if (currentWord) {
+          result.push({ text: currentWord, startIndex, endIndex: i - 1 });
+        }
+        result.push({ text: char, startIndex: i, endIndex: i, isSpace: true });
+        currentWord = '';
+        startIndex = i + 1;
       } else {
-        // For light mode, use primary color as text
-        charClass = `${theme.primary.replace('bg-', 'text-')}`;
+        currentWord += char;
       }
     }
-  } else if (index === currentIndex) {
-    // Current character - use secondary text color
-    charClass = `${theme.textSecondary}`;
-  } else {
-    // Untyped characters - use different colors for dark vs light
-    if (theme.mode === 'dark') {
-      charClass = 'text-gray-500'; // Grey for untyped in dark mode
-    } else {
-      charClass = `${theme.textSecondary}`;
+    if (currentWord) {
+      result.push({ text: currentWord, startIndex, endIndex: content.length - 1 });
     }
-  }
+    return result;
+  }, [content]);
+
+  // Create lines that fit within container width - calculate char width based on font size
+  const lines = useMemo(() => {
+    // Reduced character widths for tighter packing - fills more of the line
+    const charWidthMap = {
+      'small': 8,    // text-lg ~18px font = ~8px char width (tighter)
+      'medium': 10,  // text-xl ~20px font = ~10px char width (tighter)
+      'large': 12,   // text-2xl ~24px font = ~12px char width (tighter)
+      'xl': 14       // text-3xl ~30px font = ~14px char width (tighter)
+    };
+    const charWidth = charWidthMap[fontSize] || 10;
+    const charsPerLine = Math.floor((containerWidth || 900) / charWidth);
+    const result = [];
+    let currentLine = [];
+    let currentLineLength = 0;
+    let lineStartIndex = 0;
+    
+    words.forEach((word) => {
+      const wordLength = word.text.length;
+      
+      if (currentLineLength + wordLength > charsPerLine && currentLine.length > 0) {
+        // Start new line
+        result.push({
+          words: currentLine,
+          startIndex: lineStartIndex,
+          endIndex: currentLine[currentLine.length - 1]?.endIndex || lineStartIndex
+        });
+        currentLine = [word];
+        currentLineLength = wordLength;
+        lineStartIndex = word.startIndex;
+      } else {
+        currentLine.push(word);
+        currentLineLength += wordLength;
+      }
+    });
+    
+    if (currentLine.length > 0) {
+      result.push({
+        words: currentLine,
+        startIndex: lineStartIndex,
+        endIndex: currentLine[currentLine.length - 1]?.endIndex || lineStartIndex
+      });
+    }
+    
+    return result;
+  }, [words, containerWidth]);
+
+  // Find current line based on currentIndex
+  const currentLineIdx = useMemo(() => {
+    for (let i = 0; i < lines.length; i++) {
+      if (currentIndex <= lines[i].endIndex) {
+        return i;
+      }
+    }
+    return lines.length - 1;
+  }, [lines, currentIndex]);
+
+  // Update visible lines - show current line and next 2 lines
+  useEffect(() => {
+    setCurrentLineIndex(Math.max(0, currentLineIdx));
+  }, [currentLineIdx]);
+
+  // Get visible lines (current + next 2)
+  const visibleLines = useMemo(() => {
+    const start = currentLineIndex;
+    const end = Math.min(start + 3, lines.length);
+    return lines.slice(start, end);
+  }, [lines, currentLineIndex]);
+
+  // Get the correct color class for typed characters - USE THEME ACCENT COLOR
+  const getCorrectColorClass = () => {
+    // Use theme accent for correct characters (blue for blue theme, orange for orange, etc.)
+    return theme.accent;
+  };
+
+  // Render a single character
+  const renderChar = (char, charIndex) => {
+    let colorClass = '';
+    let isCurrentChar = charIndex === currentIndex;
+    
+    if (charIndex < currentIndex) {
+      // Typed character
+      if (errors.has(charIndex)) {
+        // ERROR: Only red text, no background
+        colorClass = 'text-red-500';
+      } else {
+        // CORRECT: Use theme accent color for both light and dark modes
+        colorClass = getCorrectColorClass();
+      }
+    } else if (isCurrentChar) {
+      // Current character - highlighted
+      colorClass = `${theme.textSecondary} bg-current-char`;
+    } else {
+      // Untyped character
+      colorClass = theme.mode === 'dark' ? 'text-gray-500' : 'text-gray-400';
+    }
+
+    return (
+      <span
+        key={charIndex}
+        className={`${colorClass} ${isCurrentChar ? 'relative' : ''}`}
+        style={{ 
+          transition: 'color 0.1s ease',
+        }}
+      >
+        {char === ' ' ? '\u00A0' : char}
+        {isCurrentChar && (
+          <span 
+            className="absolute left-0 top-0 bottom-0 w-0.5 animate-pulse"
+            style={{ 
+              backgroundColor: theme.css?.['--theme-cursor'] || '#3b82f6',
+              animation: 'pulse 1s ease-in-out infinite'
+            }}
+          />
+        )}
+      </span>
+    );
+  };
+
+  // Render a word
+  const renderWord = (word) => {
+    const chars = [];
+    for (let i = word.startIndex; i <= word.endIndex; i++) {
+      chars.push(renderChar(content[i], i));
+    }
+    return chars;
+  };
+
+  const fontStyle = { fontFamily: getTypingFontFamily() };
 
   return (
-    <span className={`${baseClass} ${charClass}`} style={fontStyle}>
-      {char === ' ' ? '\u00A0' : char}
-      {showCursor && (
-        <span className="absolute top-0 bottom-0 left-0 w-0.5 bg-blue-500 animate-pulse"></span>
-      )}
-    </span>
+    <div 
+      ref={containerRef}
+      className={`${getTypingFontSize()} leading-loose overflow-hidden w-full`}
+      style={{ 
+        ...fontStyle,
+        minHeight: '160px',
+        width: '100%',
+      }}
+    >
+      {visibleLines.map((line, lineIdx) => {
+        const isCurrentLine = lineIdx === 0;
+        const isPastLine = false; // First visible line is always current or upcoming
+        
+        return (
+          <div 
+            key={`line-${currentLineIndex + lineIdx}`}
+            className={`transition-opacity duration-200 ${
+              isCurrentLine ? 'opacity-100' : 'opacity-60'
+            }`}
+            style={{
+              marginBottom: '0.5em',
+            }}
+          >
+            {line.words.map((word, wordIdx) => (
+              <span key={`word-${word.startIndex}`}>
+                {renderWord(word)}
+              </span>
+            ))}
+          </div>
+        );
+      })}
+    </div>
   );
 });
 
-CharacterComponent.displayName = 'CharacterComponent';
+MonkeyTypeText.displayName = 'MonkeyTypeText';
 
 const TypingComponent = ({ 
   content, 
   onComplete, 
   settings = { timeLimit: 60, wordLimit: 50, theme: 'blue' },
+  onSettingsChange,
   title = "Typing Practice",
   isLesson = false // New prop to identify lesson mode
 }) => {
-  const { theme, fontSize, fontFamily } = useTheme();
+  const { theme, fontSize, fontFamily, changeFontSize } = useTheme();
   const navigate = useNavigate();
   const [currentIndex, setCurrentIndex] = useState(0);
   const [userInput, setUserInput] = useState('');
@@ -92,6 +260,9 @@ const TypingComponent = ({
   const [correctCharacters, setCorrectCharacters] = useState(0);
   const [focusMode, setFocusMode] = useState(false);
   const [showCustomizeModal, setShowCustomizeModal] = useState(false);
+  const [capsLockOn, setCapsLockOn] = useState(false); // Caps Lock indicator
+  const [soundEnabled, setSoundEnabled] = useState(() => soundEffects.getConfig().enabled);
+  const [newAchievement, setNewAchievement] = useState(null); // For achievement toast
   // Safe localStorage operations with error handling
   const safeLocalStorage = useMemo(() => ({
     getItem: (key) => {
@@ -123,10 +294,78 @@ const TypingComponent = ({
   const [generatedContent, setGeneratedContent] = useState(content);
   const [endTime, setEndTime] = useState(null); // Add missing endTime state
   const [scrollOffset, setScrollOffset] = useState(0); // For smooth scrolling
+  const [containerWidth, setContainerWidth] = useState(900); // Track container width for line wrapping
   
   const inputRef = useRef(null);
   const textRef = useRef(null);
   const completedRef = useRef(false);
+
+  // Track container width for MonkeyType-style line wrapping
+  useEffect(() => {
+    const updateWidth = () => {
+      if (textRef.current) {
+        // Use actual container width minus padding (32px on each side = 64px total)
+        const actualWidth = textRef.current.clientWidth - 64;
+        setContainerWidth(Math.max(actualWidth, 400)); // Minimum 400px
+      }
+    };
+    
+    // Initial update after a small delay to ensure render is complete
+    const timer = setTimeout(updateWidth, 100);
+    updateWidth();
+    
+    window.addEventListener('resize', updateWidth);
+    return () => {
+      window.removeEventListener('resize', updateWidth);
+      clearTimeout(timer);
+    };
+  }, []);
+
+  // Caps Lock detection and Keyboard shortcuts (Ctrl+Plus/Minus for zoom)
+  useEffect(() => {
+    const fontSizes = ['small', 'medium', 'large', 'xl'];
+    
+    const handleKeyDown = (e) => {
+      // Detect Caps Lock
+      if (e.getModifierState) {
+        setCapsLockOn(e.getModifierState('CapsLock'));
+      }
+      
+      // Ctrl + Plus for zoom in (handles +, =, and numpad +)
+      if (e.ctrlKey && (e.key === '+' || e.key === '=' || e.code === 'Equal' || e.code === 'NumpadAdd')) {
+        e.preventDefault();
+        e.stopPropagation();
+        const currentIdx = fontSizes.indexOf(fontSize);
+        if (currentIdx < fontSizes.length - 1) {
+          changeFontSize(fontSizes[currentIdx + 1]);
+        }
+        return false;
+      }
+      
+      // Ctrl + Minus for zoom out (handles - and numpad -)
+      if (e.ctrlKey && (e.key === '-' || e.code === 'Minus' || e.code === 'NumpadSubtract')) {
+        e.preventDefault();
+        e.stopPropagation();
+        const currentIdx = fontSizes.indexOf(fontSize);
+        if (currentIdx > 0) {
+          changeFontSize(fontSizes[currentIdx - 1]);
+        }
+        return false;
+      }
+      
+      // Ctrl + 0 to reset zoom
+      if (e.ctrlKey && (e.key === '0' || e.code === 'Digit0' || e.code === 'Numpad0')) {
+        e.preventDefault();
+        e.stopPropagation();
+        changeFontSize('medium');
+        return false;
+      }
+    };
+    
+    // Use capture phase to intercept before browser handles it
+    window.addEventListener('keydown', handleKeyDown, { capture: true });
+    return () => window.removeEventListener('keydown', handleKeyDown, { capture: true });
+  }, [fontSize, changeFontSize]);
 
   // Memoized content generation to avoid recalculation
   const generateInfiniteContent = useCallback(() => {
@@ -192,6 +431,12 @@ const TypingComponent = ({
     if (inputRef.current) {
       inputRef.current.focus();
     }
+  }, []);
+
+  // Toggle sound effects
+  const toggleSound = useCallback(() => {
+    const newState = soundEffects.toggle();
+    setSoundEnabled(newState);
   }, []);
 
   // Initialize content when component mounts or settings change
@@ -267,12 +512,83 @@ const TypingComponent = ({
 
   // Handle completion when isCompleted becomes true
   useEffect(() => {
-    if (isCompleted && !isActive && startTime) {
-      // Small delay to ensure all state updates are complete
-      const timeoutId = setTimeout(() => handleComplete(), 50);
-      return () => clearTimeout(timeoutId);
+    if (isCompleted && !isActive && startTime && !completedRef.current) {
+      // Call handleComplete logic directly here to avoid circular dependency
+      completedRef.current = true;
+      
+      // Play success sound
+      soundEffects.playSuccess();
+      
+      const actualTimeElapsed = startTime ? Math.floor((Date.now() - startTime) / 1000) : timeElapsed;
+      let finalTime = Math.max(actualTimeElapsed, timeElapsed, 1);
+      
+      if (practiceSettings.practiceMode === 'time' && practiceSettings.timeLimit > 0) {
+        finalTime = Math.min(finalTime, practiceSettings.timeLimit + 2);
+      }
+      
+      const totalCharacters = userInput.length;
+      const wordsTyped = calculateWordsTyped(userInput);
+      const grossWPM = calculateGrossWPM(totalCharacters, finalTime);
+      const netWPM = calculateWPM(correctCharacters, finalTime);
+      const rawAccuracy = calculateAccuracy(correctCharacters, totalCharacters);
+      
+      // Build final WPM history
+      const finalWpmHistory = [...wpmHistory];
+      if (finalWpmHistory.length === 0 || finalWpmHistory[finalWpmHistory.length - 1]?.time !== finalTime) {
+        finalWpmHistory.push({ time: finalTime, wpm: netWPM });
+      }
+
+      const result = {
+        wpm: netWPM,
+        grossWPM: grossWPM,
+        accuracy: rawAccuracy,
+        timeSpent: finalTime,
+        totalCharacters: totalCharacters,
+        correctCharacters: correctCharacters,
+        errors: allErrors.size,
+        wordsTyped: wordsTyped,
+        content: title,
+        wpmHistory: finalWpmHistory,
+        completedAt: new Date().toISOString()
+      };
+
+      // Record practice streak
+      try {
+        const userId = localStorage.getItem('typing_app_current_user') || 'default';
+        streakManager.recordPractice(userId);
+      } catch (e) {
+        console.warn('Streak recording failed:', e);
+      }
+
+      // Check for new achievements
+      const userId = localStorage.getItem('typing_app_current_user') || 'default';
+      let newAchievements = [];
+      try {
+        newAchievements = achievementManager.checkAchievements(userId, {
+          bestWPM: netWPM,
+          bestAccuracy: rawAccuracy,
+          totalTests: 1,
+          totalTime: finalTime,
+          lessonsCompleted: isLesson ? 1 : 0,
+          currentStreak: 1
+        });
+        
+        if (newAchievements.length > 0) {
+          soundEffects.playAchievement();
+        }
+      } catch (e) {
+        console.warn('Achievement check failed:', e);
+      }
+
+      // Navigate to results page
+      navigate('/results', { state: { results: result, newAchievements } });
+
+      // Call onComplete callback
+      if (onComplete) {
+        onComplete(result);
+      }
     }
-  }, [isCompleted, isActive, startTime]);
+  }, [isCompleted, isActive, startTime, timeElapsed, practiceSettings, userInput, correctCharacters, allErrors, title, wpmHistory, navigate, onComplete, isLesson]);
 
   // Update WPM history every second when typing is active
   useEffect(() => {
@@ -323,9 +639,16 @@ const TypingComponent = ({
     return () => document.removeEventListener('keydown', handleKeyDown);
   }, [isCompleted, isPaused]);
 
-  // Global keydown for auto-focus
+  // Global keydown for auto-focus and Ctrl+R restart
   useEffect(() => {
     const handleKeyDown = (e) => {
+      // Handle Ctrl+R to restart lesson instead of reloading page
+      if ((e.ctrlKey || e.metaKey) && e.key === 'r') {
+        e.preventDefault();
+        handleRestart();
+        return;
+      }
+      
       // Only focus if not in input already and not special keys
       if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
       if (e.ctrlKey || e.altKey || e.metaKey) return;
@@ -339,7 +662,7 @@ const TypingComponent = ({
 
     document.addEventListener('keydown', handleKeyDown);
     return () => document.removeEventListener('keydown', handleKeyDown);
-  }, [isPaused, isCompleted]);
+  }, [isPaused, isCompleted, handleRestart]);
 
   // Handle input change
   const handleInputChange = (e) => {
@@ -411,13 +734,25 @@ const TypingComponent = ({
     const newErrors = new Set();
     const newAllErrors = new Set(allErrors);
     let correctCount = 0;
+    let hasNewError = false;
     
     for (let i = 0; i < newLength; i++) {
       if (value[i] === generatedContent[i]) {
         correctCount++;
       } else {
+        if (!errors.has(i)) hasNewError = true;
         newErrors.add(i);
         newAllErrors.add(i);
+      }
+    }
+    
+    // Play sound effects
+    if (newLength > userInput.length) {
+      // Only play sound on typing forward (not backspace)
+      if (hasNewError || (newLength > 0 && value[newLength - 1] !== generatedContent[newLength - 1])) {
+        soundEffects.playError();
+      } else {
+        soundEffects.playKeypress();
       }
     }
     
@@ -456,6 +791,9 @@ const TypingComponent = ({
     setIsActive(false);
     setIsCompleted(true);
     
+    // Play success sound
+    soundEffects.playSuccess();
+    
     const actualTimeElapsed = startTime ? Math.floor((Date.now() - startTime) / 1000) : timeElapsed;
     
     let finalTime = Math.max(actualTimeElapsed, timeElapsed, 1);
@@ -486,14 +824,14 @@ const TypingComponent = ({
     const netWPM = calculateWPM(correctCharacters, finalTime);
     const rawAccuracy = calculateAccuracy(correctCharacters, totalCharacters);
     
-    setWpmHistory(prevHistory => {
-      const finalEntry = { time: finalTime, wpm: netWPM };
-      
-      if (prevHistory.length === 0 || prevHistory[prevHistory.length - 1].time !== finalTime) {
-        return [...prevHistory, finalEntry];
-      }
-      return prevHistory;
-    });
+    // Build final WPM history with the completion entry
+    const finalWpmHistory = [...wpmHistory];
+    if (finalWpmHistory.length === 0 || finalWpmHistory[finalWpmHistory.length - 1].time !== finalTime) {
+      finalWpmHistory.push({ time: finalTime, wpm: netWPM });
+    }
+    
+    // Update state (for display purposes)
+    setWpmHistory(finalWpmHistory);
 
     const result = {
       wpm: netWPM,
@@ -505,62 +843,43 @@ const TypingComponent = ({
       errors: allErrors.size,
       wordsTyped: wordsTyped,
       content: title,
-      wpmHistory: wpmHistory,
+      wpmHistory: finalWpmHistory,
       completedAt: new Date().toISOString()
     };
 
-    navigate('/results', { state: { results: result } });
+    // Check for new achievements
+    const userId = localStorage.getItem('typing_app_current_user') || 'default';
+    const newAchievements = achievementManager.checkAchievements(userId, {
+      bestWPM: netWPM,
+      bestAccuracy: rawAccuracy,
+      totalTests: 1,
+      totalTime: finalTime,
+      lessonsCompleted: isLesson ? 1 : 0,
+      currentStreak: 1
+    });
+    
+    // Show achievement toast if any new achievements
+    if (newAchievements.length > 0) {
+      soundEffects.playAchievement();
+      setNewAchievement(newAchievements[0]); // Show first new achievement
+    }
 
+    // Navigate to results page
+    navigate('/results', { state: { results: result, newAchievements } });
+
+    // Call onComplete callback
     if (onComplete) {
       onComplete(result);
     }
-  }, [startTime, timeElapsed, practiceSettings, userInput, correctCharacters, allErrors, title, wpmHistory, navigate, onComplete]);
+  }, [startTime, timeElapsed, practiceSettings, userInput, correctCharacters, allErrors, title, wpmHistory, navigate, onComplete, isLesson]);
 
 
-
-  // Error boundary for character rendering - memoized for performance
-  const CharacterWithErrorBoundary = React.memo(({ char, index }) => {
-    try {
-      return (
-        <CharacterComponent 
-          char={char} 
-          index={index}
-          currentIndex={currentIndex}
-          errors={errors}
-          theme={theme}
-          fontSize={settings.fontSize}
-          fontFamily={settings.fontFamily}
-          showCursor={index === currentIndex}
-        />
-      );
-    } catch (error) {
-      console.error('Character rendering error:', error);
-      return <span className="text-red-500">?</span>;
-    }
-  });
-  
-  CharacterWithErrorBoundary.displayName = 'CharacterWithErrorBoundary';
 
   // Calculate live stats with accurate real-time formulas
   const calculateCurrentWPM = () => {
     if (!startTime || timeElapsed === 0) return 0;
     return calculateWPM(correctCharacters, timeElapsed);
   };
-
-  // Optimized content slicing for better performance - only render visible characters
-  const getVisibleContent = useMemo(() => {
-    if (!generatedContent) return '';
-    
-    // Calculate visible range based on current position and viewport
-    const buffer = 300; // Character buffer around visible area
-    const start = Math.max(0, currentIndex - buffer);
-    const end = Math.min(generatedContent.length, currentIndex + buffer * 2);
-    
-    return {
-      content: generatedContent.slice(start, end),
-      offset: start
-    };
-  }, [generatedContent, currentIndex]);
 
   const currentNetWPM = calculateCurrentWPM();
   const currentGrossWPM = timeElapsed > 0 ? calculateGrossWPM(userInput.length, timeElapsed) : 0;
@@ -611,11 +930,12 @@ const TypingComponent = ({
           {/* Left: Title */}
           <h2 className={`text-xl font-bold ${theme.text}`}>{title}</h2>
           
-          {/* Center: Live Stats with Animations */}
+          {/* Center: Live Stats with Animations - FIXED ICON COLORS */}
           <div className="flex items-center gap-6">
+            {/* WPM Indicator - Theme-aware icon colors */}
             <div className="flex items-center gap-2 group">
-              <div className={`p-2 ${theme.name === 'dark' ? 'bg-blue-900/30' : 'bg-blue-100'} rounded-full group-hover:scale-110 transition-transform duration-200`}>
-                <Zap className={`w-4 h-4 ${theme.name === 'dark' ? 'text-blue-400' : 'text-blue-700'}`} />
+              <div className={`p-2 ${theme.mode === 'dark' ? 'bg-blue-900/40' : 'bg-blue-100'} rounded-full group-hover:scale-110 transition-transform duration-200 shadow-lg`}>
+                <Zap className={`w-4 h-4 ${theme.mode === 'dark' ? 'text-blue-300' : 'text-blue-600'} drop-shadow-sm`} />
               </div>
               <div className="flex flex-col items-center">
                 <span className={`font-bold text-xl ${theme.text} tabular-nums transition-all duration-300 ${currentNetWPM > 0 ? 'animate-bounce-subtle' : ''}`}>
@@ -625,9 +945,10 @@ const TypingComponent = ({
               </div>
             </div>
             
+            {/* Accuracy Indicator - Theme-aware icon colors */}
             <div className="flex items-center gap-2 group">
-              <div className={`p-2 ${theme.name === 'dark' ? 'bg-green-900/30' : 'bg-green-100'} rounded-full group-hover:scale-110 transition-transform duration-200`}>
-                <Target className={`w-4 h-4 ${theme.name === 'dark' ? 'text-green-400' : 'text-green-700'}`} />
+              <div className={`p-2 ${theme.mode === 'dark' ? 'bg-green-900/40' : 'bg-green-100'} rounded-full group-hover:scale-110 transition-transform duration-200 shadow-lg`}>
+                <Target className={`w-4 h-4 ${theme.mode === 'dark' ? 'text-green-300' : 'text-green-600'} drop-shadow-sm`} />
               </div>
               <div className="flex flex-col items-center">
                 <span className={`font-bold text-xl ${theme.text} tabular-nums transition-all duration-300`}>
@@ -637,9 +958,10 @@ const TypingComponent = ({
               </div>
             </div>
             
+            {/* Time Indicator - Theme-aware icon colors */}
             <div className="flex items-center gap-2 group">
-              <div className={`p-2 ${theme.name === 'dark' ? 'bg-orange-900/30' : 'bg-orange-100'} rounded-full group-hover:scale-110 transition-transform duration-200`}>
-                <Clock className={`w-4 h-4 ${theme.name === 'dark' ? 'text-orange-400' : 'text-orange-700'}`} />
+              <div className={`p-2 ${theme.mode === 'dark' ? 'bg-orange-900/40' : 'bg-orange-100'} rounded-full group-hover:scale-110 transition-transform duration-200 shadow-lg`}>
+                <Clock className={`w-4 h-4 ${theme.mode === 'dark' ? 'text-orange-300' : 'text-orange-600'} drop-shadow-sm`} />
               </div>
               <div className="flex flex-col items-center">
                 <span className={`font-bold text-xl ${theme.text} tabular-nums`}>
@@ -649,25 +971,37 @@ const TypingComponent = ({
               </div>
             </div>
             
-            {/* Performance Indicator */}
-            {currentNetWPM > 50 && (
-              <div className="flex items-center gap-1 animate-fade-in">
-                <Award className={`w-4 h-4 ${theme.name === 'dark' ? 'text-yellow-400' : 'text-yellow-600'} animate-bounce`} />
-                <span className={`text-xs ${theme.name === 'dark' ? 'text-yellow-400' : 'text-yellow-600'} font-semibold`}>Great!</span>
-              </div>
-            )}
-            
-            {/* Perfect Accuracy Badge */}
-            {currentAccuracy === 100 && (
-              <div className="flex items-center gap-1 animate-fade-in">
-                <Target className={`w-4 h-4 ${theme.name === 'dark' ? 'text-green-400' : 'text-green-600'} animate-bounce`} />
-                <span className={`text-xs ${theme.name === 'dark' ? 'text-green-400' : 'text-green-600'} font-semibold`}>Perfect!</span>
-              </div>
-            )}
+            {/* Achievement Indicator - Theme-aware colors */}
+            <div className="min-w-[85px] flex justify-start">
+              {currentAccuracy === 100 ? (
+                <div className="flex items-center gap-1 animate-fade-in">
+                  <Target className={`w-4 h-4 ${theme.mode === 'dark' ? 'text-emerald-400' : 'text-emerald-600'} animate-bounce`} />
+                  <span className={`text-xs ${theme.mode === 'dark' ? 'text-emerald-400' : 'text-emerald-600'} font-semibold`}>Perfect!</span>
+                </div>
+              ) : currentNetWPM >= 80 && currentAccuracy >= 95 ? (
+                <div className="flex items-center gap-1 animate-fade-in">
+                  <Award className={`w-4 h-4 ${theme.mode === 'dark' ? 'text-amber-400' : 'text-amber-600'} animate-bounce`} />
+                  <span className={`text-xs ${theme.mode === 'dark' ? 'text-amber-400' : 'text-amber-600'} font-semibold`}>Excellent!</span>
+                </div>
+              ) : currentNetWPM >= 50 ? (
+                <div className="flex items-center gap-1 animate-fade-in">
+                  <Award className={`w-4 h-4 ${theme.mode === 'dark' ? 'text-blue-400' : 'text-blue-600'} animate-bounce`} />
+                  <span className={`text-xs ${theme.mode === 'dark' ? 'text-blue-400' : 'text-blue-600'} font-semibold`}>Great!</span>
+                </div>
+              ) : null}
+            </div>
           </div>
 
           {/* Right: Enhanced Control Buttons */}
           <div className="flex gap-2">
+            <button
+              onClick={toggleSound}
+              className={`flex items-center gap-2 ${soundEnabled ? theme.primary : 'bg-gray-500'} text-white px-3 py-2 rounded-lg text-sm transition-all duration-200 hover:scale-105 hover:shadow-lg transform active:scale-95`}
+              title={soundEnabled ? 'Sounds On' : 'Sounds Off'}
+            >
+              {soundEnabled ? <Volume2 className="w-4 h-4 text-white" /> : <VolumeX className="w-4 h-4 text-white" />}
+            </button>
+            
             <button
               onClick={() => setShowCustomizeModal(true)}
               className={`flex items-center gap-2 ${theme.primary} text-white px-4 py-2 rounded-lg text-sm ${theme.primaryHover} transition-all duration-200 hover:scale-105 hover:shadow-lg transform active:scale-95`}
@@ -715,60 +1049,67 @@ const TypingComponent = ({
               style={{ width: `${progress}%` }}
             >
               {/* Animated shine effect */}
-              <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent animate-shine"></div>
+              <div className="absolute inset-0 bg-linear-to-r from-transparent via-white/20 to-transparent animate-shine"></div>
               {/* Pulsing effect for high accuracy */}
               {currentAccuracy >= 95 && (
-                <div className="absolute inset-0 bg-gradient-to-r from-green-400/30 to-emerald-400/30 animate-pulse"></div>
+                <div className="absolute inset-0 bg-linear-to-r from-green-400/30 to-emerald-400/30 animate-pulse"></div>
               )}
             </div>
           </div>
         </div>
       </div>
 
-      {/* Enhanced Typing Area with Overflow Scroll */}
+      {/* Enhanced Typing Area with MonkeyType-style Line Display */}
       <div className="mb-6 relative">
+        {/* Caps Lock Warning Indicator */}
+        {capsLockOn && (
+          <div className="absolute -top-10 left-1/2 transform -translate-x-1/2 z-20 animate-bounce">
+            <div className={`flex items-center gap-2 px-4 py-2 rounded-full ${theme.mode === 'dark' ? 'bg-amber-900/90 border-amber-500' : 'bg-amber-100 border-amber-400'} border-2 shadow-lg backdrop-blur-sm`}>
+              <div className={`p-1 rounded ${theme.mode === 'dark' ? 'bg-amber-500/30' : 'bg-amber-200'}`}>
+                <ArrowBigUp className={`w-4 h-4 ${theme.mode === 'dark' ? 'text-amber-300' : 'text-amber-600'}`} />
+              </div>
+              <span className={`text-sm font-bold ${theme.mode === 'dark' ? 'text-amber-300' : 'text-amber-700'}`}>
+                CAPS LOCK ON
+              </span>
+            </div>
+          </div>
+        )}
+        
         <div 
           ref={textRef}
-          className={`${theme.background} p-8 rounded-xl border-2 ${theme.border} cursor-text ${getTypingFontSize()} relative transition-all duration-300 hover:shadow-lg focus-within:shadow-xl focus-within:border-blue-500 overflow-hidden`}
+          className={`${theme.cardBg} p-8 rounded-xl border-2 ${theme.border} cursor-text relative transition-all duration-300 hover:shadow-lg focus-within:shadow-xl`}
           onClick={() => inputRef.current?.focus()}
           style={{ 
-            height: '160px',
-            lineHeight: '1.8',
-            wordSpacing: '0.2em',
-            letterSpacing: '0.02em',
+            minHeight: '180px',
+            lineHeight: '2',
+            wordSpacing: '0.15em',
+            letterSpacing: '0.01em',
             fontFamily: getTypingFontFamily()
           }}
         >
-          {/* Focus Indicator */}
+          {/* Focus Indicator - Theme-aware */}
           {isActive && (
             <div className="absolute top-2 right-2 z-10">
-              <div className={`w-3 h-3 ${theme.name === 'dark' ? 'bg-green-400' : 'bg-green-500'} rounded-full animate-pulse`}></div>
+              <div className={`w-3 h-3 ${theme.mode === 'dark' ? 'bg-green-400' : 'bg-green-500'} rounded-full animate-pulse`}></div>
             </div>
           )}
           
-          {/* Scrollable Text Content */}
-          <div 
-            className="leading-relaxed whitespace-pre-wrap"
-            style={{
-              transform: `translateY(-${scrollOffset}px)`,
-              transition: 'transform 0.15s ease-out', // Faster transition
-              minHeight: '200px' // Much smaller minimum height
-            }}
-          >
-            {getVisibleContent.content.split('').map((char, index) => (
-              <CharacterWithErrorBoundary
-                key={`char-${getVisibleContent.offset + index}-${char}`}
-                char={char}
-                index={getVisibleContent.offset + index}
-              />
-            ))}
-          </div>
+          {/* MONKEYTYPE-STYLE: Line-by-line Text Display */}
+          <MonkeyTypeText
+            content={generatedContent}
+            currentIndex={currentIndex}
+            errors={errors}
+            theme={theme}
+            fontSize={fontSize}
+            fontFamily={fontFamily}
+            containerWidth={containerWidth}
+          />
           
-          {/* Completion Celebration */}
+          {/* Completion Celebration - Theme-aware */}
           {isCompleted && (
             <div className="absolute inset-0 flex items-center justify-center bg-black/50 rounded-xl animate-fade-in">
-              <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-2xl animate-bounce-in text-center">
-                <Award className={`w-12 h-12 ${theme.name === 'dark' ? 'text-yellow-400' : 'text-yellow-500'} mx-auto mb-2 animate-spin-slow`} />
+              <div className={`${theme.mode === 'dark' ? 'bg-gray-800' : 'bg-white'} p-6 rounded-lg shadow-2xl animate-bounce-in text-center`}>
+                <Award className={`w-12 h-12 ${theme.mode === 'dark' ? 'text-yellow-400' : 'text-yellow-600'} mx-auto mb-2 animate-spin-slow`} />
                 <h3 className={`text-2xl font-bold ${theme.text} mb-1`}>Complete!</h3>
                 <p className={`${theme.textSecondary}`}>Great job! 🎉</p>
               </div>
@@ -784,14 +1125,63 @@ const TypingComponent = ({
           onChange={handleInputChange}
           className="opacity-0 absolute -z-10"
           disabled={isPaused || isCompleted}
+          // Disable all auto-suggestions and auto-fill features
           autoComplete="off"
+          autoCorrect="off"
+          autoCapitalize="off"
           spellCheck="false"
+          data-gramm="false"
+          data-gramm_editor="false"
+          data-enable-grammarly="false"
+          inputMode="none"
+          enterKeyHint="none"
+          // Additional attributes to prevent auto-suggestions
+          role="textbox"
+          aria-autocomplete="none"
+          aria-describedby=""
+          // Prevent browser password/form suggestions
+          name="typing-input-hidden"
+          form=""
+          // Prevent mobile keyboard suggestions
+          autoFocus={false}
         />
       </div>
 
-      {/* Virtual Keyboard - Hide in focus mode */}
-      <div className={`transition-all duration-300 ${focusMode ? 'opacity-20 scale-95' : 'opacity-100 scale-100'}`}>
-        <Keyboard currentKey={currentKey} theme={settings.theme} />
+      {/* Virtual Keyboard with Hands - Hide in focus mode */}
+      <div className={`relative transition-all duration-300 ${focusMode ? 'opacity-20 scale-95' : 'opacity-100 scale-100'}`}>
+        {settings.showVirtualHand ? (
+          <div style={{ 
+            position: 'relative', 
+            width: '100%', 
+            maxWidth: '800px', 
+            margin: '0 auto',
+            paddingTop: '30px'
+          }}>
+            <ThemedKeyboard activeKey={currentKey} />
+            <div style={{ 
+              position: 'absolute', 
+              top: 0, 
+              left: 0, 
+              right: 0, 
+              bottom: 0,
+              pointerEvents: 'none',
+              overflow: 'hidden'
+            }}>
+              <SingleHandDisplay activeKey={currentKey} settings={settings} />
+            </div>
+          </div>
+        ) : (
+          /* Only show keyboard without hands when showVirtualHand is false */
+          <div style={{ 
+            position: 'relative', 
+            width: '100%', 
+            maxWidth: '800px', 
+            margin: '0 auto',
+            paddingTop: '20px'
+          }}>
+            <ThemedKeyboard activeKey={currentKey} />
+          </div>
+        )}
       </div>
 
       {/* Customize Modal */}
@@ -806,6 +1196,14 @@ const TypingComponent = ({
         currentSettings={practiceSettings}
         isLesson={isLesson}
       />
+      
+      {/* Achievement Toast */}
+      {newAchievement && (
+        <AchievementToast 
+          achievement={newAchievement} 
+          onClose={() => setNewAchievement(null)} 
+        />
+      )}
     </div>
   );
 };

@@ -18,7 +18,8 @@ function App() {
   const [currentPage, setCurrentPage] = useState('lessons');
   const [userSettings, setUserSettings] = useState({
     timeLimit: 60,
-    wordLimit: 50
+    wordLimit: 50,
+    showVirtualHand: false
   });
 
   useEffect(() => {

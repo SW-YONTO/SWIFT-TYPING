@@ -184,7 +184,7 @@ const Pricing = () => {
               >
                 {plan.popular && (
                   <div className="absolute -top-4 left-1/2 transform -translate-x-1/2">
-                    <div className="bg-gradient-to-r from-blue-500 to-purple-600 text-white px-6 py-2 rounded-full text-sm font-semibold flex items-center gap-2">
+                    <div className="bg-linear-to-r from-blue-500 to-purple-600 text-white px-6 py-2 rounded-full text-sm font-semibold flex items-center gap-2">
                       <Star className="w-4 h-4" />
                       Most Popular
                     </div>
@@ -192,7 +192,7 @@ const Pricing = () => {
                 )}
                 
                 <div className="text-center mb-8">
-                  <div className={`w-16 h-16 bg-gradient-to-r ${plan.color} rounded-2xl mx-auto mb-4 flex items-center justify-center`}>
+                  <div className={`w-16 h-16 bg-linear-to-r ${plan.color} rounded-2xl mx-auto mb-4 flex items-center justify-center`}>
                     <plan.icon className="w-8 h-8 text-white" />
                   </div>
                   
@@ -208,14 +208,14 @@ const Pricing = () => {
                 <div className="space-y-4 mb-8">
                   {plan.features.map((feature, featureIndex) => (
                     <div key={featureIndex} className="flex items-center gap-3">
-                      <Check className="w-5 h-5 text-green-500 flex-shrink-0" />
+                      <Check className="w-5 h-5 text-green-500 shrink-0" />
                       <span className={`${theme.text} text-sm`}>{feature}</span>
                     </div>
                   ))}
                   
                   {plan.limitations.map((limitation, limitIndex) => (
                     <div key={limitIndex} className="flex items-center gap-3 opacity-60">
-                      <div className="w-5 h-5 flex-shrink-0 flex items-center justify-center">
+                      <div className="w-5 h-5 shrink-0 flex items-center justify-center">
                         <div className={`w-1 h-1 ${theme.textSecondary} rounded-full`}></div>
                       </div>
                       <span className={`${theme.textSecondary} text-sm`}>{limitation}</span>
@@ -226,7 +226,7 @@ const Pricing = () => {
                 <button 
                   className={`w-full py-4 rounded-xl font-semibold transition-all ${
                     plan.popular 
-                      ? `bg-gradient-to-r ${plan.color} text-white hover:shadow-lg transform hover:scale-105` 
+                      ? `bg-linear-to-r ${plan.color} text-white hover:shadow-lg transform hover:scale-105` 
                       : `${theme.secondary} ${theme.accent} hover:${theme.secondaryHover}`
                   }`}
                 >

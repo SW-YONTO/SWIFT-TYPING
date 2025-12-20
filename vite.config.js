@@ -9,10 +9,12 @@ export default defineConfig({
     tailwindcss(),
   ],
   base: './',
+  publicDir: 'public',
   build: {
     outDir: 'dist',
     assetsDir: 'assets',
     sourcemap: false,
+    copyPublicDir: true,
     rollupOptions: {
       output: {
         manualChunks: {

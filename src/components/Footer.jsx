@@ -162,8 +162,8 @@ const Footer = () => {
 
         {/* Decorative Elements */}
         <div className="absolute inset-0 overflow-hidden pointer-events-none">
-          <div className="absolute top-4 right-4 w-32 h-32 bg-gradient-to-br from-blue-500/10 to-purple-600/10 rounded-full blur-xl"></div>
-          <div className="absolute bottom-4 left-4 w-24 h-24 bg-gradient-to-tr from-green-500/10 to-blue-500/10 rounded-full blur-xl"></div>
+          <div className="absolute top-4 right-4 w-32 h-32 bg-linear-to-br from-blue-500/10 to-purple-600/10 rounded-full blur-xl"></div>
+          <div className="absolute bottom-4 left-4 w-24 h-24 bg-linear-to-tr from-green-500/10 to-blue-500/10 rounded-full blur-xl"></div>
         </div>
       </div>
     </footer>

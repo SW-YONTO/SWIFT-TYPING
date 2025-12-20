@@ -143,4 +143,510 @@ body {
     transform: translateY(0);
     opacity: 1;
   }
+}
+
+/* Responsive Hand Display Positioning */
+.hand-display-responsive {
+  /* Default for most screens */
+  --hand-width: 150%;
+  --hand-height: 100%;
+  --hand-bottom: 15%;
+  --hand-left: 56%;
+}
+
+/* Disable auto-suggestions and auto-fill styling */
+input[type="text"]:not([data-allow-suggestions]),
+textarea:not([data-allow-suggestions]) {
+  /* Disable browser suggestions styling */
+  -webkit-appearance: none !important;
+  -moz-appearance: none !important;
+  appearance: none !important;
+}
+
+/* Specifically target typing input fields */
+input[name="typing-input-hidden"],
+input[aria-label*="typing"] {
+  /* Hide from view and disable all interactions */
+  -webkit-appearance: none !important;
+  -moz-appearance: none !important;
+  appearance: none !important;
+  
+  /* Ensure it's completely hidden */
+  opacity: 0 !important;
+  pointer-events: none !important;
+  position: absolute !important;
+  z-index: -10 !important;
+}
+
+/* Prevent browser from suggesting saved form data */
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus,
+input:-webkit-autofill:active {
+  -webkit-background-clip: text !important;
+  -webkit-text-fill-color: inherit !important;
+  transition: background-color 5000s ease-in-out 0s !important;
+  box-shadow: inset 0 0 20px 20px transparent !important;
+}
+
+/* Hide any potential suggestion dropdowns */
+input::-webkit-contacts-auto-fill-button,
+input::-webkit-credentials-auto-fill-button {
+  display: none !important;
+  visibility: hidden !important;
+}
+
+/* Disable text selection helpers on mobile */
+input[name="typing-input-hidden"] {
+  -webkit-user-select: none !important;
+  -moz-user-select: none !important;
+  -ms-user-select: none !important;
+  user-select: none !important;
+  
+  -webkit-touch-callout: none !important;
+  -webkit-tap-highlight-color: transparent !important;
+}
+
+/* Custom Range Slider Styles for Hand Position Controls */
+input[type="range"].slider,
+input[type="range"].hand-slider {
+  -webkit-appearance: none !important;
+  -moz-appearance: none !important;
+  appearance: none !important;
+  height: 6px !important;
+  border-radius: 3px !important;
+  outline: none !important;
+  cursor: pointer !important;
+  background: #e5e7eb !important;
+  border: none !important;
+  width: 100% !important;
+  margin: 10px 0 !important;
+  position: relative !important;
+  pointer-events: auto !important;
+}
+
+/* Light theme slider track */
+input[type="range"].slider-light,
+input[type="range"].hand-slider-light {
+  background: #e5e7eb !important;
+}
+
+/* Dark theme slider track */
+input[type="range"].slider-dark,
+input[type="range"].hand-slider-dark {
+  background: #374151 !important;
+}
+
+/* Webkit slider thumb - works for Chrome, Safari, Edge */
+input[type="range"].slider::-webkit-slider-thumb,
+input[type="range"].hand-slider::-webkit-slider-thumb {
+  -webkit-appearance: none !important;
+  appearance: none !important;
+  height: 22px !important;
+  width: 22px !important;
+  border-radius: 50% !important;
+  background: #3b82f6 !important;
+  cursor: grab !important;
+  border: 3px solid white !important;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.2) !important;
+  transition: all 0.15s ease !important;
+  position: relative !important;
+  z-index: 999 !important;
+  pointer-events: auto !important;
+}
+
+input[type="range"].slider::-webkit-slider-thumb:hover,
+input[type="range"].hand-slider::-webkit-slider-thumb:hover {
+  background: #2563eb !important;
+  transform: scale(1.15) !important;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.3) !important;
+  cursor: grab !important;
+}
+
+input[type="range"].slider::-webkit-slider-thumb:active,
+input[type="range"].hand-slider::-webkit-slider-thumb:active {
+  cursor: grabbing !important;
+  transform: scale(1.1) !important;
+  background: #1d4ed8 !important;
+}
+
+/* Light theme thumb */
+input[type="range"].slider-light::-webkit-slider-thumb,
+input[type="range"].hand-slider-light::-webkit-slider-thumb {
+  background: #3b82f6 !important;
+  border: 3px solid white !important;
+}
+
+input[type="range"].slider-light::-webkit-slider-thumb:hover,
+input[type="range"].hand-slider-light::-webkit-slider-thumb:hover {
+  background: #2563eb !important;
+}
+
+input[type="range"].slider-light::-webkit-slider-thumb:active,
+input[type="range"].hand-slider-light::-webkit-slider-thumb:active {
+  background: #1d4ed8 !important;
+}
+
+/* Dark theme thumb */
+input[type="range"].slider-dark::-webkit-slider-thumb,
+input[type="range"].hand-slider-dark::-webkit-slider-thumb {
+  background: #60a5fa !important;
+  border: 3px solid #1f2937 !important;
+}
+
+input[type="range"].slider-dark::-webkit-slider-thumb:hover,
+input[type="range"].hand-slider-dark::-webkit-slider-thumb:hover {
+  background: #3b82f6 !important;
+}
+
+input[type="range"].slider-dark::-webkit-slider-thumb:active,
+input[type="range"].hand-slider-dark::-webkit-slider-thumb:active {
+  background: #2563eb !important;
+}
+
+/* Firefox slider thumb */
+input[type="range"].slider::-moz-range-thumb,
+input[type="range"].hand-slider::-moz-range-thumb {
+  height: 22px !important;
+  width: 22px !important;
+  border-radius: 50% !important;
+  background: #3b82f6 !important;
+  cursor: grab !important;
+  border: 3px solid white !important;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.2) !important;
+  transition: all 0.15s ease !important;
+  -moz-appearance: none !important;
+  position: relative !important;
+  z-index: 999 !important;
+  pointer-events: auto !important;
+}
+
+input[type="range"].slider::-moz-range-thumb:hover,
+input[type="range"].hand-slider::-moz-range-thumb:hover {
+  background: #2563eb !important;
+  transform: scale(1.15) !important;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.3) !important;
+}
+
+input[type="range"].slider::-moz-range-thumb:active,
+input[type="range"].hand-slider::-moz-range-thumb:active {
+  cursor: grabbing !important;
+  transform: scale(1.1) !important;
+  background: #1d4ed8 !important;
+}
+
+/* Light theme Firefox thumb */
+input[type="range"].slider-light::-moz-range-thumb,
+input[type="range"].hand-slider-light::-moz-range-thumb {
+  background: #3b82f6 !important;
+  border: 3px solid white !important;
+}
+
+input[type="range"].slider-light::-moz-range-thumb:hover,
+input[type="range"].hand-slider-light::-moz-range-thumb:hover {
+  background: #2563eb !important;
+}
+
+input[type="range"].slider-light::-moz-range-thumb:active,
+input[type="range"].hand-slider-light::-moz-range-thumb:active {
+  background: #1d4ed8 !important;
+}
+
+/* Dark theme Firefox thumb */
+input[type="range"].slider-dark::-moz-range-thumb,
+input[type="range"].hand-slider-dark::-moz-range-thumb {
+  background: #60a5fa !important;
+  border: 3px solid #1f2937 !important;
+}
+
+input[type="range"].slider-dark::-moz-range-thumb:hover,
+input[type="range"].hand-slider-dark::-moz-range-thumb:hover {
+  background: #3b82f6 !important;
+}
+
+input[type="range"].slider-dark::-moz-range-thumb:active,
+input[type="range"].hand-slider-dark::-moz-range-thumb:active {
+  background: #2563eb !important;
+}
+
+/* Firefox track */
+input[type="range"].slider::-moz-range-track,
+input[type="range"].hand-slider::-moz-range-track {
+  height: 6px !important;
+  border-radius: 3px !important;
+  background: #e5e7eb !important;
+  border: none !important;
+  outline: none !important;
+}
+
+input[type="range"].slider-dark::-moz-range-track,
+input[type="range"].hand-slider-dark::-moz-range-track {
+  background: #374151 !important;
+}
+
+/* IE/Edge slider track */
+input[type="range"].slider::-ms-track,
+input[type="range"].hand-slider::-ms-track {
+  height: 6px !important;
+  border-radius: 3px !important;
+  background: #e5e7eb !important;
+  border: none !important;
+  color: transparent !important;
+  outline: none !important;
+}
+
+input[type="range"].slider::-ms-fill-lower,
+input[type="range"].slider::-ms-fill-upper,
+input[type="range"].hand-slider::-ms-fill-lower,
+input[type="range"].hand-slider::-ms-fill-upper {
+  background: #e5e7eb !important;
+  border-radius: 3px !important;
+}
+
+input[type="range"].slider::-ms-thumb,
+input[type="range"].hand-slider::-ms-thumb {
+  height: 22px !important;
+  width: 22px !important;
+  border-radius: 50% !important;
+  background: #3b82f6 !important;
+  cursor: grab !important;
+  border: 3px solid white !important;
+}
+
+/* Ensure sliders in hand position controls are interactive */
+.hand-position-panel input[type="range"],
+.settings-slider {
+  pointer-events: auto !important;
+  z-index: 10 !important;
+  position: relative !important;
+  background: linear-gradient(to right, #3b82f6 0%, #3b82f6 var(--slider-progress, 50%), #e5e7eb var(--slider-progress, 50%), #e5e7eb 100%) !important;
+  transition: all 0.15s ease !important;
+}
+
+.hand-position-panel input[type="range"]::-webkit-slider-thumb,
+.settings-slider::-webkit-slider-thumb {
+  pointer-events: auto !important;
+  z-index: 999 !important;
+  transition: all 0.1s ease-out !important;
+}
+
+.hand-position-panel input[type="range"]::-moz-range-thumb,
+.settings-slider::-moz-range-thumb {
+  pointer-events: auto !important;
+  z-index: 999 !important;
+  transition: all 0.1s ease-out !important;
+}
+
+/* Settings page specific slider improvements */
+.settings-slider {
+  height: 8px !important;
+  border-radius: 6px !important;
+  background: #e5e7eb !important;
+  outline: none !important;
+  cursor: pointer !important;
+  margin: 12px 0 !important;
+}
+
+.settings-slider.hand-slider-dark {
+  background: #374151 !important;
+}
+
+.settings-slider::-webkit-slider-thumb {
+  height: 24px !important;
+  width: 24px !important;
+  border-radius: 50% !important;
+  background: #3b82f6 !important;
+  cursor: grab !important;
+  border: 4px solid white !important;
+  box-shadow: 0 3px 8px rgba(0,0,0,0.25) !important;
+  transition: all 0.1s ease-out !important;
+  -webkit-appearance: none !important;
+}
+
+.settings-slider::-webkit-slider-thumb:hover {
+  background: #2563eb !important;
+  transform: scale(1.2) !important;
+  box-shadow: 0 5px 15px rgba(0,0,0,0.35) !important;
+}
+
+.settings-slider::-webkit-slider-thumb:active {
+  cursor: grabbing !important;
+  transform: scale(1.15) !important;
+  background: #1d4ed8 !important;
+}
+
+.settings-slider::-moz-range-thumb {
+  height: 24px !important;
+  width: 24px !important;
+  border-radius: 50% !important;
+  background: #3b82f6 !important;
+  cursor: grab !important;
+  border: 4px solid white !important;
+  box-shadow: 0 3px 8px rgba(0,0,0,0.25) !important;
+  transition: all 0.1s ease-out !important;
+  -moz-appearance: none !important;
+}
+
+.settings-slider::-moz-range-thumb:hover {
+  background: #2563eb !important;
+  transform: scale(1.2) !important;
+  box-shadow: 0 5px 15px rgba(0,0,0,0.35) !important;
+}
+
+.settings-slider::-moz-range-thumb:active {
+  cursor: grabbing !important;
+  transform: scale(1.15) !important;
+  background: #1d4ed8 !important;
+}
+
+.settings-slider::-moz-range-track {
+  height: 8px !important;
+  border-radius: 6px !important;
+  background: #e5e7eb !important;
+  border: none !important;
+  outline: none !important;
+}
+
+.settings-slider.hand-slider-dark::-moz-range-track {
+  background: #374151 !important;
+}
+
+/* Dark theme settings sliders */
+.settings-slider.hand-slider-dark::-webkit-slider-thumb {
+  background: #60a5fa !important;
+  border: 4px solid #1f2937 !important;
+}
+
+.settings-slider.hand-slider-dark::-webkit-slider-thumb:hover {
+  background: #3b82f6 !important;
+}
+
+.settings-slider.hand-slider-dark::-webkit-slider-thumb:active {
+  background: #2563eb !important;
+}
+
+.settings-slider.hand-slider-dark::-moz-range-thumb {
+  background: #60a5fa !important;
+  border: 4px solid #1f2937 !important;
+}
+
+.settings-slider.hand-slider-dark::-moz-range-thumb:hover {
+  background: #3b82f6 !important;
+}
+
+.settings-slider.hand-slider-dark::-moz-range-thumb:active {
+  background: #2563eb !important;
+}
+
+/* Responsive adjustments based on viewport dimensions */
+@media screen and (max-aspect-ratio: 4/3) {
+  /* For 4:3 or squarer screens (like some older monitors) */
+  .hand-display-responsive {
+    --hand-height: 85%;
+    --hand-bottom: 18%;
+  }
+}
+
+@media screen and (min-aspect-ratio: 16/9) {
+  /* For wide screens (16:9 and wider) */
+  .hand-display-responsive {
+    --hand-height: 115%;
+    --hand-bottom: 12%;
+  }
+}
+
+@media screen and (max-height: 768px) {
+  /* For shorter screens (like 720p) */
+  .hand-display-responsive {
+    --hand-height: 85%;
+    --hand-bottom: 20%;
+    --hand-left: 58%;
+  }
+}
+
+@media screen and (min-height: 1080px) {
+  /* For taller screens (like 1080p and above) */
+  .hand-display-responsive {
+    --hand-height: 115%;
+    --hand-bottom: 15%;
+  }
+}
+
+@media screen and (max-width: 1366px) {
+  /* For smaller width screens */
+  .hand-display-responsive {
+    --hand-width: 140%;
+    --hand-left: 54%;
+  }
+}
+
+/* Specific resolution adjustments */
+@media screen and (max-width: 1280px) and (max-height: 720px) {
+  /* 720p screens */
+  .hand-display-responsive {
+    --hand-height: 85%;
+    --hand-bottom: 22%;
+    --hand-left: 58%;
+    --hand-width: 145%;
+  }
+}
+
+@media screen and (min-width: 1920px) and (min-height: 1080px) {
+  /* 1080p and higher screens */
+  .hand-display-responsive {
+    --hand-height: 115%;
+    --hand-bottom: 15%;
+    --hand-left: 56%;
+  }
+}
+
+/* Hand spacing and positioning improvements */
+.hand-display-spaced svg {
+  /* Slightly stretch horizontally to create space for hand separation */
+  transform: scaleX(1.08);
+}
+
+/* Left hand elements - move slightly left */
+.hand-display-spaced svg g[id*="left"],
+.hand-display-spaced svg g[id*="neutral-left"] {
+  transform: translateX(-8px);
+}
+
+/* Right hand elements - move slightly right */
+.hand-display-spaced svg g[id*="right"],
+.hand-display-spaced svg g[id*="neutral-right"] {
+  transform: translateX(4px);
+}
+
+/* Specific adjustments for different key groups */
+.hand-display-spaced svg g[id="q"],
+.hand-display-spaced svg g[id="w"],
+.hand-display-spaced svg g[id="e"],
+.hand-display-spaced svg g[id="r"],
+.hand-display-spaced svg g[id="t"],
+.hand-display-spaced svg g[id="a"],
+.hand-display-spaced svg g[id="s"],
+.hand-display-spaced svg g[id="d"],
+.hand-display-spaced svg g[id="f"],
+.hand-display-spaced svg g[id="g"],
+.hand-display-spaced svg g[id="z"],
+.hand-display-spaced svg g[id="x"],
+.hand-display-spaced svg g[id="c"],
+.hand-display-spaced svg g[id="v"],
+.hand-display-spaced svg g[id="b"] {
+  transform: translateX(-8px);
+}
+
+.hand-display-spaced svg g[id="y"],
+.hand-display-spaced svg g[id="u"],
+.hand-display-spaced svg g[id="i"],
+.hand-display-spaced svg g[id="o"],
+.hand-display-spaced svg g[id="p"],
+.hand-display-spaced svg g[id="h"],
+.hand-display-spaced svg g[id="j"],
+.hand-display-spaced svg g[id="k"],
+.hand-display-spaced svg g[id="l"],
+.hand-display-spaced svg g[id="n"],
+.hand-display-spaced svg g[id="m"] {
+  transform: translateX(4px);
 } 

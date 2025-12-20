@@ -186,7 +186,7 @@ const Features = () => {
                   key={index}
                   className={`p-6 rounded-2xl border-2 cursor-pointer transition-all ${
                     activeFeature === index 
-                      ? `bg-gradient-to-r ${feature.color} text-white border-transparent shadow-xl` 
+                      ? `bg-linear-to-r ${feature.color} text-white border-transparent shadow-xl` 
                       : `${theme.cardBg} ${theme.border} hover:shadow-lg`
                   }`}
                   onClick={() => setActiveFeature(index)}
@@ -221,7 +221,7 @@ const Features = () => {
             </div>
             
             <div className={`${theme.cardBg} rounded-2xl p-8 border ${theme.border} shadow-lg`}>
-              <div className={`w-full h-64 bg-gradient-to-r ${mainFeatures[activeFeature].color} rounded-xl mb-6 flex items-center justify-center`}>
+              <div className={`w-full h-64 bg-linear-to-r ${mainFeatures[activeFeature].color} rounded-xl mb-6 flex items-center justify-center`}>
                 {React.createElement(mainFeatures[activeFeature].icon, { className: "w-24 h-24 text-white" })}
               </div>
               <h3 className={`text-2xl font-bold ${theme.text} mb-4`}>
@@ -262,7 +262,7 @@ const Features = () => {
                 <div className="space-y-6">
                   {category.features.map((feature, featureIndex) => (
                     <div key={featureIndex} className="flex items-start gap-4">
-                      <div className={`p-1 ${theme.secondary} rounded-lg flex-shrink-0 mt-1`}>
+                      <div className={`p-1 ${theme.secondary} rounded-lg shrink-0 mt-1`}>
                         <Check className="w-4 h-4 text-green-500" />
                       </div>
                       <div>
@@ -295,7 +295,7 @@ const Features = () => {
               { icon: Monitor, name: "Linux", desc: "Ubuntu, Fedora & more", color: "from-orange-500 to-red-500" }
             ].map((platform, index) => (
               <div key={index} className={`${theme.cardBg} rounded-2xl p-8 border ${theme.border} text-center hover:shadow-lg transition-all`}>
-                <div className={`w-20 h-20 bg-gradient-to-r ${platform.color} rounded-2xl mx-auto mb-6 flex items-center justify-center`}>
+                <div className={`w-20 h-20 bg-linear-to-r ${platform.color} rounded-2xl mx-auto mb-6 flex items-center justify-center`}>
                   <platform.icon className="w-10 h-10 text-white" />
                 </div>
                 <h3 className={`text-xl font-bold ${theme.text} mb-2`}>{platform.name}</h3>
@@ -319,7 +319,7 @@ const Features = () => {
           <div className="grid md:grid-cols-2 gap-8">
             {screenshots.map((screenshot, index) => (
               <div key={index} className={`${theme.cardBg} rounded-2xl p-6 border ${theme.border} hover:shadow-lg transition-all`}>
-                <div className={`w-full h-48 bg-gradient-to-br from-blue-500/20 to-purple-600/20 rounded-xl mb-4 flex items-center justify-center`}>
+                <div className={`w-full h-48 bg-linear-to-br from-blue-500/20 to-purple-600/20 rounded-xl mb-4 flex items-center justify-center`}>
                   <Eye className="w-12 h-12 text-gray-400" />
                 </div>
                 <h3 className={`text-lg font-semibold ${theme.text} mb-2`}>{screenshot.title}</h3>

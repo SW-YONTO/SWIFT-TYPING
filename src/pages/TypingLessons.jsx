@@ -122,7 +122,7 @@ const TypingLessons = ({ currentUser, settings }) => {
                       width: `${(userProgress.completedLessons.length / Object.values(typingLessons).reduce((total, unit) => total + unit.lessons.length, 0)) * 100}%` 
                     }}
                   >
-                    <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent animate-shine"></div>
+                    <div className="absolute inset-0 bg-linear-to-r from-transparent via-white/20 to-transparent animate-shine"></div>
                   </div>
                 </div>
               </div>

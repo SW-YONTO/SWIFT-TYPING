@@ -215,8 +215,8 @@ const Results = () => {
           {/* WPM Card with Animation */}
           <div className={`${theme.cardBg} p-6 rounded-2xl border ${theme.border} text-center hover-lift shadow-lg animate-fade-in group`}>
             <div className="flex items-center justify-center mb-4">
-              <div className="p-4 bg-blue-100 dark:bg-blue-900/30 rounded-full group-hover:scale-110 transition-transform duration-300">
-                <Zap className="w-8 h-8 text-blue-600" />
+              <div className={`p-4 ${theme.mode === 'dark' ? 'bg-blue-900/40' : 'bg-blue-50'} rounded-full group-hover:scale-110 transition-transform duration-300`}>
+                <Zap className={`w-8 h-8 ${theme.mode === 'dark' ? 'text-blue-400' : 'text-blue-500'}`} />
               </div>
             </div>
             <div className={`text-5xl font-bold ${theme.text} mb-2 tabular-nums ${results.wpm > 50 ? 'animate-bounce-subtle' : ''}`}>
@@ -236,8 +236,8 @@ const Results = () => {
           {/* Accuracy Card with Black/White Text Only */}
           <div className={`${theme.cardBg} p-6 rounded-2xl border ${theme.border} text-center hover-lift shadow-lg animate-fade-in group`}>
             <div className="flex items-center justify-center mb-4">
-              <div className="p-4 bg-green-100 dark:bg-green-900/30 rounded-full group-hover:scale-110 transition-transform duration-300">
-                <Target className="w-8 h-8 text-green-600" />
+              <div className={`p-4 ${theme.mode === 'dark' ? 'bg-green-900/40' : 'bg-green-50'} rounded-full group-hover:scale-110 transition-transform duration-300`}>
+                <Target className={`w-8 h-8 ${theme.mode === 'dark' ? 'text-green-400' : 'text-green-500'}`} />
               </div>
             </div>
             <div className={`text-5xl font-bold mb-2 tabular-nums ${theme.text} ${
@@ -259,8 +259,8 @@ const Results = () => {
           {/* Time Card */}
           <div className={`${theme.cardBg} p-6 rounded-2xl border ${theme.border} text-center hover-lift shadow-lg animate-fade-in group`}>
             <div className="flex items-center justify-center mb-4">
-              <div className="p-4 bg-orange-100 dark:bg-orange-900/30 rounded-full group-hover:scale-110 transition-transform duration-300">
-                <Clock className="w-8 h-8 text-orange-600" />
+              <div className={`p-4 ${theme.mode === 'dark' ? 'bg-orange-900/40' : 'bg-orange-50'} rounded-full group-hover:scale-110 transition-transform duration-300`}>
+                <Clock className={`w-8 h-8 ${theme.mode === 'dark' ? 'text-orange-400' : 'text-orange-500'}`} />
               </div>
             </div>
             <div className={`text-5xl font-bold ${theme.text} mb-2 tabular-nums`}>{formatTime(results.timeSpent)}</div>
@@ -271,8 +271,8 @@ const Results = () => {
           {/* Words Typed Card */}
           <div className={`${theme.cardBg} p-6 rounded-2xl border ${theme.border} text-center hover-lift shadow-lg animate-fade-in group`}>
             <div className="flex items-center justify-center mb-4">
-              <div className="p-4 bg-purple-100 dark:bg-purple-900/30 rounded-full group-hover:scale-110 transition-transform duration-300">
-                <Type className="w-8 h-8 text-purple-600" />
+              <div className={`p-4 ${theme.mode === 'dark' ? 'bg-purple-900/40' : 'bg-purple-50'} rounded-full group-hover:scale-110 transition-transform duration-300`}>
+                <Type className={`w-8 h-8 ${theme.mode === 'dark' ? 'text-purple-400' : 'text-purple-500'}`} />
               </div>
             </div>
             <div className={`text-5xl font-bold ${theme.text} mb-2 tabular-nums`}>{results.wordsTyped || 0}</div>
@@ -287,7 +287,7 @@ const Results = () => {
           <div className="lg:col-span-2">
             <div className={`${theme.cardBg} p-6 rounded-2xl border ${theme.border} shadow-lg animate-fade-in hover-lift`}>
               <h3 className={`text-xl font-bold ${theme.text} mb-4 flex items-center gap-2`}>
-                <TrendingUp className="w-5 h-5 text-blue-600" />
+                <TrendingUp className={`w-5 h-5 ${theme.mode === 'dark' ? 'text-blue-400' : 'text-blue-500'}`} />
                 Speed Over Time
               </h3>
               <div className="h-64">
@@ -301,7 +301,7 @@ const Results = () => {
             {/* Character Stats */}
             <div className={`${theme.cardBg} p-6 rounded-2xl border ${theme.border} shadow-lg animate-fade-in hover-lift`}>
               <h4 className={`text-lg font-semibold ${theme.text} mb-4 flex items-center gap-2`}>
-                <Type className="w-5 h-5 text-gray-600" />
+                <Type className={`w-5 h-5 ${theme.mode === 'dark' ? 'text-gray-400' : 'text-gray-500'}`} />
                 Character Stats
               </h4>
               <div className="space-y-3">
@@ -323,7 +323,7 @@ const Results = () => {
             {/* Quick Tip */}
             <div className={`${theme.cardBg} p-6 rounded-2xl border ${theme.border} shadow-lg animate-fade-in hover-lift`}>
               <h4 className={`text-lg font-semibold ${theme.text} mb-3 flex items-center gap-2`}>
-                <AlertCircle className="w-5 h-5 text-blue-600" />
+                <AlertCircle className={`w-5 h-5 ${theme.mode === 'dark' ? 'text-blue-400' : 'text-blue-500'}`} />
                 Quick Tip
               </h4>
               <p className={`${theme.textSecondary} text-sm leading-relaxed`}>

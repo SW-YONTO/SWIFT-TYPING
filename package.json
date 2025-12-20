@@ -1,20 +1,17 @@
 {
   "name": "swift-typing",
   "private": true,
-  "version": "1.0.0",
+  "version": "2.0.0",
   "author": "Swift Typing Team",
   "type": "module",
   "description": "A comprehensive offline typing tutor desktop application",
   "homepage": "./",
-  "main": "main.cjs",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
     "lint": "eslint .",
     "electron": "electron .",
-    "electron-dev": "concurrently \"npm run dev\" \"wait-on http://localhost:5173 && cross-env NODE_ENV=development electron .\"",
-    "electron-pack": "npm run build && electron-builder",
-    "preelectron-pack": "npm run build",
+    "electron:dev": "concurrently \"npm run dev\" \"wait-on http://localhost:5173 && cross-env NODE_ENV=development electron .\"",
     "pack": "npm run build && electron-builder --dir",
     "dist": "npm run build && electron-builder"
   },
@@ -22,6 +19,7 @@
     "@tailwindcss/vite": "^4.1.11",
     "chart.js": "^4.5.0",
     "lucide-react": "^0.525.0",
+    "prop-types": "^15.8.1",
     "react": "^19.1.0",
     "react-chartjs-2": "^5.3.0",
     "react-dom": "^19.1.0",
@@ -35,73 +33,52 @@
     "@types/react": "^19.1.8",
     "@types/react-dom": "^19.1.6",
     "@vitejs/plugin-react": "^4.5.2",
-    "concurrently": "^9.1.0",
-    "electron": "^37.2.0",
+    "concurrently": "^9.2.1",
+    "cross-env": "^10.1.0",
+    "electron": "^39.0.0",
     "electron-builder": "^26.0.12",
     "eslint": "^9.29.0",
     "eslint-plugin-react-hooks": "^5.2.0",
     "eslint-plugin-react-refresh": "^0.4.20",
     "globals": "^16.2.0",
+    "png-to-ico": "^3.0.1",
+    "to-ico": "^1.1.5",
     "vite": "^7.0.0",
     "vite-plugin-pwa": "^1.0.1",
     "wait-on": "^8.0.3",
     "workbox-window": "^7.3.0"
   },
+  "main": "electron/main.cjs",
   "build": {
     "appId": "com.swifttyping.app",
     "productName": "Swift Typing",
     "directories": {
-      "output": "build"
+      "output": "release",
+      "buildResources": "build"
     },
     "files": [
       "dist/**/*",
-      "main.js",
-      "preload.js",
-      "package.json"
+      "electron/**/*"
     ],
     "extraResources": [
       {
-        "from": "public/favicon_io",
-        "to": "icons"
+        "from": "public/icon.ico",
+        "to": "icon.ico"
       }
     ],
-    "npmRebuild": false,
-    "buildDependenciesFromSource": false,
     "win": {
-      "target": [
-        {
-          "target": "nsis",
-          "arch": ["x64"]
-        }
-      ],
-      "icon": "public/favicon_io/favicon.ico"
-    },
-    "mac": {
-      "target": [
-        {
-          "target": "dmg",
-          "arch": ["x64", "arm64"]
-        }
-      ],
-      "icon": "public/favicon_io/apple-touch-icon.png",
-      "category": "public.app-category.education"
-    },
-    "linux": {
-      "target": [
-        {
-          "target": "AppImage",
-          "arch": ["x64"]
-        }
-      ],
-      "icon": "public/favicon_io/favicon-32x32.png",
-      "category": "Education"
+      "target": "nsis",
+      "icon": "public/icon.ico",
+      "signAndEditExecutable": false
     },
     "nsis": {
       "oneClick": false,
-      "perMachine": false,
       "allowToChangeInstallationDirectory": true,
-      "deleteAppDataOnUninstall": false
-    },
-    "publish": null
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "installerIcon": "public/icon.ico",
+      "uninstallerIcon": "public/icon.ico",
+      "installerHeaderIcon": "public/icon.ico"
+    }
   }
 }

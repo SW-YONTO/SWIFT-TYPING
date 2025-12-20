@@ -1,1 +1,0 @@
-npx electron-packager . SwiftTyping --platform=win32 --arch=x64 --icon=public/favicon_io/favicon.ico --out=build --overwrite   

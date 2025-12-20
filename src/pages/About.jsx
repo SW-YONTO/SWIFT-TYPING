@@ -57,7 +57,7 @@ const About = () => {
       avatar: "./suraj.png",
       bio: "Full-stack developer passionate about creating educational tools and competitive gaming.",
       social: {
-        github: "https://github.com/sw-esports",
+        github: "https://github.com/sw-esports/SWIFT-TYPING",
         instagram: "https://instagram.com/red_eye0.0",
         email: "surajmoriya200@gmail.com"
       }
@@ -83,22 +83,31 @@ const About = () => {
             </p>
             
             <div className="flex items-center justify-center gap-4 mt-8">
-              <button className={`flex items-center gap-2 px-6 py-3 ${theme.primary} text-white rounded-xl hover:${theme.primaryHover} transition-all transform hover:scale-105 shadow-lg`}>
+              <a 
+                href="https://github.com/sw-esports/SWIFT-TYPING/releases/download/v1.0.0/SwiftTyping.zip" 
+                download
+                className={`flex items-center gap-2 px-6 py-3 ${theme.primary} text-white rounded-xl hover:${theme.primaryHover} transition-all transform hover:scale-105 shadow-lg text-decoration-none`}
+              >
                 <Download className="w-5 h-5" />
-                Get Started Free
-              </button>
-              <button className={`flex items-center gap-2 px-6 py-3 ${theme.secondary} ${theme.accent} rounded-xl hover:${theme.secondaryHover} transition-all`}>
-                Learn More
+                Download SwiftTyping
+              </a>
+              <a 
+                href="https://github.com/sw-esports/SWIFT-TYPING"
+                target="_blank"
+                rel="noopener noreferrer"
+                className={`flex items-center gap-2 px-6 py-3 ${theme.secondary} ${theme.accent} rounded-xl hover:${theme.secondaryHover} transition-all text-decoration-none`}
+              >
+                View on GitHub
                 <ArrowRight className="w-5 h-5" />
-              </button>
+              </a>
             </div>
           </div>
         </div>
         
         {/* Background decoration */}
         <div className="absolute inset-0 overflow-hidden pointer-events-none">
-          <div className="absolute top-20 left-10 w-72 h-72 bg-gradient-to-br from-blue-500/10 to-purple-600/10 rounded-full blur-3xl"></div>
-          <div className="absolute bottom-20 right-10 w-96 h-96 bg-gradient-to-tl from-green-500/10 to-blue-500/10 rounded-full blur-3xl"></div>
+          <div className="absolute top-20 left-10 w-72 h-72 bg-linear-to-br from-blue-500/10 to-purple-600/10 rounded-full blur-3xl"></div>
+          <div className="absolute bottom-20 right-10 w-96 h-96 bg-linear-to-tl from-green-500/10 to-blue-500/10 rounded-full blur-3xl"></div>
         </div>
       </div>
 
@@ -157,7 +166,7 @@ const About = () => {
               <div className="space-y-6">
                 {features.map((feature, index) => (
                   <div key={index} className="flex items-start gap-4">
-                    <div className={`p-2 ${theme.primary} rounded-lg flex-shrink-0`}>
+                    <div className={`p-2 ${theme.primary} rounded-lg shrink-0`}>
                       <feature.icon className="w-5 h-5 text-white" />
                     </div>
                     <div>
@@ -262,14 +271,23 @@ const About = () => {
             Start your journey to faster, more accurate typing today.
           </p>
           <div className="flex items-center justify-center gap-4">
-            <button className="flex items-center gap-2 px-8 py-4 bg-white text-gray-800 rounded-xl hover:bg-gray-100 transition-all transform hover:scale-105 shadow-lg font-semibold">
+            <a 
+              href="https://github.com/sw-esports/SWIFT-TYPING/releases/download/v1.0.0/SwiftTyping.zip" 
+              download
+              className="flex items-center gap-2 px-8 py-4 bg-white text-gray-800 rounded-xl hover:bg-gray-100 transition-all transform hover:scale-105 shadow-lg font-semibold text-decoration-none"
+            >
               <Download className="w-5 h-5" />
               Download Now
-            </button>
-            <button className="flex items-center gap-2 px-8 py-4 border-2 border-white text-white rounded-xl hover:bg-white hover:text-gray-800 transition-all font-semibold">
-              View Features
+            </a>
+            <a 
+              href="https://github.com/sw-esports/SWIFT-TYPING"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-2 px-8 py-4 border-2 border-white text-white rounded-xl hover:bg-white hover:text-gray-800 transition-all font-semibold text-decoration-none"
+            >
+              View on GitHub
               <ArrowRight className="w-5 h-5" />
-            </button>
+            </a>
           </div>
         </div>
       </div>

@@ -70,7 +70,8 @@ export const progressManager = {
       settings: {
         theme: 'blue',
         timeLimit: 60,
-        wordLimit: 50
+        wordLimit: 50,
+        showVirtualHand: false
       },
       stats: {
         totalTests: 0,
@@ -103,7 +104,36 @@ export const progressManager = {
       completedAt: new Date().toISOString()
     });
 
+    // Update stats (same as saveTestResult)
+    progress.stats.totalTests += 1;
+    progress.stats.totalTime += result.timeSpent || 0;
+    progress.stats.totalCharacters += result.totalCharacters || 0;
+    progress.stats.bestWPM = Math.max(progress.stats.bestWPM, result.wpm || 0);
+    progress.stats.bestAccuracy = Math.max(progress.stats.bestAccuracy, result.accuracy || 0);
+
+    // Also add to testResults for recent activity
+    progress.testResults.push({
+      ...result,
+      testTitle: `Lesson: ${lessonId}`,
+      type: 'lesson',
+      completedAt: new Date().toISOString()
+    });
+
     progressManager.saveUserProgress(userId, progress);
+
+    // Update user summary
+    const users = userManager.getUsers();
+    const userIndex = users.findIndex(user => user.id === userId);
+    if (userIndex !== -1) {
+      users[userIndex].totalTests = progress.stats.totalTests;
+      users[userIndex].averageWPM = Math.round(
+        progress.testResults.reduce((sum, result) => sum + result.wpm, 0) / progress.testResults.length
+      );
+      users[userIndex].averageAccuracy = Math.round(
+        progress.testResults.reduce((sum, result) => sum + result.accuracy, 0) / progress.testResults.length
+      );
+      localStorage.setItem(STORAGE_KEYS.USERS, JSON.stringify(users));
+    }
   },
 
   // Save test result
@@ -193,7 +223,7 @@ export const themes = {
     textSecondary: 'text-gray-600',
     border: 'border-blue-200',
     navbar: 'bg-white',
-    navText: 'text-gray-800',
+    navText: 'text-blue-700', // More vibrant blue instead of gray-800
     navBorder: 'border-gray-200',
     cardBg: 'bg-white',
     inputBg: 'bg-gray-50',
@@ -234,7 +264,7 @@ export const themes = {
     textSecondary: 'text-gray-600',
     border: 'border-green-200',
     navbar: 'bg-white',
-    navText: 'text-gray-800',
+    navText: 'text-green-700', // More vibrant green instead of gray-800
     navBorder: 'border-gray-200',
     cardBg: 'bg-white',
     inputBg: 'bg-gray-50',
@@ -275,7 +305,7 @@ export const themes = {
     textSecondary: 'text-gray-600',
     border: 'border-orange-200',
     navbar: 'bg-white',
-    navText: 'text-gray-800',
+    navText: 'text-orange-700', // More vibrant orange instead of gray-800
     navBorder: 'border-gray-200',
     cardBg: 'bg-white',
     inputBg: 'bg-gray-50',
@@ -317,7 +347,7 @@ export const themes = {
     textSecondary: 'text-gray-300',
     border: 'border-gray-700',
     navbar: 'bg-gray-800',
-    navText: 'text-gray-100',
+    navText: 'text-blue-300', // More vibrant blue instead of gray-100
     navBorder: 'border-gray-700',
     cardBg: 'bg-gray-800',
     inputBg: 'bg-gray-700',
@@ -358,7 +388,7 @@ export const themes = {
     textSecondary: 'text-gray-300',
     border: 'border-gray-700',
     navbar: 'bg-gray-800',
-    navText: 'text-gray-100',
+    navText: 'text-green-300', // More vibrant green instead of gray-100
     navBorder: 'border-gray-700',
     cardBg: 'bg-gray-800',
     inputBg: 'bg-gray-700',
@@ -399,7 +429,7 @@ export const themes = {
     textSecondary: 'text-gray-300',
     border: 'border-gray-700',
     navbar: 'bg-gray-800',
-    navText: 'text-gray-100',
+    navText: 'text-purple-300', // More vibrant purple instead of gray-100
     navBorder: 'border-gray-700',
     cardBg: 'bg-gray-800',
     inputBg: 'bg-gray-700',
@@ -426,3 +456,139 @@ export const themes = {
     }
   }
 };
+
+// Daily Streak Manager
+export const streakManager = {
+  STREAK_KEY: 'typing_app_streak',
+  
+  getStreakData: (userId) => {
+    const data = localStorage.getItem(`${streakManager.STREAK_KEY}_${userId}`);
+    return data ? JSON.parse(data) : {
+      currentStreak: 0,
+      longestStreak: 0,
+      lastPracticeDate: null,
+      practiceHistory: [] // Array of dates with practice
+    };
+  },
+  
+  saveStreakData: (userId, data) => {
+    localStorage.setItem(`${streakManager.STREAK_KEY}_${userId}`, JSON.stringify(data));
+  },
+  
+  recordPractice: (userId) => {
+    const data = streakManager.getStreakData(userId);
+    const today = new Date().toISOString().split('T')[0];
+    const yesterday = new Date(Date.now() - 86400000).toISOString().split('T')[0];
+    
+    // Already practiced today
+    if (data.lastPracticeDate === today) {
+      return data;
+    }
+    
+    // Update streak
+    if (data.lastPracticeDate === yesterday) {
+      // Continuing streak
+      data.currentStreak += 1;
+    } else if (data.lastPracticeDate !== today) {
+      // Streak broken or first practice
+      data.currentStreak = 1;
+    }
+    
+    // Update longest streak
+    data.longestStreak = Math.max(data.longestStreak, data.currentStreak);
+    data.lastPracticeDate = today;
+    
+    // Add to history (keep last 365 days)
+    if (!data.practiceHistory.includes(today)) {
+      data.practiceHistory.push(today);
+      if (data.practiceHistory.length > 365) {
+        data.practiceHistory = data.practiceHistory.slice(-365);
+      }
+    }
+    
+    streakManager.saveStreakData(userId, data);
+    return data;
+  },
+  
+  checkStreak: (userId) => {
+    const data = streakManager.getStreakData(userId);
+    const today = new Date().toISOString().split('T')[0];
+    const yesterday = new Date(Date.now() - 86400000).toISOString().split('T')[0];
+    
+    // If last practice wasn't today or yesterday, streak is broken
+    if (data.lastPracticeDate !== today && data.lastPracticeDate !== yesterday) {
+      if (data.currentStreak > 0) {
+        data.currentStreak = 0;
+        streakManager.saveStreakData(userId, data);
+      }
+    }
+    
+    return data;
+  }
+};
+
+// Data Export/Import Manager
+export const dataManager = {
+  exportUserData: (userId) => {
+    const progress = progressManager.getUserProgress(userId);
+    const streakData = streakManager.getStreakData(userId);
+    const users = userManager.getUsers();
+    const user = users.find(u => u.id === userId);
+    const achievements = localStorage.getItem(`typing_achievements_${userId}`);
+    
+    const exportData = {
+      version: '2.0.0',
+      exportDate: new Date().toISOString(),
+      user: user,
+      progress: progress,
+      streak: streakData,
+      achievements: achievements ? JSON.parse(achievements) : null
+    };
+    
+    return JSON.stringify(exportData, null, 2);
+  },
+  
+  downloadExport: (userId, username) => {
+    const data = dataManager.exportUserData(userId);
+    const blob = new Blob([data], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `swift-typing-backup-${username}-${new Date().toISOString().split('T')[0]}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  },
+  
+  importUserData: (userId, jsonData) => {
+    try {
+      const data = JSON.parse(jsonData);
+      
+      // Validate structure
+      if (!data.version || !data.progress) {
+        throw new Error('Invalid backup file format');
+      }
+      
+      // Import progress
+      if (data.progress) {
+        progressManager.saveUserProgress(userId, data.progress);
+      }
+      
+      // Import streak data
+      if (data.streak) {
+        streakManager.saveStreakData(userId, data.streak);
+      }
+      
+      // Import achievements
+      if (data.achievements) {
+        localStorage.setItem(`typing_achievements_${userId}`, JSON.stringify(data.achievements));
+      }
+      
+      return { success: true, message: 'Data imported successfully!' };
+    } catch (error) {
+      return { success: false, message: error.message };
+    }
+  }
+};
+

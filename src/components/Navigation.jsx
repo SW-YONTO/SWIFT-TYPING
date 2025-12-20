@@ -23,7 +23,7 @@ const Navigation = ({ currentUser, onLogout, onThemeChange, currentTheme }) => {
         <div className="flex justify-between items-center h-14">
           {/* Logo */}
           <div className="flex items-center space-x-2">
-            <Zap className={`w-6 h-6 ${theme.accent}`} />
+            <Zap className={`w-6 h-6 ${theme.accent} drop-shadow-sm`} />
             <span className={`text-lg font-bold ${theme.navText}`}>Swift Typing</span>
           </div>
 
