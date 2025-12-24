@@ -57,3 +57,10 @@ temp/
 *.zip
 *.7z
 *.tar.gz
+*.exe
+*.asar
+*.blockmap
+
+# Electron build/installer files
+swift typing/
+Swift Typing Setup*
