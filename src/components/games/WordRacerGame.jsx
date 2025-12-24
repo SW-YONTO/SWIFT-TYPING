@@ -532,7 +532,7 @@ const WordRacerGame = () => {
       </div>
 
       {/* Race Track */}
-      <div 
+      <div x
         className="relative h-[320px] overflow-hidden"
         style={{
           background: theme.mode === 'dark' 
