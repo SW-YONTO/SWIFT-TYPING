@@ -105,7 +105,7 @@ const BalloonGame = ({ currentUser, settings }) => {
     { gradient: 'from-purple-400 to-purple-600', glow: 'rgba(168, 85, 247, 0.6)', glowStrong: 'rgba(168, 85, 247, 0.8)', ring: 'ring-purple-400', text: 'text-purple-200' },
     { gradient: 'from-blue-400 to-blue-600', glow: 'rgba(96, 165, 250, 0.6)', glowStrong: 'rgba(96, 165, 250, 0.8)', ring: 'ring-blue-400', text: 'text-blue-200' },
     { gradient: 'from-green-400 to-green-600', glow: 'rgba(74, 222, 128, 0.6)', glowStrong: 'rgba(74, 222, 128, 0.8)', ring: 'ring-green-400', text: 'text-green-200' },
-    { gradient: 'from-yellow-400 to-yellow-600', glow: 'rgba(250, 204, 21, 0.6)', glowStrong: 'rgba(250, 204, 21, 0.8)', ring: 'ring-yellow-400', text: 'text-yellow-200' },
+    { gradient: 'from-yellow-300 to-yellow-400', glow: 'rgba(250, 204, 21, 0.6)', glowStrong: 'rgba(250, 204, 21, 0.8)', ring: 'ring-yellow-400', text: 'text-yellow-200' },
     { gradient: 'from-red-400 to-red-600', glow: 'rgba(248, 113, 113, 0.6)', glowStrong: 'rgba(248, 113, 113, 0.8)', ring: 'ring-red-400', text: 'text-red-200' },
     { gradient: 'from-cyan-400 to-cyan-600', glow: 'rgba(34, 211, 238, 0.6)', glowStrong: 'rgba(34, 211, 238, 0.8)', ring: 'ring-cyan-400', text: 'text-cyan-200' },
     { gradient: 'from-orange-400 to-orange-600', glow: 'rgba(251, 146, 60, 0.6)', glowStrong: 'rgba(251, 146, 60, 0.8)', ring: 'ring-orange-400', text: 'text-orange-200' }

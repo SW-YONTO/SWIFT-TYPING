@@ -246,90 +246,103 @@ const WordRacerGame = () => {
     }
   }, [gameState, countdown, soundEnabled]);
   
-  // Game loop for AI movement and time tracking - INDEPENDENT of typing
+  // Store sentence length in a ref so the game loop can access it
+  const sentenceLengthRef = useRef(0);
+  
+  // Update sentence length ref when sentence changes
+  useEffect(() => {
+    sentenceLengthRef.current = currentSentence.length;
+  }, [currentSentence]);
+  
+  // Store AI base data in refs for the game loop
+  const aiBaseDataRef = useRef([]);
+  
+  useEffect(() => {
+    aiBaseDataRef.current = aiRacers.map(ai => ({
+      baseWPM: ai.baseWPM
+    }));
+  }, [aiRacers]);
+  
+  // Game loop for AI movement and time tracking - COMPLETELY INDEPENDENT of typing
   useEffect(() => {
     if (gameState !== 'playing') return;
     
     const multiplier = difficultyMultiplier[difficulty];
-    let lastTime = performance.now();
-    let animationId;
+    const startTime = performance.now();
+    let lastTime = startTime;
+    let intervalId;
     
-    // Create AI state that persists across animation frames
-    const aiState = aiRacers.map(ai => ({
-      ...ai,
-      currentWPM: ai.baseWPM * multiplier,
-      nextVariationTime: Math.random() * 2000, // Next WPM change in ms
-      mistakeEndTime: 0 // When current mistake penalty ends
+    // Create AI state that persists across intervals - initialized once at start
+    const aiState = aiBaseDataRef.current.map(ai => ({
+      baseWPM: ai.baseWPM,
+      currentWPM: ai.baseWPM * multiplier * (0.85 + Math.random() * 0.30),
+      nextVariationTime: performance.now() + Math.random() * 2000,
+      mistakeEndTime: 0,
+      progress: 0
     }));
     
-    const gameLoop = () => {
+    // Use setInterval for consistent timing regardless of React rendering
+    intervalId = setInterval(() => {
       const currentTime = performance.now();
-      const delta = (currentTime - lastTime) / 1000;
+      const delta = (currentTime - lastTime) / 1000; // Convert to seconds
       lastTime = currentTime;
       
       // Update race time
-      setRaceTime(prev => prev + delta);
+      setRaceTime((currentTime - startTime) / 1000);
       
-      // Update AI progress with realistic speed variations
-      setAiProgress(prev => {
-        const newProgress = [...prev];
-        const newWPM = [];
+      const sentenceLength = sentenceLengthRef.current;
+      if (sentenceLength === 0) return;
+      
+      // Calculate new progress for each AI
+      const newProgress = [];
+      const newWPM = [];
+      
+      aiState.forEach((ai, index) => {
+        if (ai.progress >= 100) {
+          newProgress[index] = 100;
+          newWPM[index] = 0;
+          return;
+        }
         
-        if (!currentSentence) return newProgress;
-        const sentenceLength = currentSentence.length;
-        
-        aiState.forEach((ai, index) => {
-          if (prev[index] >= 100) {
-            newWPM[index] = 0; // Finished
-            return;
+        // Update WPM variation every 1-3 seconds for realistic typing
+        if (currentTime >= ai.nextVariationTime) {
+          const variation = 0.8 + Math.random() * 0.4; // ±20% variation
+          ai.currentWPM = ai.baseWPM * multiplier * variation;
+          ai.nextVariationTime = currentTime + 1000 + Math.random() * 2000;
+          
+          // Random "mistake" that slows down typing (5% chance)
+          if (Math.random() < 0.05) {
+            ai.mistakeEndTime = currentTime + 500 + Math.random() * 1500;
           }
-          
-          // Update WPM variation every 1-3 seconds for more realistic typing
-          if (currentTime >= ai.nextVariationTime) {
-            const variation = 0.8 + Math.random() * 0.4; // ±20% variation
-            ai.currentWPM = ai.baseWPM * multiplier * variation;
-            ai.nextVariationTime = currentTime + (1000 + Math.random() * 2000); // Next change in 1-3s
-            
-            // Random "mistake" that slows down typing (3% chance)
-            if (Math.random() < 0.03) {
-              ai.mistakeEndTime = currentTime + (500 + Math.random() * 1500); // 0.5-2s penalty
-            }
-          }
-          
-          // Apply mistake penalty
-          let effectiveWPM = ai.currentWPM;
-          if (currentTime < ai.mistakeEndTime) {
-            effectiveWPM *= 0.3; // Slow down during mistake
-          }
-          
-          // Convert WPM to progress per second (more realistic calculation)
-          // Average word length is 5 chars, so WPM * 5 = chars per minute
-          // Divide by 60 to get chars per second, then by sentence length for progress per second
-          const charsPerSecond = (effectiveWPM * 5) / 60;
-          const progressPerSecond = (charsPerSecond / sentenceLength) * 100;
-          
-          // Smooth increment
-          const progressIncrement = progressPerSecond * delta;
-          
-          newProgress[index] = Math.min(100, prev[index] + progressIncrement);
-          newWPM[index] = Math.round(effectiveWPM);
-        });
+        }
         
-        // Update WPM display
-        setAiCurrentWPM(newWPM);
+        // Apply mistake penalty
+        let effectiveWPM = ai.currentWPM;
+        if (currentTime < ai.mistakeEndTime) {
+          effectiveWPM *= 0.3;
+        }
         
-        return newProgress;
+        // Convert WPM to progress per second
+        // WPM * 5 = chars per minute, / 60 = chars per second
+        // Then divide by sentence length and multiply by 100 for percentage
+        const charsPerSecond = (effectiveWPM * 5) / 60;
+        const progressPerSecond = (charsPerSecond / sentenceLength) * 100;
+        const progressIncrement = progressPerSecond * delta;
+        
+        ai.progress = Math.min(100, ai.progress + progressIncrement);
+        newProgress[index] = ai.progress;
+        newWPM[index] = Math.round(effectiveWPM);
       });
       
-      animationId = requestAnimationFrame(gameLoop);
-    };
-    
-    // Start the game loop
-    animationId = requestAnimationFrame(gameLoop);
+      // Update React state
+      setAiProgress(newProgress);
+      setAiCurrentWPM(newWPM);
+      
+    }, 50); // Run every 50ms (20 FPS) - fast enough for smooth animation
     
     return () => {
-      if (animationId) {
-        cancelAnimationFrame(animationId);
+      if (intervalId) {
+        clearInterval(intervalId);
       }
     };
   }, [gameState, difficulty]); // Only restart when game state or difficulty changes
@@ -532,7 +545,7 @@ const WordRacerGame = () => {
       </div>
 
       {/* Race Track */}
-      <div x
+      <div 
         className="relative h-[320px] overflow-hidden"
         style={{
           background: theme.mode === 'dark' 
