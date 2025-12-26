@@ -669,6 +669,14 @@ const TypingComponent = ({
     const value = e.target.value;
     const newLength = value.length;
     
+    // Detect paste attempt: if length jumped by more than 1 character at once, reject it
+    const lengthDiff = Math.abs(newLength - userInput.length);
+    if (lengthDiff > 1) {
+      // Paste or multi-character input detected - reject
+      if (settings.soundEnabled) playSound('error');
+      return;
+    }
+    
     if (!isActive && !startTime) {
       setStartTime(Date.now());
       setIsActive(true);
@@ -1077,14 +1085,22 @@ const TypingComponent = ({
         
         <div 
           ref={textRef}
-          className={`${theme.cardBg} p-8 rounded-xl border-2 ${theme.border} cursor-text relative transition-all duration-300 hover:shadow-lg focus-within:shadow-xl`}
+          className={`${theme.cardBg} p-8 rounded-xl border-2 ${theme.border} cursor-text relative transition-all duration-300 hover:shadow-lg focus-within:shadow-xl select-none`}
           onClick={() => inputRef.current?.focus()}
+          onCopy={(e) => e.preventDefault()}
+          onCut={(e) => e.preventDefault()}
+          onContextMenu={(e) => e.preventDefault()}
+          onDragStart={(e) => e.preventDefault()}
           style={{ 
             minHeight: '180px',
             lineHeight: '2',
             wordSpacing: '0.15em',
             letterSpacing: '0.01em',
-            fontFamily: getTypingFontFamily()
+            fontFamily: getTypingFontFamily(),
+            userSelect: 'none',
+            WebkitUserSelect: 'none',
+            MozUserSelect: 'none',
+            msUserSelect: 'none'
           }}
         >
           {/* Focus Indicator - Theme-aware */}
@@ -1123,6 +1139,10 @@ const TypingComponent = ({
           type="text"
           value={userInput}
           onChange={handleInputChange}
+          onPaste={(e) => e.preventDefault()}
+          onCopy={(e) => e.preventDefault()}
+          onCut={(e) => e.preventDefault()}
+          onDrop={(e) => e.preventDefault()}
           className="opacity-0 absolute -z-10"
           disabled={isPaused || isCompleted}
           // Disable all auto-suggestions and auto-fill features

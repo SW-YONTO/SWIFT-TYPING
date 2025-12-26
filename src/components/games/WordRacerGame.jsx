@@ -394,6 +394,14 @@ const WordRacerGame = () => {
     
     const value = e.target.value;
     
+    // Detect paste attempt: if length jumped by more than 1 character at once, reject it
+    const lengthDiff = Math.abs(value.length - userInput.length);
+    if (lengthDiff > 1) {
+      // Paste or multi-character input detected - reject
+      if (soundEnabled) playSound('error');
+      return;
+    }
+    
     // Allow any input including wrong characters
     setUserInput(value);
     setTotalKeystrokes(prev => prev + 1);
@@ -884,7 +892,12 @@ const WordRacerGame = () => {
           <div className="mb-4">
             <div className={`text-sm ${theme.textSecondary} mb-2`}>Type this sentence: <span className="text-xs">(mistakes shown in red)</span></div>
             <div 
-              className={`p-4 rounded-xl ${theme.mode === 'dark' ? 'bg-gray-800' : 'bg-gray-100'} font-mono text-lg leading-relaxed`}
+              className={`p-4 rounded-xl ${theme.mode === 'dark' ? 'bg-gray-800' : 'bg-gray-100'} font-mono text-lg leading-relaxed select-none`}
+              onCopy={(e) => e.preventDefault()}
+              onCut={(e) => e.preventDefault()}
+              onContextMenu={(e) => e.preventDefault()}
+              onDragStart={(e) => e.preventDefault()}
+              style={{ userSelect: 'none', WebkitUserSelect: 'none', MozUserSelect: 'none', msUserSelect: 'none' }}
             >
               {currentSentence.split('').map((char, i) => {
                 let className = theme.textSecondary;
@@ -936,6 +949,10 @@ const WordRacerGame = () => {
               type="text"
               value={userInput}
               onChange={handleInputChange}
+              onPaste={(e) => e.preventDefault()}
+              onCopy={(e) => e.preventDefault()}
+              onCut={(e) => e.preventDefault()}
+              onDrop={(e) => e.preventDefault()}
               placeholder="Start typing..."
               autoFocus
               autoComplete="off"
