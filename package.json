@@ -1,8 +1,8 @@
 {
   "name": "swift-typing",
   "private": true,
-  "version": "2.0.0",
-  "author": "Swift Typing Team",
+  "version": "2.5.1",
+  "author": "SW-YONTO (Suraj Maurya)",
   "type": "module",
   "description": "A comprehensive offline typing tutor desktop application",
   "homepage": "./",
@@ -12,8 +12,9 @@
     "lint": "eslint .",
     "electron": "electron .",
     "electron:dev": "concurrently \"npm run dev\" \"wait-on http://localhost:5173 && cross-env NODE_ENV=development electron .\"",
-    "pack": "npm run build && electron-builder --dir",
-    "dist": "npm run build && electron-builder"
+    "prebuild:icon": "node -e \"require('fs').copyFileSync('public/icon.ico', 'build/icon.ico')\"",
+    "pack": "npm run prebuild:icon && npm run build && electron-builder --dir",
+    "dist": "npm run prebuild:icon && npm run build && electron-builder"
   },
   "dependencies": {
     "@tailwindcss/vite": "^4.1.11",
@@ -68,7 +69,8 @@
     ],
     "win": {
       "target": "nsis",
-      "icon": "public/icon.ico",
+      "icon": "build/icon.ico",
+      "requestedExecutionLevel": "asInvoker",
       "signAndEditExecutable": false
     },
     "nsis": {
@@ -76,9 +78,11 @@
       "allowToChangeInstallationDirectory": true,
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true,
-      "installerIcon": "public/icon.ico",
-      "uninstallerIcon": "public/icon.ico",
-      "installerHeaderIcon": "public/icon.ico"
+      "shortcutName": "Swift Typing",
+      "installerIcon": "build/icon.ico",
+      "uninstallerIcon": "build/icon.ico",
+      "installerHeaderIcon": "build/icon.ico",
+      "deleteAppDataOnUninstall": false
     }
   }
 }

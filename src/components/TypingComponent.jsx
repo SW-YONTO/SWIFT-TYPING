@@ -71,15 +71,17 @@ const MonkeyTypeText = React.memo(({
 
   // Create lines that fit within container width - calculate char width based on font size
   const lines = useMemo(() => {
-    // Reduced character widths for tighter packing - fills more of the line
+    // Conservative character widths to prevent overflow while using good width
     const charWidthMap = {
-      'small': 8,    // text-lg ~18px font = ~8px char width (tighter)
-      'medium': 10,  // text-xl ~20px font = ~10px char width (tighter)
-      'large': 12,   // text-2xl ~24px font = ~12px char width (tighter)
-      'xl': 14       // text-3xl ~30px font = ~14px char width (tighter)
+      'small': 6.5,  // text-lg ~18px font = ~6.5px char width
+      'medium': 8,   // text-xl ~20px font = ~8px char width
+      'large': 10,   // text-2xl ~24px font = ~10px char width
+      'xl': 12       // text-3xl ~30px font = ~12px char width
     };
-    const charWidth = charWidthMap[fontSize] || 10;
-    const charsPerLine = Math.floor((containerWidth || 900) / charWidth);
+    const charWidth = charWidthMap[fontSize] || 8;
+    // Use actual container width or fallback to 800, then apply 85% usage
+    const effectiveWidth = (containerWidth || 800) * 0.85;
+    const charsPerLine = Math.floor(effectiveWidth / charWidth);
     const result = [];
     let currentLine = [];
     let currentLineLength = 0;
@@ -206,6 +208,9 @@ const MonkeyTypeText = React.memo(({
         ...fontStyle,
         minHeight: '160px',
         width: '100%',
+        maxWidth: '100%',
+        overflowX: 'hidden',
+        wordWrap: 'break-word'
       }}
     >
       {visibleLines.map((line, lineIdx) => {
@@ -294,7 +299,7 @@ const TypingComponent = ({
   const [generatedContent, setGeneratedContent] = useState(content);
   const [endTime, setEndTime] = useState(null); // Add missing endTime state
   const [scrollOffset, setScrollOffset] = useState(0); // For smooth scrolling
-  const [containerWidth, setContainerWidth] = useState(900); // Track container width for line wrapping
+  const [containerWidth, setContainerWidth] = useState(0); // Track container width for line wrapping - start at 0
   
   const inputRef = useRef(null);
   const textRef = useRef(null);
@@ -306,18 +311,22 @@ const TypingComponent = ({
       if (textRef.current) {
         // Use actual container width minus padding (32px on each side = 64px total)
         const actualWidth = textRef.current.clientWidth - 64;
-        setContainerWidth(Math.max(actualWidth, 400)); // Minimum 400px
+        setContainerWidth(Math.max(actualWidth, 500)); // Minimum 500px
       }
     };
     
-    // Initial update after a small delay to ensure render is complete
-    const timer = setTimeout(updateWidth, 100);
+    // Multiple updates to ensure proper width calculation
     updateWidth();
+    const timer1 = setTimeout(updateWidth, 50);
+    const timer2 = setTimeout(updateWidth, 150);
+    const timer3 = setTimeout(updateWidth, 300);
     
     window.addEventListener('resize', updateWidth);
     return () => {
       window.removeEventListener('resize', updateWidth);
-      clearTimeout(timer);
+      clearTimeout(timer1);
+      clearTimeout(timer2);
+      clearTimeout(timer3);
     };
   }, []);
 
