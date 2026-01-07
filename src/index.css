@@ -145,6 +145,216 @@ body {
   }
 }
 
+/* Monkeytype-inspired Word & Letter Display Styles */
+.monkeytype-container {
+  position: relative;
+  width: 100%;
+  user-select: none;
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  overflow: hidden;
+}
+
+/* Dynamic height based on font size */
+.monkeytype-container.text-lg {
+  font-size: 1.125rem !important;
+  line-height: 1.5 !important;
+  min-height: 180px !important;
+  max-height: 180px !important;
+}
+
+.monkeytype-container.text-xl {
+  font-size: 1.25rem !important;
+  line-height: 1.6 !important;
+  min-height: 200px !important;
+  max-height: 200px !important;
+}
+
+.monkeytype-container.text-2xl {
+  font-size: 1.5rem !important;
+  line-height: 1.6 !important;
+  min-height: 240px !important;
+  max-height: 240px !important;
+}
+
+.monkeytype-container.text-3xl {
+  font-size: 1.875rem !important;
+  line-height: 1.6 !important;
+  min-height: 280px !important;
+  max-height: 280px !important;
+}
+
+.monkeytype-container.text-4xl {
+  font-size: 2.25rem !important;
+  line-height: 1.6 !important;
+  min-height: 320px !important;
+  max-height: 320px !important;
+}
+
+/* Hide scrollbar but keep functionality */
+.words-wrapper::-webkit-scrollbar {
+  display: none;
+}
+
+.words-wrapper {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+/* Word container styling */
+.word {
+  display: inline-flex;
+  align-items: center;
+  margin: 0 0.35em 0 0;
+  padding: 0;
+  position: relative;
+  transition: opacity 0.15s ease;
+  cursor: default;
+}
+
+/* Active word highlighting - no underline */
+.word.active {
+  opacity: 1;
+}
+
+/* Word with errors - no visual indicator */
+.word.error {
+  position: relative;
+}
+
+/* Letter element styling */
+.letter {
+  display: inline-block;
+  position: relative;
+  transition: color 0.1s ease, transform 0.1s ease;
+  font-feature-settings: "liga" 0, "calt" 0;
+  line-height: 1.5;
+  letter-spacing: 0.02em;
+}
+
+/* Untyped letters - dimmed */
+.letter.letter-untyped {
+  color: var(--letter-untyped-color, #6b7280);
+  opacity: 0.6;
+}
+
+/* Light mode untyped */
+.light-mode .letter.letter-untyped {
+  color: #9ca3af;
+  opacity: 0.7;
+}
+
+/* Dark mode untyped */
+.dark-mode .letter.letter-untyped {
+  color: #6b7280;
+  opacity: 0.6;
+}
+
+/* Correct letters - theme accent color */
+.letter.letter-correct {
+  color: var(--letter-correct-color, #3b82f6);
+  opacity: 1;
+}
+
+/* Incorrect letters - red with no background */
+.letter.letter-incorrect {
+  color: #ef4444;
+  opacity: 1;
+}
+
+/* Current letter - no background, just caret */
+.letter.letter-current {
+  position: relative;
+}
+
+/* Caret styling - shorter and thicker */
+.letter .caret {
+  position: absolute;
+  left: 0;
+  top: 25%;
+  height: 65%;
+  width: 2px;
+  background-color: #3b82f6;
+  animation: caretBlink 1s ease-in-out infinite;
+  border-radius: 2px;
+}
+
+/* Caret blink animation */
+@keyframes caretBlink {
+  0%, 49% {
+    opacity: 1;
+  }
+  50%, 100% {
+    opacity: 0;
+  }
+}
+
+/* Smooth caret animation (no blink) */
+@keyframes caretFlashSmooth {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.4;
+  }
+}
+
+/* Extra letters (when typing beyond word length) */
+.letter.letter-extra {
+  color: #ef4444;
+  opacity: 0.8;
+}
+
+/* Corrected letters (were wrong, now fixed) */
+.letter.letter-corrected {
+  color: #10b981;
+  opacity: 1;
+}
+
+/* Ensure letters inherit font size from container */
+.monkeytype-container .letter {
+  font-size: inherit;
+  line-height: inherit;
+}
+
+/* Instant scrolling - no animation */
+.words-wrapper {
+  scroll-behavior: auto;
+  transition: none;
+}
+
+/* Ensure words don't break awkwardly */
+.word {
+  white-space: nowrap;
+}
+
+/* Theme-specific colors */
+[data-theme="blue"] .letter.letter-correct {
+  color: #3b82f6;
+}
+
+[data-theme="green"] .letter.letter-correct {
+  color: #10b981;
+}
+
+[data-theme="purple"] .letter.letter-correct {
+  color: #8b5cf6;
+}
+
+[data-theme="orange"] .letter.letter-correct {
+  color: #f97316;
+}
+
+[data-theme="pink"] .letter.letter-correct {
+  color: #ec4899;
+}
+
+/* Hover effects (for debugging/development) */
+.letter:hover {
+  opacity: 1;
+}
+
 /* Responsive Hand Display Positioning */
 .hand-display-responsive {
   /* Default for most screens */

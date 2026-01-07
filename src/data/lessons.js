@@ -12,7 +12,7 @@ export const typingLessons = {
       {
         id: "unit-1-2",
         title: "Middle Fingers (D K)",
-        content: "dkdkdkdk kdkdkdkd dk dk dk kd kd kd dkdk kdkd dkdkdk kdkdkd dd kk dd kk dkdkdkdkdk kdkdkdkdkd ddkk kkdd dkdk",
+        content: "dkdk kdkd dk dk dk kd kd kd dkdk kdkd dkdkdk kdkdkd dd kk dd kk dkdk kdkd dkdkdkdk kdkdkdkd",
         description: "Build middle finger muscle memory with D and K"
       },
       {

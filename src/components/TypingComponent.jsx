@@ -10,26 +10,30 @@ import { soundEffects } from '../utils/soundEffects';
 import { achievementManager, ACHIEVEMENTS } from '../utils/achievements';
 import { AchievementToast } from './AchievementsPanel';
 
-// MONKEYTYPE-STYLE: Line-by-line rendering with smooth vertical scroll
-// Shows 3 lines at a time, scrolls as user types
+// MONKEYTYPE-INSPIRED: Word-based rendering with line jumping
+// Removes previous lines as user progresses, keeps only 2-3 visible lines
 const MonkeyTypeText = React.memo(({ 
   content, 
   currentIndex, 
   errors, 
   theme, 
   fontSize, 
-  fontFamily,
-  containerWidth
+  fontFamily
 }) => {
   const containerRef = useRef(null);
-  const [currentLineIndex, setCurrentLineIndex] = useState(0);
+  const wordsRef = useRef(null);
+  const [translateY, setTranslateY] = useState(0);
+  const [visibleStartIndex, setVisibleStartIndex] = useState(0);
+  const lastLineTopRef = useRef(0);
+  const lineHeightRef = useRef(0);
   
   const getTypingFontSize = () => {
     const fontSizeMap = {
       'small': 'text-lg',
       'medium': 'text-xl',
       'large': 'text-2xl',
-      'xl': 'text-3xl'
+      'xl': 'text-3xl',
+      '2xl': 'text-4xl'
     };
     return fontSizeMap[fontSize] || fontSizeMap['medium'];
   };
@@ -44,19 +48,23 @@ const MonkeyTypeText = React.memo(({
     return fontFamilyMap[fontFamily] || fontFamilyMap['mono'];
   };
 
-  // Split content into words for word-based line wrapping
-  const words = useMemo(() => {
+  // Split content into words with position tracking
+  const allWords = useMemo(() => {
     const result = [];
     let currentWord = '';
     let startIndex = 0;
     
     for (let i = 0; i < content.length; i++) {
       const char = content[i];
-      if (char === ' ' || char === '\n') {
+      if (char === ' ' || char === '\n' || char === '\t') {
         if (currentWord) {
-          result.push({ text: currentWord, startIndex, endIndex: i - 1 });
+          result.push({ 
+            text: currentWord, 
+            startIndex, 
+            endIndex: i - 1,
+            isWord: true
+          });
         }
-        result.push({ text: char, startIndex: i, endIndex: i, isSpace: true });
         currentWord = '';
         startIndex = i + 1;
       } else {
@@ -64,136 +72,196 @@ const MonkeyTypeText = React.memo(({
       }
     }
     if (currentWord) {
-      result.push({ text: currentWord, startIndex, endIndex: content.length - 1 });
+      result.push({ 
+        text: currentWord, 
+        startIndex, 
+        endIndex: content.length - 1,
+        isWord: true
+      });
     }
     return result;
   }, [content]);
 
-  // Create lines that fit within container width - calculate char width based on font size
-  const lines = useMemo(() => {
-    // Reduced character widths for tighter packing - fills more of the line
-    const charWidthMap = {
-      'small': 8,    // text-lg ~18px font = ~8px char width (tighter)
-      'medium': 10,  // text-xl ~20px font = ~10px char width (tighter)
-      'large': 12,   // text-2xl ~24px font = ~12px char width (tighter)
-      'xl': 14       // text-3xl ~30px font = ~14px char width (tighter)
-    };
-    const charWidth = charWidthMap[fontSize] || 10;
-    const charsPerLine = Math.floor((containerWidth || 900) / charWidth);
-    const result = [];
-    let currentLine = [];
-    let currentLineLength = 0;
-    let lineStartIndex = 0;
-    
-    words.forEach((word) => {
-      const wordLength = word.text.length;
-      
-      if (currentLineLength + wordLength > charsPerLine && currentLine.length > 0) {
-        // Start new line
-        result.push({
-          words: currentLine,
-          startIndex: lineStartIndex,
-          endIndex: currentLine[currentLine.length - 1]?.endIndex || lineStartIndex
-        });
-        currentLine = [word];
-        currentLineLength = wordLength;
-        lineStartIndex = word.startIndex;
-      } else {
-        currentLine.push(word);
-        currentLineLength += wordLength;
-      }
-    });
-    
-    if (currentLine.length > 0) {
-      result.push({
-        words: currentLine,
-        startIndex: lineStartIndex,
-        endIndex: currentLine[currentLine.length - 1]?.endIndex || lineStartIndex
-      });
-    }
-    
-    return result;
-  }, [words, containerWidth]);
-
-  // Find current line based on currentIndex
-  const currentLineIdx = useMemo(() => {
-    for (let i = 0; i < lines.length; i++) {
-      if (currentIndex <= lines[i].endIndex) {
+  // Find current word index
+  const currentWordIndex = useMemo(() => {
+    for (let i = 0; i < allWords.length; i++) {
+      if (currentIndex >= allWords[i].startIndex && currentIndex <= allWords[i].endIndex + 1) {
         return i;
       }
     }
-    return lines.length - 1;
-  }, [lines, currentIndex]);
+    return allWords.length - 1;
+  }, [allWords, currentIndex]);
 
-  // Update visible lines - show current line and next 2 lines
+  // Filter visible words - show current word and upcoming words only
+  const visibleWords = useMemo(() => {
+    // Show from visibleStartIndex onwards (max ~40 words for 2-3 lines)
+    return allWords.slice(visibleStartIndex, visibleStartIndex + 40);
+  }, [allWords, visibleStartIndex]);
+
+  // MONKEYTYPE-STYLE LINE JUMP: 3-line system - user always types on middle line
+  // Line 1 (top) -> Line 2 (middle/active) -> Line 3 (bottom)
+  // When user moves from Line 1 to Line 2: no scroll
+  // When user moves from Line 2 to Line 3: Line 1 scrolls up and disappears
   useEffect(() => {
-    setCurrentLineIndex(Math.max(0, currentLineIdx));
-  }, [currentLineIdx]);
+    if (!wordsRef.current || currentWordIndex < 0 || visibleWords.length === 0) return;
 
-  // Get visible lines (current + next 2)
-  const visibleLines = useMemo(() => {
-    const start = currentLineIndex;
-    const end = Math.min(start + 3, lines.length);
-    return lines.slice(start, end);
-  }, [lines, currentLineIndex]);
+    const wordElements = Array.from(wordsRef.current.querySelectorAll('.word'));
+    if (wordElements.length === 0) return;
 
-  // Get the correct color class for typed characters - USE THEME ACCENT COLOR
-  const getCorrectColorClass = () => {
-    // Use theme accent for correct characters (blue for blue theme, orange for orange, etc.)
-    return theme.accent;
-  };
+    const currentVisibleIndex = currentWordIndex - visibleStartIndex;
+    if (currentVisibleIndex < 0 || currentVisibleIndex >= wordElements.length) return;
+    
+    const currentWordEl = wordElements[currentVisibleIndex];
+    if (!currentWordEl) return;
 
-  // Render a single character
-  const renderChar = (char, charIndex) => {
-    let colorClass = '';
-    let isCurrentChar = charIndex === currentIndex;
+    const currentTop = currentWordEl.offsetTop;
+    
+    // Initialize on first render
+    if (lineHeightRef.current === 0 && wordElements[0]) {
+      const firstWordHeight = wordElements[0].offsetHeight;
+      // Calculate line height based on actual rendered height + line spacing
+      const computedStyle = window.getComputedStyle(wordElements[0]);
+      const lineHeight = parseFloat(computedStyle.lineHeight) || firstWordHeight * 1.6;
+      lineHeightRef.current = lineHeight;
+      lastLineTopRef.current = 0;
+      return;
+    }
+
+    // Detect when user moves to a new line
+    // Use a threshold to avoid false positives from small position changes
+    const lineChangeThreshold = lineHeightRef.current * 0.5;
+    
+    if (currentTop > lastLineTopRef.current + lineChangeThreshold) {
+      // User moved to a new line!
+      const newLineTop = currentTop;
+      lastLineTopRef.current = newLineTop;
+      
+      // Find all words on previous lines (lines above current line)
+      const wordsOnPreviousLines = [];
+      
+      for (let i = 0; i < currentVisibleIndex; i++) {
+        const wordEl = wordElements[i];
+        if (!wordEl) continue;
+        
+        // If word is on a line above the current line
+        if (wordEl.offsetTop < currentTop - lineChangeThreshold) {
+          wordsOnPreviousLines.push(i);
+        }
+      }
+
+      // Count how many distinct lines are above the current line
+      const linesAbove = new Set();
+      wordsOnPreviousLines.forEach(idx => {
+        const wordTop = wordElements[idx].offsetTop;
+        const lineNumber = Math.round(wordTop / lineHeightRef.current);
+        linesAbove.add(lineNumber);
+      });
+
+      // Only scroll if there are 2+ lines above current (meaning we're on line 3 or beyond)
+      // This keeps user typing on the middle line
+      if (linesAbove.size >= 2 && wordsOnPreviousLines.length > 0) {
+        // Find the words on the topmost line only
+        let minTop = Infinity;
+        wordsOnPreviousLines.forEach(idx => {
+          const wordTop = wordElements[idx].offsetTop;
+          if (wordTop < minTop) minTop = wordTop;
+        });
+        
+        // Get all words on the topmost line
+        const topLineWords = wordsOnPreviousLines.filter(idx => {
+          const wordTop = wordElements[idx].offsetTop;
+          return Math.abs(wordTop - minTop) < 5; // Same line threshold
+        });
+        
+        if (topLineWords.length > 0) {
+          const lastWordOfTopLine = Math.max(...topLineWords);
+          const newVisibleStart = visibleStartIndex + lastWordOfTopLine + 1;
+          
+          // Instant line jump - no animation
+          setTranslateY(-lineHeightRef.current);
+          
+          // Immediately remove the words and reset (no delay)
+          setTimeout(() => {
+            setVisibleStartIndex(newVisibleStart);
+            setTranslateY(0);
+            lastLineTopRef.current = 0;
+          }, 0); // 0ms = instant
+        }
+      }
+    }
+  }, [currentWordIndex, visibleStartIndex, visibleWords.length]);
+
+  // Get color class for a letter based on its state
+  const getLetterClass = (charIndex) => {
+    const isCurrentChar = charIndex === currentIndex;
     
     if (charIndex < currentIndex) {
       // Typed character
       if (errors.has(charIndex)) {
-        // ERROR: Only red text, no background
-        colorClass = 'text-red-500';
-      } else {
-        // CORRECT: Use theme accent color for both light and dark modes
-        colorClass = getCorrectColorClass();
+        return 'letter-incorrect';
       }
+      return 'letter-correct';
     } else if (isCurrentChar) {
-      // Current character - highlighted
-      colorClass = `${theme.textSecondary} bg-current-char`;
-    } else {
-      // Untyped character
-      colorClass = theme.mode === 'dark' ? 'text-gray-500' : 'text-gray-400';
+      return 'letter-current';
     }
-
-    return (
-      <span
-        key={charIndex}
-        className={`${colorClass} ${isCurrentChar ? 'relative' : ''}`}
-        style={{ 
-          transition: 'color 0.1s ease',
-        }}
-      >
-        {char === ' ' ? '\u00A0' : char}
-        {isCurrentChar && (
-          <span 
-            className="absolute left-0 top-0 bottom-0 w-0.5 animate-pulse"
-            style={{ 
-              backgroundColor: theme.css?.['--theme-cursor'] || '#3b82f6',
-              animation: 'pulse 1s ease-in-out infinite'
-            }}
-          />
-        )}
-      </span>
-    );
+    return 'letter-untyped';
   };
 
-  // Render a word
-  const renderWord = (word) => {
-    const chars = [];
-    for (let i = word.startIndex; i <= word.endIndex; i++) {
-      chars.push(renderChar(content[i], i));
+  // Check if current position is a space - cursor should show at end of previous word
+  const isCurrentPositionSpace = () => {
+    return currentIndex < content.length && content[currentIndex] === ' ';
+  };
+
+  // Get the position where cursor should be displayed
+  const getCursorPosition = () => {
+    // If we're at a space, show cursor at the end of previous word
+    if (isCurrentPositionSpace() && currentIndex > 0) {
+      return currentIndex - 1; // Show at last letter of previous word
     }
-    return chars;
+    return currentIndex;
+  };
+
+  // Render a single word with its letters
+  const renderWord = (word, wordIndex) => {
+    const actualWordIndex = visibleStartIndex + wordIndex;
+    const isActive = actualWordIndex === currentWordIndex;
+    const hasError = Array.from(errors).some(
+      errorIdx => errorIdx >= word.startIndex && errorIdx <= word.endIndex
+    );
+    
+    const cursorPos = getCursorPosition();
+    
+    return (
+      <div
+        key={`word-${actualWordIndex}-${word.startIndex}`}
+        className={`word ${isActive ? 'active' : ''} ${hasError ? 'error' : ''}`}
+        data-wordindex={actualWordIndex}
+      >
+        {word.text.split('').map((char, letterIdx) => {
+          const charIndex = word.startIndex + letterIdx;
+          const letterClass = getLetterClass(charIndex);
+          const shouldShowCursor = charIndex === cursorPos;
+          
+          return (
+            <span
+              key={`letter-${charIndex}`}
+              className={`letter ${letterClass}`}
+              data-index={charIndex}
+            >
+              {char}
+              {shouldShowCursor && (
+                <span 
+                  className="caret"
+                  style={{ 
+                    backgroundColor: theme.css?.['--theme-cursor'] || '#3b82f6'
+                  }}
+                />
+              )}
+            </span>
+          );
+        })}
+      </div>
+    );
   };
 
   const fontStyle = { fontFamily: getTypingFontFamily() };
@@ -201,35 +269,29 @@ const MonkeyTypeText = React.memo(({
   return (
     <div 
       ref={containerRef}
-      className={`${getTypingFontSize()} leading-loose overflow-hidden w-full`}
+      className={`monkeytype-container ${getTypingFontSize()}`}
       style={{ 
         ...fontStyle,
-        minHeight: '160px',
         width: '100%',
+        overflow: 'hidden',
+        position: 'relative'
       }}
     >
-      {visibleLines.map((line, lineIdx) => {
-        const isCurrentLine = lineIdx === 0;
-        const isPastLine = false; // First visible line is always current or upcoming
-        
-        return (
-          <div 
-            key={`line-${currentLineIndex + lineIdx}`}
-            className={`transition-opacity duration-200 ${
-              isCurrentLine ? 'opacity-100' : 'opacity-60'
-            }`}
-            style={{
-              marginBottom: '0.5em',
-            }}
-          >
-            {line.words.map((word, wordIdx) => (
-              <span key={`word-${word.startIndex}`}>
-                {renderWord(word)}
-              </span>
-            ))}
-          </div>
-        );
-      })}
+      <div 
+        ref={wordsRef}
+        id="words"
+        className="words-wrapper"
+        style={{
+          display: 'flex',
+          flexWrap: 'wrap',
+          gap: '0',
+          alignItems: 'flex-start',
+          transform: `translateY(${translateY}px)`,
+          position: 'relative'
+        }}
+      >
+        {visibleWords.map((word, index) => renderWord(word, index))}
+      </div>
     </div>
   );
 });
@@ -294,36 +356,14 @@ const TypingComponent = ({
   const [generatedContent, setGeneratedContent] = useState(content);
   const [endTime, setEndTime] = useState(null); // Add missing endTime state
   const [scrollOffset, setScrollOffset] = useState(0); // For smooth scrolling
-  const [containerWidth, setContainerWidth] = useState(900); // Track container width for line wrapping
   
   const inputRef = useRef(null);
   const textRef = useRef(null);
   const completedRef = useRef(false);
 
-  // Track container width for MonkeyType-style line wrapping
-  useEffect(() => {
-    const updateWidth = () => {
-      if (textRef.current) {
-        // Use actual container width minus padding (32px on each side = 64px total)
-        const actualWidth = textRef.current.clientWidth - 64;
-        setContainerWidth(Math.max(actualWidth, 400)); // Minimum 400px
-      }
-    };
-    
-    // Initial update after a small delay to ensure render is complete
-    const timer = setTimeout(updateWidth, 100);
-    updateWidth();
-    
-    window.addEventListener('resize', updateWidth);
-    return () => {
-      window.removeEventListener('resize', updateWidth);
-      clearTimeout(timer);
-    };
-  }, []);
-
   // Caps Lock detection and Keyboard shortcuts (Ctrl+Plus/Minus for zoom)
   useEffect(() => {
-    const fontSizes = ['small', 'medium', 'large', 'xl'];
+    const fontSizes = ['small', 'medium', 'large', 'xl', '2xl'];
     
     const handleKeyDown = (e) => {
       // Detect Caps Lock
@@ -914,7 +954,8 @@ const TypingComponent = ({
       'small': 'text-xl',     // 20px for typing area
       'medium': 'text-2xl',   // 24px for typing area  
       'large': 'text-3xl',    // 30px for typing area
-      'xl': 'text-4xl'        // 36px for typing area
+      'xl': 'text-4xl',       // 36px for typing area
+      '2xl': 'text-5xl'       // 48px for typing area
     };
     return fontSizeMap[fontSize] || fontSizeMap['medium'];
   };
@@ -1085,22 +1126,24 @@ const TypingComponent = ({
         
         <div 
           ref={textRef}
-          className={`${theme.cardBg} p-8 rounded-xl border-2 ${theme.border} cursor-text relative transition-all duration-300 hover:shadow-lg focus-within:shadow-xl select-none`}
+          className={`${theme.cardBg} ${theme.mode === 'dark' ? 'dark-mode' : 'light-mode'} p-8 rounded-xl border-2 ${theme.border} cursor-text relative transition-all duration-300 hover:shadow-lg focus-within:shadow-xl select-none`}
           onClick={() => inputRef.current?.focus()}
           onCopy={(e) => e.preventDefault()}
           onCut={(e) => e.preventDefault()}
           onContextMenu={(e) => e.preventDefault()}
           onDragStart={(e) => e.preventDefault()}
+          data-theme={theme.name || 'blue'}
           style={{ 
-            minHeight: '180px',
-            lineHeight: '2',
-            wordSpacing: '0.15em',
-            letterSpacing: '0.01em',
+            minHeight: '200px',
+            maxHeight: '200px',
+            overflow: 'hidden',
             fontFamily: getTypingFontFamily(),
             userSelect: 'none',
             WebkitUserSelect: 'none',
             MozUserSelect: 'none',
-            msUserSelect: 'none'
+            msUserSelect: 'none',
+            '--letter-correct-color': theme.css?.['--theme-accent'] || '#3b82f6',
+            '--letter-current-bg': theme.mode === 'dark' ? 'rgba(96, 165, 250, 0.2)' : 'rgba(59, 130, 246, 0.15)'
           }}
         >
           {/* Focus Indicator - Theme-aware */}
@@ -1110,7 +1153,7 @@ const TypingComponent = ({
             </div>
           )}
           
-          {/* MONKEYTYPE-STYLE: Line-by-line Text Display */}
+          {/* MONKEYTYPE-INSPIRED: Word-based Text Display */}
           <MonkeyTypeText
             content={generatedContent}
             currentIndex={currentIndex}
@@ -1118,7 +1161,6 @@ const TypingComponent = ({
             theme={theme}
             fontSize={fontSize}
             fontFamily={fontFamily}
-            containerWidth={containerWidth}
           />
           
           {/* Completion Celebration - Theme-aware */}

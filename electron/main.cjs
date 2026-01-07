@@ -26,6 +26,11 @@ function createWindow() {
     },
   });
 
+  // Set the app user model ID for Windows (important for taskbar icon)
+  if (process.platform === 'win32') {
+    app.setAppUserModelId('com.swifttyping.app');
+  }
+
   // Disable Electron's default zoom keyboard shortcuts
   // This allows our React app to handle Ctrl++/- for font size
   mainWindow.webContents.on('before-input-event', (event, input) => {
