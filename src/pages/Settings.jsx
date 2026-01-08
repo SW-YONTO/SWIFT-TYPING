@@ -27,7 +27,8 @@ import {
   Download,
   Upload,
   Flame,
-  AlertCircle
+  AlertCircle,
+  Camera
 } from 'lucide-react';
 import { progressManager, themes, userManager, streakManager, dataManager } from '../utils/storage';
 import { useTheme } from '../contexts/ThemeContext';
@@ -36,6 +37,9 @@ import AnalyticsCalendar from '../components/AnalyticsCalendar';
 import AchievementsPanel from '../components/AchievementsPanel';
 import { soundEffects } from '../utils/soundEffects';
 import { achievementManager } from '../utils/achievements';
+
+// Available avatars (15 avatars)
+const AVATARS = Array.from({ length: 15 }, (_, i) => `avatar${i + 1}.png`);
 
 const Settings = ({ currentUser, settings, onSettingsChange }) => {
   const [localSettings, setLocalSettings] = useState({
@@ -61,6 +65,8 @@ const Settings = ({ currentUser, settings, onSettingsChange }) => {
   const [streakData, setStreakData] = useState(() => streakManager.checkStreak(currentUser?.id));
   const [importStatus, setImportStatus] = useState(null);
   const fileInputRef = useRef(null);
+  const [showAvatarModal, setShowAvatarModal] = useState(false);
+  const [currentAvatar, setCurrentAvatar] = useState(() => currentUser?.avatar || 'avatar1.png');
 
   // Update streak data on mount
   useEffect(() => {
@@ -98,6 +104,28 @@ const Settings = ({ currentUser, settings, onSettingsChange }) => {
     event.target.value = ''; // Reset input
   };
 
+  // Handle avatar change
+  const handleAvatarChange = (newAvatar) => {
+    userManager.updateUserAvatar(currentUser.id, newAvatar);
+    setCurrentAvatar(newAvatar);
+    setShowAvatarModal(false);
+    soundEffects.playSuccess();
+    
+    // Update current user object
+    const updatedUser = { ...currentUser, avatar: newAvatar };
+    // Trigger re-render by updating through parent if available
+    window.location.reload(); // Simple solution to refresh user data
+  };
+
+  // Get avatar path
+  const getAvatarPath = (avatar) => {
+    try {
+      return new URL(`../assets/avatars/${avatar}`, import.meta.url).href;
+    } catch {
+      return new URL('../assets/avatars/avatar1.png', import.meta.url).href;
+    }
+  };
+
   // Handle manual input changes for hand position
   const handleManualPositionInput = (key, value) => {
     // Validate and format the input
@@ -122,7 +150,8 @@ const Settings = ({ currentUser, settings, onSettingsChange }) => {
     fontFamily,
     changeTheme, 
     changeFontSize, 
-    changeFontFamily 
+    changeFontFamily,
+    isDarkMode
   } = useTheme();
 
   useEffect(() => {
@@ -238,6 +267,42 @@ const Settings = ({ currentUser, settings, onSettingsChange }) => {
               </div>
               
               <div className="space-y-6">
+                {/* Avatar Section */}
+                <div>
+                  <label className={`block text-sm font-medium ${theme.text} mb-3`}>
+                    Profile Avatar
+                  </label>
+                  <div className="flex items-center gap-6">
+                    <div className="relative">
+                      <div className="w-24 h-24 rounded-full bg-gradient-to-br from-blue-400 via-purple-400 to-pink-400 p-1">
+                        <img
+                          src={getAvatarPath(currentAvatar)}
+                          alt="Profile Avatar"
+                          className={`w-full h-full rounded-full object-cover border-4 ${isDarkMode ? 'border-gray-700' : 'border-white'} shadow-lg`}
+                        />
+                      </div>
+                      <button
+                        onClick={() => setShowAvatarModal(true)}
+                        className={`absolute -bottom-1 -right-1 p-2 ${theme.primary} text-white rounded-full shadow-lg hover:opacity-90 transition-all transform hover:scale-110`}
+                      >
+                        <Camera className="w-4 h-4" />
+                      </button>
+                    </div>
+                    <div>
+                      <p className={`${theme.text} font-medium mb-1`}>Change your avatar</p>
+                      <p className={`${theme.textSecondary} text-sm mb-3`}>Click the camera icon to choose from 15 available avatars</p>
+                      <button
+                        onClick={() => setShowAvatarModal(true)}
+                        className={`px-4 py-2 ${theme.secondary} ${theme.accent} rounded-lg hover:opacity-90 transition-all text-sm font-medium flex items-center gap-2`}
+                      >
+                        <Camera className="w-4 h-4" />
+                        Choose Avatar
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Username Section */}
                 <div>
                   <label className={`block text-sm font-medium ${theme.text} mb-3`}>
                     Username
@@ -252,7 +317,6 @@ const Settings = ({ currentUser, settings, onSettingsChange }) => {
                           className={`flex-1 px-4 py-3 border ${theme.border} rounded-xl ${theme.inputBg} ${theme.text} focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all`}
                           placeholder="Enter username"
                           autoFocus
-                          // Disable auto-suggestions for username input
                           autoComplete="username"
                           autoCorrect="off"
                           autoCapitalize="off"
@@ -291,6 +355,65 @@ const Settings = ({ currentUser, settings, onSettingsChange }) => {
                 </div>
               </div>
             </div>
+
+            {/* Avatar Selection Modal */}
+            {showAvatarModal && (
+              <div
+                className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
+                onClick={() => setShowAvatarModal(false)}
+              >
+                <div
+                  className={`${theme.cardBg} rounded-2xl p-6 max-w-2xl w-full max-h-[80vh] overflow-y-auto border ${theme.border} shadow-2xl`}
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <div className="flex items-center justify-between mb-6">
+                    <h3 className={`text-2xl font-bold ${theme.text}`}>Choose Your Avatar</h3>
+                    <button
+                      onClick={() => setShowAvatarModal(false)}
+                      className={`p-2 ${theme.secondary} rounded-lg hover:opacity-80 transition-all`}
+                    >
+                      <X className="w-5 h-5" />
+                    </button>
+                  </div>
+                  
+                  <div className="grid grid-cols-4 sm:grid-cols-5 gap-4 mb-6">
+                    {AVATARS.map((avatar) => (
+                      <button
+                        key={avatar}
+                        onClick={() => handleAvatarChange(avatar)}
+                        className={`relative rounded-full overflow-hidden transition-all hover:scale-110 aspect-square p-0.5 ${
+                          currentAvatar === avatar
+                            ? 'bg-gradient-to-br from-blue-500 via-purple-500 to-pink-500 shadow-lg ring-4 ring-blue-300'
+                            : 'bg-gradient-to-br from-gray-300 via-gray-200 to-gray-300 hover:from-blue-300 hover:via-purple-300 hover:to-pink-300'
+                        }`}
+                      >
+                        <div className={`rounded-full overflow-hidden ${
+                          isDarkMode ? 'bg-gray-800' : 'bg-white'
+                        } p-1 w-full h-full`}>
+                          <img
+                            src={getAvatarPath(avatar)}
+                            alt={`Avatar ${avatar}`}
+                            className="w-full h-full object-cover rounded-full"
+                          />
+                        </div>
+                        {currentAvatar === avatar && (
+                          <div className="absolute inset-0 bg-blue-500 bg-opacity-20 flex items-center justify-center rounded-full">
+                            <Check className="w-8 h-8 text-white drop-shadow-lg" />
+                          </div>
+                        )}
+                      </button>
+                    ))}
+                  </div>
+                  
+                  <button
+                    onClick={() => setShowAvatarModal(false)}
+                    className={`w-full py-3 rounded-xl ${theme.secondary} ${theme.accent} hover:opacity-90 transition-all font-medium`}
+                  >
+                    Close
+                  </button>
+                </div>
+              </div>
+            )}
 
             {/* Appearance Settings */}
             <div className={`${theme.cardBg} rounded-2xl shadow-lg border ${theme.border} p-8`}>
@@ -1038,6 +1161,43 @@ const Settings = ({ currentUser, settings, onSettingsChange }) => {
                   </span>
                 </div>
               )}
+            </div>
+          </div>
+
+          {/* Application Info Card */}
+          <div className={`${theme.cardBg} rounded-2xl p-6 border ${theme.border} shadow-lg`}>
+            <div className="flex items-center gap-3 mb-6">
+              <div className={`p-3 ${theme.mode === 'dark' ? 'bg-blue-900/40' : 'bg-blue-100'} rounded-xl`}>
+                <Monitor className={`w-6 h-6 ${theme.mode === 'dark' ? 'text-blue-400' : 'text-blue-500'}`} />
+              </div>
+              <div>
+                <h3 className={`font-semibold ${theme.text}`}>Application Info</h3>
+                <p className={`text-sm ${theme.textSecondary}`}>About Swift Typing</p>
+              </div>
+            </div>
+            
+            <div className={`space-y-4`}>
+              <div className="flex justify-between items-center py-2">
+                <span className={`${theme.textSecondary} text-sm`}>Version</span>
+                <span className={`font-bold ${theme.text}`}>2.5.1</span>
+              </div>
+              <div className="flex justify-between items-center py-2">
+                <span className={`${theme.textSecondary} text-sm`}>Developer</span>
+                <span className={`font-medium ${theme.text}`}>SW-YONTO</span>
+              </div>
+              <div className="flex justify-between items-center py-2">
+                <span className={`${theme.textSecondary} text-sm`}>Author</span>
+                <span className={`font-medium ${theme.text}`}>Suraj Maurya</span>
+              </div>
+              <div className="flex justify-between items-center py-2">
+                <span className={`${theme.textSecondary} text-sm`}>Platform</span>
+                <span className={`font-medium ${theme.text}`}>Desktop (Electron)</span>
+              </div>
+              <div className={`border-t ${theme.border} pt-4 mt-4`}>
+                <p className={`${theme.textSecondary} text-xs text-center`}>
+                  A comprehensive offline typing tutor desktop application
+                </p>
+              </div>
             </div>
           </div>
 

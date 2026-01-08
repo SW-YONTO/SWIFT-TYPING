@@ -230,26 +230,31 @@ const MonkeyTypeText = React.memo(({
     );
     
     const cursorPos = getCursorPosition();
+    const isAtSpace = isCurrentPositionSpace();
+    const isThisWordBeforeSpace = isAtSpace && word.endIndex === cursorPos;
     
     return (
       <div
         key={`word-${actualWordIndex}-${word.startIndex}`}
         className={`word ${isActive ? 'active' : ''} ${hasError ? 'error' : ''}`}
         data-wordindex={actualWordIndex}
+        style={{ position: 'relative' }}
       >
         {word.text.split('').map((char, letterIdx) => {
           const charIndex = word.startIndex + letterIdx;
           const letterClass = getLetterClass(charIndex);
-          const shouldShowCursor = charIndex === cursorPos;
+          const isLastLetter = charIndex === word.endIndex;
+          const shouldShowCursorOnLetter = charIndex === cursorPos && !isAtSpace;
           
           return (
             <span
               key={`letter-${charIndex}`}
               className={`letter ${letterClass}`}
               data-index={charIndex}
+              style={{ position: 'relative' }}
             >
               {char}
-              {shouldShowCursor && (
+              {shouldShowCursorOnLetter && (
                 <span 
                   className="caret"
                   style={{ 
@@ -260,6 +265,22 @@ const MonkeyTypeText = React.memo(({
             </span>
           );
         })}
+        {/* Show cursor AFTER last letter when at space */}
+        {isThisWordBeforeSpace && (
+          <span 
+            className="caret"
+            style={{ 
+              position: 'absolute',
+              right: '-2px',
+              top: '25%',
+              height: '65%',
+              width: '2px',
+              backgroundColor: theme.css?.['--theme-cursor'] || '#3b82f6',
+              animation: 'caretBlink 1s ease-in-out infinite',
+              borderRadius: '2px'
+            }}
+          />
+        )}
       </div>
     );
   };

@@ -12,7 +12,7 @@
     "lint": "eslint .",
     "electron": "electron .",
     "electron:dev": "concurrently \"npm run dev\" \"wait-on http://localhost:5173 && cross-env NODE_ENV=development electron .\"",
-    "prebuild:icon": "node -e \"require('fs').copyFileSync('public/icon.ico', 'build/icon.ico')\"",
+    "prebuild:icon": "node -e \"const fs = require('fs'); const path = require('path'); if (!fs.existsSync('build')) fs.mkdirSync('build'); fs.copyFileSync('public/favicon_io/android-chrome-512x512.png', 'build/icon.png'); if (fs.existsSync('public/icon.ico')) fs.copyFileSync('public/icon.ico', 'build/icon.ico');\"",
     "pack": "npm run prebuild:icon && npm run build && electron-builder --dir",
     "dist": "npm run prebuild:icon && npm run build && electron-builder"
   },
@@ -63,13 +63,17 @@
     ],
     "extraResources": [
       {
+        "from": "public/favicon_io/android-chrome-512x512.png",
+        "to": "icon.png"
+      },
+      {
         "from": "public/icon.ico",
         "to": "icon.ico"
       }
     ],
     "win": {
       "target": "nsis",
-      "icon": "build/icon.ico",
+      "icon": "build/icon.png",
       "requestedExecutionLevel": "asInvoker",
       "signAndEditExecutable": false
     },

@@ -13,11 +13,12 @@ export const userManager = {
   },
 
   // Add new user
-  addUser: (username) => {
+  addUser: (username, avatar = 'avatar1.png') => {
     const users = userManager.getUsers();
     const newUser = {
       id: Date.now().toString(),
       username,
+      avatar,
       createdAt: new Date().toISOString(),
       totalTests: 0,
       averageWPM: 0,
@@ -57,6 +58,18 @@ export const userManager = {
     
     // Clear user progress
     localStorage.removeItem(`${STORAGE_KEYS.USER_PROGRESS}_${userId}`);
+  },
+
+  // Update user avatar
+  updateUserAvatar: (userId, avatar) => {
+    const users = userManager.getUsers();
+    const userIndex = users.findIndex(user => user.id === userId);
+    if (userIndex !== -1) {
+      users[userIndex].avatar = avatar;
+      localStorage.setItem(STORAGE_KEYS.USERS, JSON.stringify(users));
+      return users[userIndex];
+    }
+    return null;
   }
 };
 
