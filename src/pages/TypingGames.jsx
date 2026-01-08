@@ -1,9 +1,27 @@
-import React, { useState } from 'react';
-import { Gamepad2, Wind, Box, ArrowLeft, Trophy, Star, Clock, Car } from 'lucide-react';
+import React, { useState, Suspense } from 'react';
+import { Gamepad2, Wind, Box, ArrowLeft, Trophy, Star, Clock, Car, Loader2 } from 'lucide-react';
 import { useTheme } from '../contexts/ThemeContext';
-import BalloonGame from '../components/games/BalloonGame';
-import BlockContainerGame from '../components/games/BlockContainerGame';
-import WordRacerGame from '../components/games/WordRacerGame';
+
+// Lazy load game components for better performance
+const BalloonGame = React.lazy(() => import('../components/games/BalloonGame'));
+const BlockContainerGame = React.lazy(() => import('../components/games/BlockContainerGame'));
+const WordRacerGame = React.lazy(() => import('../components/games/WordRacerGame'));
+
+// Loading fallback component
+const GameLoadingFallback = ({ theme }) => (
+  <div className={`flex flex-col items-center justify-center min-h-[400px] ${theme.cardBg} rounded-xl`}>
+    <Loader2 className={`w-12 h-12 ${theme.accent} animate-spin mb-4`} />
+    <p className={`${theme.text} font-medium`}>Loading game...</p>
+    <p className={`${theme.textSecondary} text-sm mt-1`}>This may take a moment</p>
+  </div>
+);
+
+// Import game thumbnails
+import balloonPopImg from '../assets/games/balloon-pop.png';
+import wordCrusherImg from '../assets/games/word-crusher.png';
+import wordRacerImg from '../assets/games/word-racer.png';
+
+// ... (keep existing imports)
 
 const TypingGames = ({ currentUser, settings }) => {
   const [selectedGame, setSelectedGame] = useState(null);
@@ -15,6 +33,7 @@ const TypingGames = ({ currentUser, settings }) => {
       title: 'Balloon Pop',
       description: 'Pop balloons by typing the words before they float away! Words rise from the bottom - type them before they escape at the top.',
       icon: Wind,
+      image: balloonPopImg,
       color: 'from-pink-500 to-purple-600',
       bgColor: 'bg-pink-100 dark:bg-pink-900/30',
       difficulty: 'Easy',
@@ -25,6 +44,7 @@ const TypingGames = ({ currentUser, settings }) => {
       title: 'Word Crusher',
       description: 'Blocks with words fall into a container - type them to destroy before the container overflows! Speed up as you progress.',
       icon: Box,
+      image: wordCrusherImg,
       color: 'from-cyan-500 to-blue-600',
       bgColor: 'bg-cyan-100 dark:bg-cyan-900/30',
       difficulty: 'Medium',
@@ -35,6 +55,7 @@ const TypingGames = ({ currentUser, settings }) => {
       title: 'Word Racer',
       description: 'Race against AI opponents! Type words to accelerate your car and cross the finish line first. The faster you type, the faster you go!',
       icon: Car,
+      image: wordRacerImg,
       color: 'from-orange-500 to-red-600',
       bgColor: 'bg-orange-100 dark:bg-orange-900/30',
       difficulty: 'Hard',
@@ -42,65 +63,7 @@ const TypingGames = ({ currentUser, settings }) => {
     }
   ];
 
-  const handleGameSelect = (gameId) => {
-    setSelectedGame(gameId);
-  };
-
-  const handleBackToGames = () => {
-    setSelectedGame(null);
-  };
-
-  // Render selected game
-  if (selectedGame === 'balloon') {
-    return (
-      <div className="p-6">
-        <div className="max-w-6xl mx-auto">
-          <button
-            onClick={handleBackToGames}
-            className={`mb-4 flex items-center gap-2 ${theme.primary} hover:${theme.primaryHover} text-white px-4 py-2 rounded-lg transition-colors`}
-          >
-            <ArrowLeft className="w-4 h-4" />
-            Back to Games
-          </button>
-          <BalloonGame currentUser={currentUser} settings={settings} />
-        </div>
-      </div>
-    );
-  }
-
-  if (selectedGame === 'container') {
-    return (
-      <div className="p-6">
-        <div className="max-w-6xl mx-auto">
-          <button
-            onClick={handleBackToGames}
-            className={`mb-4 flex items-center gap-2 ${theme.primary} hover:${theme.primaryHover} text-white px-4 py-2 rounded-lg transition-colors`}
-          >
-            <ArrowLeft className="w-4 h-4" />
-            Back to Games
-          </button>
-          <BlockContainerGame currentUser={currentUser} settings={settings} />
-        </div>
-      </div>
-    );
-  }
-
-  if (selectedGame === 'racer') {
-    return (
-      <div className="p-6">
-        <div className="max-w-6xl mx-auto">
-          <button
-            onClick={handleBackToGames}
-            className={`mb-4 flex items-center gap-2 ${theme.primary} hover:${theme.primaryHover} text-white px-4 py-2 rounded-lg transition-colors`}
-          >
-            <ArrowLeft className="w-4 h-4" />
-            Back to Games
-          </button>
-          <WordRacerGame currentUser={currentUser} settings={settings} />
-        </div>
-      </div>
-    );
-  }
+  // ... (keep handleGameSelect and handleBackToGames and rendered game checks)
 
   // Render game selection hub
   return (
@@ -128,38 +91,21 @@ const TypingGames = ({ currentUser, settings }) => {
                 className={`${theme.cardBg} rounded-2xl shadow-lg border ${theme.border} overflow-hidden cursor-pointer transform transition-all duration-300 hover:scale-105 hover:shadow-xl group`}
               >
                 {/* Game Preview Area */}
-                <div className={`h-40 bg-gradient-to-br ${game.color} flex items-center justify-center relative overflow-hidden`}>
-                  <div className="absolute inset-0 opacity-20">
-                    {/* Decorative elements */}
-                    {game.id === 'balloon' && (
-                      <>
-                        <div className="absolute top-4 left-8 w-12 h-16 bg-white/30 rounded-full"></div>
-                        <div className="absolute top-8 right-12 w-10 h-14 bg-white/20 rounded-full"></div>
-                        <div className="absolute bottom-4 left-1/3 w-8 h-12 bg-white/25 rounded-full"></div>
-                      </>
-                    )}
-                    {game.id === 'container' && (
-                      <>
-                        <div className="absolute top-4 left-8 w-10 h-10 bg-white/30 rotate-12"></div>
-                        <div className="absolute top-12 right-16 w-8 h-8 bg-white/20 -rotate-6"></div>
-                        <div className="absolute bottom-8 left-1/4 w-12 h-12 bg-white/25 rotate-45"></div>
-                      </>
-                    )}
-                    {game.id === 'racer' && (
-                      <>
-                        <div className="absolute top-1/2 left-4 right-4 h-2 bg-white/30 rounded"></div>
-                        <div className="absolute top-1/2 left-4 right-4 h-px bg-white/50 border-dashed" style={{ borderTopWidth: '2px', borderStyle: 'dashed' }}></div>
-                        <div className="absolute top-6 left-1/4 text-2xl">🏎️</div>
-                        <div className="absolute top-10 right-1/4 text-xl">🚗</div>
-                        <div className="absolute bottom-8 left-1/3 text-xl">🚕</div>
-                      </>
-                    )}
-                  </div>
-                  <Icon className="w-20 h-20 text-white drop-shadow-lg group-hover:scale-110 transition-transform duration-300" />
+                <div className={`h-48 relative overflow-hidden group`}>
+                   <div className={`absolute inset-0 bg-gradient-to-br ${game.color} opacity-0 group-hover:opacity-20 transition-opacity duration-300 z-10`} />
+                   <img 
+                      src={game.image} 
+                      alt={game.title}
+                      className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
+                   />
+                   <div className="absolute top-4 right-4 z-20 bg-white/90 backdrop-blur-sm p-2 rounded-lg shadow-lg">
+                      <Icon className={`w-6 h-6 text-gray-800`} />
+                   </div>
                 </div>
 
                 {/* Game Info */}
                 <div className="p-6">
+                   {/* ... rest of card content ... */}
                   <h2 className={`text-xl font-bold ${theme.text} mb-2`}>{game.title}</h2>
                   <p className={`${theme.textSecondary} text-sm mb-4`}>{game.description}</p>
                   

@@ -605,3 +605,171 @@ export const dataManager = {
   }
 };
 
+// Key Statistics Manager - Track weak keys
+export const keyStatsManager = {
+  KEY_STATS_KEY: 'typing_app_key_stats',
+  
+  // Get key stats for a user
+  getKeyStats: (userId) => {
+    try {
+      const data = localStorage.getItem(`${keyStatsManager.KEY_STATS_KEY}_${userId}`);
+      return data ? JSON.parse(data) : {};
+    } catch {
+      return {};
+    }
+  },
+  
+  // Save key stats
+  saveKeyStats: (userId, stats) => {
+    try {
+      localStorage.setItem(`${keyStatsManager.KEY_STATS_KEY}_${userId}`, JSON.stringify(stats));
+    } catch (error) {
+      console.warn('Failed to save key stats:', error);
+    }
+  },
+  
+  // Track a key press (correct or error)
+  trackKey: (userId, key, isCorrect) => {
+    const stats = keyStatsManager.getKeyStats(userId);
+    const lowerKey = key.toLowerCase();
+    
+    if (!stats[lowerKey]) {
+      stats[lowerKey] = { correct: 0, errors: 0, total: 0 };
+    }
+    
+    stats[lowerKey].total += 1;
+    if (isCorrect) {
+      stats[lowerKey].correct += 1;
+    } else {
+      stats[lowerKey].errors += 1;
+    }
+    
+    keyStatsManager.saveKeyStats(userId, stats);
+    return stats;
+  },
+  
+  // Batch track multiple keys (for performance)
+  trackKeysBatch: (userId, keyResults) => {
+    const stats = keyStatsManager.getKeyStats(userId);
+    
+    keyResults.forEach(({ key, isCorrect }) => {
+      const lowerKey = key.toLowerCase();
+      
+      if (!stats[lowerKey]) {
+        stats[lowerKey] = { correct: 0, errors: 0, total: 0 };
+      }
+      
+      stats[lowerKey].total += 1;
+      if (isCorrect) {
+        stats[lowerKey].correct += 1;
+      } else {
+        stats[lowerKey].errors += 1;
+      }
+    });
+    
+    keyStatsManager.saveKeyStats(userId, stats);
+    return stats;
+  },
+  
+  // Get weak keys (keys with high error rate)
+  getWeakKeys: (userId, minAttempts = 10, maxAccuracy = 90) => {
+    const stats = keyStatsManager.getKeyStats(userId);
+    const weakKeys = [];
+    
+    Object.entries(stats).forEach(([key, data]) => {
+      if (data.total >= minAttempts) {
+        const accuracy = (data.correct / data.total) * 100;
+        if (accuracy < maxAccuracy) {
+          weakKeys.push({
+            key,
+            accuracy: Math.round(accuracy),
+            correct: data.correct,
+            errors: data.errors,
+            total: data.total
+          });
+        }
+      }
+    });
+    
+    // Sort by accuracy (lowest first)
+    return weakKeys.sort((a, b) => a.accuracy - b.accuracy);
+  },
+  
+  // Get key accuracy for visualization
+  getAllKeyAccuracies: (userId) => {
+    const stats = keyStatsManager.getKeyStats(userId);
+    const accuracies = {};
+    
+    Object.entries(stats).forEach(([key, data]) => {
+      if (data.total > 0) {
+        accuracies[key] = {
+          accuracy: Math.round((data.correct / data.total) * 100),
+          total: data.total,
+          errors: data.errors
+        };
+      }
+    });
+    
+    return accuracies;
+  },
+  
+  // Generate practice content for weak keys
+  generateWeakKeyPractice: (userId, wordCount = 20) => {
+    const weakKeys = keyStatsManager.getWeakKeys(userId);
+    if (weakKeys.length === 0) {
+      return null;
+    }
+    
+    // Common words containing weak keys
+    const wordBank = {
+      'a': ['and', 'are', 'as', 'at', 'about', 'after', 'also', 'made', 'have', 'can'],
+      'b': ['be', 'been', 'but', 'back', 'before', 'being', 'both', 'best', 'job', 'able'],
+      'c': ['can', 'come', 'could', 'call', 'case', 'each', 'such', 'much', 'place', 'back'],
+      'd': ['do', 'did', 'day', 'down', 'during', 'end', 'good', 'made', 'need', 'said'],
+      'e': ['each', 'even', 'ever', 'every', 'end', 'here', 'where', 'these', 'make', 'time'],
+      'f': ['for', 'from', 'first', 'find', 'few', 'after', 'before', 'off', 'life', 'self'],
+      'g': ['get', 'go', 'good', 'great', 'give', 'going', 'long', 'thing', 'big', 'high'],
+      'h': ['have', 'has', 'had', 'he', 'him', 'his', 'how', 'here', 'help', 'home'],
+      'i': ['in', 'is', 'it', 'if', 'into', 'its', 'like', 'time', 'with', 'this'],
+      'j': ['just', 'job', 'join', 'jump', 'judge', 'major', 'project', 'object', 'enjoy', 'adjust'],
+      'k': ['know', 'keep', 'kind', 'key', 'work', 'make', 'like', 'look', 'take', 'back'],
+      'l': ['like', 'long', 'look', 'last', 'left', 'life', 'little', 'well', 'all', 'will'],
+      'm': ['make', 'more', 'most', 'must', 'man', 'may', 'many', 'much', 'time', 'some'],
+      'n': ['new', 'now', 'no', 'not', 'never', 'need', 'next', 'into', 'own', 'one'],
+      'o': ['of', 'on', 'or', 'one', 'out', 'over', 'only', 'own', 'other', 'come'],
+      'p': ['people', 'place', 'part', 'put', 'point', 'program', 'up', 'help', 'keep', 'top'],
+      'q': ['question', 'quick', 'quite', 'quality', 'require', 'unique', 'equal', 'square', 'quiet', 'quote'],
+      'r': ['right', 'really', 'rather', 'read', 'run', 'are', 'for', 'from', 'more', 'or'],
+      's': ['so', 'some', 'such', 'same', 'still', 'see', 'she', 'should', 'said', 'use'],
+      't': ['the', 'to', 'that', 'this', 'they', 'there', 'than', 'time', 'then', 'take'],
+      'u': ['up', 'us', 'use', 'used', 'under', 'until', 'much', 'such', 'just', 'but'],
+      'v': ['very', 'view', 'value', 'over', 'every', 'even', 'ever', 'have', 'give', 'live'],
+      'w': ['will', 'with', 'was', 'we', 'what', 'when', 'where', 'which', 'while', 'who'],
+      'x': ['example', 'next', 'experience', 'expect', 'explain', 'exist', 'text', 'extra', 'box', 'fix'],
+      'y': ['you', 'your', 'year', 'yes', 'yet', 'any', 'many', 'way', 'say', 'may'],
+      'z': ['zero', 'zone', 'size', 'organize', 'realize', 'amazing', 'recognize', 'utilize', 'analyze', 'prize']
+    };
+    
+    // Collect words for weak keys
+    const practiceWords = [];
+    weakKeys.forEach(({ key }) => {
+      const words = wordBank[key] || [];
+      practiceWords.push(...words);
+    });
+    
+    // Shuffle and select
+    const shuffled = practiceWords.sort(() => Math.random() - 0.5);
+    const selected = shuffled.slice(0, wordCount);
+    
+    return {
+      content: selected.join(' '),
+      weakKeys: weakKeys.map(k => k.key),
+      title: `Weak Keys Practice: ${weakKeys.slice(0, 5).map(k => k.key.toUpperCase()).join(', ')}`
+    };
+  },
+  
+  // Reset key stats
+  resetKeyStats: (userId) => {
+    localStorage.removeItem(`${keyStatsManager.KEY_STATS_KEY}_${userId}`);
+  }
+};

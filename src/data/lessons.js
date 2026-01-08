@@ -486,6 +486,82 @@ export const typingLessons = {
         description: "Ultimate challenge combining URLs, technical terms, and symbols"
       }
     ]
+  },
+  "unit-12": {
+    title: "Muscle Memory Drills",
+    lessons: [
+      {
+        id: "unit-12-1",
+        title: "Common Bigrams 1",
+        content: "th th he he an an in in er er th he an in er th he an in er that then the he an in er there here another inner error",
+        description: "Master the most frequent 2-letter combinations: th, he, an, in, er"
+      },
+      {
+        id: "unit-12-2",
+        title: "Common Bigrams 2",
+        content: "on on re re ed ed nd nd ha ha on re ed nd ha on re ed nd ha only onion return rerun edited need hand hard",
+        description: "Practice frequent bigrams: on, re, ed, nd, ha"
+      },
+      {
+        id: "unit-12-3",
+        title: "Common Trigrams 1",
+        content: "the the and and ing ing ent ent ion ion the and ing ent ion the and ing ent ion there their android going ending action motion",
+        description: "Master the most frequent 3-letter combinations: the, and, ing, ent, ion"
+      },
+      {
+        id: "unit-12-4",
+        title: "Common Trigrams 2",
+        content: "tio tio for for nde nde has has nce nce tio for nde has nce tio for nde has nce ratio station form force under handle dance fence",
+        description: "Practice frequent trigrams: tio, for, nde, has, nce"
+      },
+      {
+        id: "unit-12-5",
+        title: "Common Prefixes",
+        content: "pre pre pro pro un un re re dis dis pre pro un re dis prevent predict project protect undo unfair replay return disagree display",
+        description: "Drill common word beginnings to speed up recognition"
+      },
+      {
+        id: "unit-12-6",
+        title: "Common Suffixes",
+        content: "ing ing tion tion ment ment ness ness able able ing tion ment ness able playing running nation action movement kindness capable readable",
+        description: "Drill common word endings for faster typing flow"
+      }
+    ]
+  },
+  "unit-13": {
+    title: "Endurance & Rhythm",
+    lessons: [
+      {
+        id: "unit-13-1",
+        title: "Left Hand Workout",
+        content: "sad sad fad fad dad dad was was saw saw car car far far war war raw raw tar tar ear ear are are sea sea see see",
+        description: "Strengthen left-hand coordination and stamina"
+      },
+      {
+        id: "unit-13-2",
+        title: "Right Hand Workout",
+        content: "joy joy oil oil ill ill kill kill hill hill mill mill poll poll pull pull null null hoop hoop loop loop look look took took",
+        description: "Strengthen right-hand coordination and stamina"
+      },
+      {
+        id: "unit-13-3",
+        title: "Alternating Hands",
+        content: "pan pan lap lap map map nap nap tap tap pat pat pal pal pam pam am am an an by by my my do do go go to to if if it it",
+        description: "Build rhythm by switching hands for every letter"
+      },
+      {
+        id: "unit-13-4",
+        title: "Rhythm Flow",
+        content: "The rhythm of the typing is key to speed. Keep a steady pace. Do not rush. Flow like water. Smooth is fast. Fast is smooth. Breathe and type.",
+        description: "Focus on maintaining a consistent, steady typing speed"
+      },
+      {
+        id: "unit-13-5",
+        title: "Endurance Challenge",
+        content: "Building endurance takes time and patience. Start slow and gradually increase your speed. Focus on accuracy first. Speed will follow naturally. Keep your posture straight. Take deep breaths. Relax your shoulders. Let your fingers glide over the keys.",
+        description: "A longer text designed to test your typing stamina"
+      }
+    ]
   }
 };
 

@@ -87,8 +87,8 @@ const UserManager = ({ onUserSelect, currentUser }) => {
     return (
       <div className={`min-h-screen flex items-center justify-center ${isDarkMode ? 'bg-gray-900' : 'bg-gradient-to-br from-blue-50 via-white to-purple-50'}`}>
         <div className={`max-w-md w-full ${isDarkMode ? 'bg-gray-800' : 'bg-white'} rounded-2xl shadow-2xl p-8 text-center border ${isDarkMode ? 'border-gray-700' : 'border-gray-100'}`}>
-          <div className={`w-20 h-20 mx-auto mb-6 rounded-full ${theme.accent} bg-opacity-10 flex items-center justify-center`}>
-            <User className={`w-10 h-10 ${theme.accent.replace('bg-', 'text-')}`} />
+          <div className={`w-20 h-20 mx-auto mb-6 rounded-full ${theme.primary}  text-white bg-opacity-10 flex items-center justify-center`}>
+            <User className={`w-10 h-10 text-white`} />
           </div>
           <h2 className={`text-3xl font-bold mb-3 ${isDarkMode ? 'text-white' : 'text-gray-800'}`}>
             Welcome to Swift Typing
@@ -98,7 +98,7 @@ const UserManager = ({ onUserSelect, currentUser }) => {
           </p>
           <button
             onClick={() => setShowAddUser(true)}
-            className={`${theme.accent} text-white px-8 py-4 rounded-xl hover:opacity-90 transition-all transform hover:scale-105 flex items-center gap-3 mx-auto text-lg font-semibold shadow-lg`}
+            className={`bg-gradient-to-r from-blue-600 to-purple-600 text-white px-8 py-4 rounded-xl hover:opacity-90 transition-all transform hover:scale-105 flex items-center gap-3 mx-auto text-lg font-semibold shadow-lg`}
           >
             <Plus className="w-6 h-6" />
             Create Your Profile
@@ -131,7 +131,7 @@ const UserManager = ({ onUserSelect, currentUser }) => {
               key={user.id}
               className={`relative group cursor-pointer transition-all duration-300 rounded-2xl p-6 border-2 ${
                 currentUser && currentUser.id === user.id
-                  ? `${theme.accent} bg-opacity-5 border-opacity-100 shadow-lg transform scale-105`
+                  ? `${theme.primary} bg-opacity-5 border-opacity-100 shadow-lg transform scale-105`
                   : `${isDarkMode ? 'border-gray-700 hover:border-gray-600 bg-gray-750' : 'border-gray-200 hover:border-gray-300'} hover:shadow-xl`
               }`}
               onClick={() => handleSelectUser(user)}
@@ -145,13 +145,13 @@ const UserManager = ({ onUserSelect, currentUser }) => {
                       alt={user.username}
                       className={`w-full h-full rounded-full object-cover border-4 ${
                         currentUser && currentUser.id === user.id
-                          ? `${theme.accent.replace('bg-', 'border-')} shadow-lg`
+                          ? `${theme.primary.replace('bg-', 'border-')} shadow-lg`
                           : `${isDarkMode ? 'border-gray-700' : 'border-white'}`
                       } transition-all`}
                     />
                   </div>
                   {currentUser && currentUser.id === user.id && (
-                    <div className={`absolute -bottom-2 -right-2 ${theme.accent} text-white p-2 rounded-full shadow-lg`}>
+                    <div className={`absolute -bottom-2 -right-2 ${theme.primary} text-white p-2 rounded-full shadow-lg`}>
                       <UserCheck className="w-4 h-4" />
                     </div>
                   )}
@@ -387,7 +387,7 @@ const UserManager = ({ onUserSelect, currentUser }) => {
           <div className={`mt-6 text-center border-t-2 ${isDarkMode ? 'border-gray-700' : 'border-gray-200'} pt-6`}>
             <button
               onClick={() => onUserSelect(currentUser)}
-              className={`${theme.accent} text-white px-10 py-4 rounded-xl hover:opacity-90 transition-all transform hover:scale-105 flex items-center gap-3 mx-auto text-lg font-bold shadow-xl`}
+              className={`${theme.primary} text-white px-10 py-4 rounded-xl hover:opacity-90 transition-all transform hover:scale-105 flex items-center gap-3 mx-auto text-lg font-bold shadow-xl`}
             >
               <LogIn className="w-6 h-6" />
               Continue as {currentUser.username}

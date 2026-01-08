@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { HashRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { userManager, progressManager } from './utils/storage';
 import { ThemeProvider } from './contexts/ThemeContext';
+import ErrorBoundary from './components/ErrorBoundary';
 import UserManager from './components/UserManager';
 import Navigation from './components/Navigation';
 import TypingLessons from './pages/TypingLessons';
@@ -13,6 +14,7 @@ import Results from './pages/Results';
 import About from './pages/About';
 import Features from './pages/Features';
 import Pricing from './pages/Pricing';
+
 
 function App() {
   const [currentUser, setCurrentUser] = useState(null);
@@ -73,16 +75,17 @@ function App() {
   // Render main application
   return (
     <ThemeProvider>
-      <Router>
-        <div className="min-h-screen transition-colors duration-300">
-          <Navigation 
-            currentPage={currentPage}
-            onPageChange={setCurrentPage}
-            currentUser={currentUser}
-            onLogout={handleLogout}
-            onThemeChange={handleThemeChange}
-            currentTheme={userSettings.theme}
-          />
+      <ErrorBoundary>
+        <Router>
+          <div className="min-h-screen transition-colors duration-300">
+            <Navigation 
+              currentPage={currentPage}
+              onPageChange={setCurrentPage}
+              currentUser={currentUser}
+              onLogout={handleLogout}
+              onThemeChange={handleThemeChange}
+              currentTheme={userSettings.theme}
+            />
           
           <main className="min-h-screen pt-4">
             <Routes>
@@ -141,6 +144,7 @@ function App() {
           </main>
         </div>
       </Router>
+      </ErrorBoundary>
     </ThemeProvider>
   );
 }
