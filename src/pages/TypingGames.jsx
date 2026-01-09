@@ -1,11 +1,12 @@
 import React, { useState, Suspense } from 'react';
-import { Gamepad2, Wind, Box, ArrowLeft, Trophy, Star, Clock, Car, Loader2 } from 'lucide-react';
+import { Gamepad2, Wind, Box, ArrowLeft, Trophy, Star, Clock, Car, Loader2, Mountain } from 'lucide-react';
 import { useTheme } from '../contexts/ThemeContext';
 
 // Lazy load game components for better performance
 const BalloonGame = React.lazy(() => import('../components/games/BalloonGame'));
 const BlockContainerGame = React.lazy(() => import('../components/games/BlockContainerGame'));
 const WordRacerGame = React.lazy(() => import('../components/games/WordRacerGame'));
+const KeyboardJumpGame = React.lazy(() => import('../components/games/KeyboardJumpGame'));
 
 // Loading fallback component
 const GameLoadingFallback = ({ theme }) => (
@@ -20,8 +21,7 @@ const GameLoadingFallback = ({ theme }) => (
 import balloonPopImg from '../assets/games/balloon-pop.png';
 import wordCrusherImg from '../assets/games/word-crusher.png';
 import wordRacerImg from '../assets/games/word-racer.png';
-
-// ... (keep existing imports)
+import keyboardJumpImg from '../assets/games/keyboard-jump.png';
 
 const TypingGames = ({ currentUser, settings }) => {
   const [selectedGame, setSelectedGame] = useState(null);
@@ -60,10 +60,106 @@ const TypingGames = ({ currentUser, settings }) => {
       bgColor: 'bg-orange-100 dark:bg-orange-900/30',
       difficulty: 'Hard',
       avgTime: '1-3 min'
+    },
+    {
+      id: 'keyboard-jump',
+      title: 'Keyboard Jump',
+      description: 'Jump between platforms by typing words! Guide the robot higher through multiple themed levels. Complete levels to unlock new themes!',
+      icon: Mountain,
+      image: keyboardJumpImg,
+      color: 'from-green-500 to-teal-600',
+      bgColor: 'bg-green-100 dark:bg-green-900/30',
+      difficulty: 'Medium',
+      avgTime: '3-5 min'
     }
   ];
 
-  // ... (keep handleGameSelect and handleBackToGames and rendered game checks)
+  // Handle game selection
+  const handleGameSelect = (gameId) => {
+    setSelectedGame(gameId);
+  };
+
+  // Handle back to games list
+  const handleBackToGames = () => {
+    setSelectedGame(null);
+  };
+
+  // Render selected game
+  if (selectedGame === 'balloon') {
+    return (
+      <div className="p-6">
+        <div className="max-w-4xl mx-auto">
+          <button
+            onClick={handleBackToGames}
+            className={`flex items-center gap-2 mb-4 px-4 py-2 rounded-lg ${theme.secondary} ${theme.text} hover:opacity-80 transition-opacity`}
+          >
+            <ArrowLeft className="w-4 h-4" />
+            Back to Games
+          </button>
+          <Suspense fallback={<GameLoadingFallback theme={theme} />}>
+            <BalloonGame currentUser={currentUser} settings={settings} />
+          </Suspense>
+        </div>
+      </div>
+    );
+  }
+
+  if (selectedGame === 'container') {
+    return (
+      <div className="p-6">
+        <div className="max-w-4xl mx-auto">
+          <button
+            onClick={handleBackToGames}
+            className={`flex items-center gap-2 mb-4 px-4 py-2 rounded-lg ${theme.secondary} ${theme.text} hover:opacity-80 transition-opacity`}
+          >
+            <ArrowLeft className="w-4 h-4" />
+            Back to Games
+          </button>
+          <Suspense fallback={<GameLoadingFallback theme={theme} />}>
+            <BlockContainerGame currentUser={currentUser} settings={settings} />
+          </Suspense>
+        </div>
+      </div>
+    );
+  }
+
+  if (selectedGame === 'racer') {
+    return (
+      <div className="p-6">
+        <div className="max-w-4xl mx-auto">
+          <button
+            onClick={handleBackToGames}
+            className={`flex items-center gap-2 mb-4 px-4 py-2 rounded-lg ${theme.secondary} ${theme.text} hover:opacity-80 transition-opacity`}
+          >
+            <ArrowLeft className="w-4 h-4" />
+            Back to Games
+          </button>
+          <Suspense fallback={<GameLoadingFallback theme={theme} />}>
+            <WordRacerGame currentUser={currentUser} settings={settings} />
+          </Suspense>
+        </div>
+      </div>
+    );
+  }
+
+  if (selectedGame === 'keyboard-jump') {
+    return (
+      <div className="p-6">
+        <div className="max-w-4xl mx-auto">
+          <button
+            onClick={handleBackToGames}
+            className={`flex items-center gap-2 mb-4 px-4 py-2 rounded-lg ${theme.secondary} ${theme.text} hover:opacity-80 transition-opacity`}
+          >
+            <ArrowLeft className="w-4 h-4" />
+            Back to Games
+          </button>
+          <Suspense fallback={<GameLoadingFallback theme={theme} />}>
+            <KeyboardJumpGame currentUser={currentUser} settings={settings} />
+          </Suspense>
+        </div>
+      </div>
+    );
+  }
 
   // Render game selection hub
   return (
@@ -105,7 +201,6 @@ const TypingGames = ({ currentUser, settings }) => {
 
                 {/* Game Info */}
                 <div className="p-6">
-                   {/* ... rest of card content ... */}
                   <h2 className={`text-xl font-bold ${theme.text} mb-2`}>{game.title}</h2>
                   <p className={`${theme.textSecondary} text-sm mb-4`}>{game.description}</p>
                   

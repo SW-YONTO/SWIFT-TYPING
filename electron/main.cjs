@@ -6,19 +6,21 @@ let mainWindow;
 
 function createWindow() {
   // Get the correct icon path based on environment
-  // Use PNG for better cross-platform support
   let iconPath;
   
   if (isDev) {
     // Development: use PNG from public folder
-    iconPath = path.join(__dirname, '../public/favicon_io/android-chrome-512x512.png');
+    iconPath = path.join(__dirname, '../public/favicon_io/icon.png');
   } else {
     // Production: try multiple locations
     const fs = require('fs');
     const possiblePaths = [
+      path.join(process.resourcesPath, 'icon.ico'),  // Windows prefers .ico
       path.join(process.resourcesPath, 'icon.png'),
       path.join(process.resourcesPath, 'app.asar.unpacked', 'icon.png'),
-      path.join(__dirname, '../public/favicon_io/android-chrome-512x512.png')
+      path.join(__dirname, '../build/icon.ico'),
+      path.join(__dirname, '../build/icon.png'),
+      path.join(__dirname, '../public/favicon_io/icon.png')
     ];
     
     // Use first existing path
