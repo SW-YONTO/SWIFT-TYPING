@@ -15,7 +15,9 @@ body {
   -moz-osx-font-smoothing: grayscale;
   background-color: #f9fafb;
   color: #111827;
-  font-feature-settings: "liga" 1, "kern" 1;
+  font-feature-settings:
+    "liga" 1,
+    "kern" 1;
 }
 
 /* Custom scrollbar styles */
@@ -46,12 +48,14 @@ body {
 .focus-ring:focus {
   outline: 2px solid transparent;
   outline-offset: 2px;
-  box-shadow: 0 0 0 2px #3b82f6, 0 0 0 4px rgba(59, 130, 246, 0.2);
+  box-shadow:
+    0 0 0 2px #3b82f6,
+    0 0 0 4px rgba(59, 130, 246, 0.2);
 }
 
 /* Typing text styles */
 .typing-text {
-  font-family: 'JetBrains Mono', 'Fira Code', Monaco, Consolas, monospace;
+  font-family: "JetBrains Mono", "Fira Code", Monaco, Consolas, monospace;
   font-size: 1.125rem;
   line-height: 1.75;
   letter-spacing: 0.025em;
@@ -86,7 +90,9 @@ body {
 .card {
   background-color: white;
   border-radius: 0.75rem;
-  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  box-shadow:
+    0 4px 6px -1px rgba(0, 0, 0, 0.1),
+    0 2px 4px -1px rgba(0, 0, 0, 0.06);
   border: 1px solid #e5e7eb;
 }
 
@@ -109,7 +115,8 @@ body {
 
 /* Animations */
 @keyframes pulse {
-  0%, 100% {
+  0%,
+  100% {
     opacity: 1;
   }
   50% {
@@ -227,8 +234,12 @@ body {
 .letter {
   display: inline-block;
   position: relative;
-  transition: color 0.1s ease, transform 0.1s ease;
-  font-feature-settings: "liga" 0, "calt" 0;
+  transition:
+    color 0.1s ease,
+    transform 0.1s ease;
+  font-feature-settings:
+    "liga" 0,
+    "calt" 0;
   line-height: 1.5;
   letter-spacing: 0.02em;
 }
@@ -282,17 +293,20 @@ body {
 
 /* Caret blink animation */
 @keyframes caretBlink {
-  0%, 49% {
+  0%,
+  49% {
     opacity: 1;
   }
-  50%, 100% {
+  50%,
+  100% {
     opacity: 0;
   }
 }
 
 /* Smooth caret animation (no blink) */
 @keyframes caretFlashSmooth {
-  0%, 100% {
+  0%,
+  100% {
     opacity: 1;
   }
   50% {
@@ -380,7 +394,7 @@ input[aria-label*="typing"] {
   -webkit-appearance: none !important;
   -moz-appearance: none !important;
   appearance: none !important;
-  
+
   /* Ensure it's completely hidden */
   opacity: 0 !important;
   pointer-events: none !important;
@@ -412,7 +426,7 @@ input[name="typing-input-hidden"] {
   -moz-user-select: none !important;
   -ms-user-select: none !important;
   user-select: none !important;
-  
+
   -webkit-touch-callout: none !important;
   -webkit-tap-highlight-color: transparent !important;
 }
@@ -458,7 +472,7 @@ input[type="range"].hand-slider::-webkit-slider-thumb {
   background: #3b82f6 !important;
   cursor: grab !important;
   border: 3px solid white !important;
-  box-shadow: 0 2px 6px rgba(0,0,0,0.2) !important;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2) !important;
   transition: all 0.15s ease !important;
   position: relative !important;
   z-index: 999 !important;
@@ -469,7 +483,7 @@ input[type="range"].slider::-webkit-slider-thumb:hover,
 input[type="range"].hand-slider::-webkit-slider-thumb:hover {
   background: #2563eb !important;
   transform: scale(1.15) !important;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.3) !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3) !important;
   cursor: grab !important;
 }
 
@@ -523,7 +537,7 @@ input[type="range"].hand-slider::-moz-range-thumb {
   background: #3b82f6 !important;
   cursor: grab !important;
   border: 3px solid white !important;
-  box-shadow: 0 2px 6px rgba(0,0,0,0.2) !important;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2) !important;
   transition: all 0.15s ease !important;
   -moz-appearance: none !important;
   position: relative !important;
@@ -535,7 +549,7 @@ input[type="range"].slider::-moz-range-thumb:hover,
 input[type="range"].hand-slider::-moz-range-thumb:hover {
   background: #2563eb !important;
   transform: scale(1.15) !important;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.3) !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3) !important;
 }
 
 input[type="range"].slider::-moz-range-thumb:active,
@@ -629,7 +643,13 @@ input[type="range"].hand-slider::-ms-thumb {
   pointer-events: auto !important;
   z-index: 10 !important;
   position: relative !important;
-  background: linear-gradient(to right, #3b82f6 0%, #3b82f6 var(--slider-progress, 50%), #e5e7eb var(--slider-progress, 50%), #e5e7eb 100%) !important;
+  background: linear-gradient(
+    to right,
+    #3b82f6 0%,
+    #3b82f6 var(--slider-progress, 50%),
+    #e5e7eb var(--slider-progress, 50%),
+    #e5e7eb 100%
+  ) !important;
   transition: all 0.15s ease !important;
 }
 
@@ -668,7 +688,7 @@ input[type="range"].hand-slider::-ms-thumb {
   background: #3b82f6 !important;
   cursor: grab !important;
   border: 4px solid white !important;
-  box-shadow: 0 3px 8px rgba(0,0,0,0.25) !important;
+  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.25) !important;
   transition: all 0.1s ease-out !important;
   -webkit-appearance: none !important;
 }
@@ -676,7 +696,7 @@ input[type="range"].hand-slider::-ms-thumb {
 .settings-slider::-webkit-slider-thumb:hover {
   background: #2563eb !important;
   transform: scale(1.2) !important;
-  box-shadow: 0 5px 15px rgba(0,0,0,0.35) !important;
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.35) !important;
 }
 
 .settings-slider::-webkit-slider-thumb:active {
@@ -692,7 +712,7 @@ input[type="range"].hand-slider::-ms-thumb {
   background: #3b82f6 !important;
   cursor: grab !important;
   border: 4px solid white !important;
-  box-shadow: 0 3px 8px rgba(0,0,0,0.25) !important;
+  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.25) !important;
   transition: all 0.1s ease-out !important;
   -moz-appearance: none !important;
 }
@@ -700,7 +720,7 @@ input[type="range"].hand-slider::-ms-thumb {
 .settings-slider::-moz-range-thumb:hover {
   background: #2563eb !important;
   transform: scale(1.2) !important;
-  box-shadow: 0 5px 15px rgba(0,0,0,0.35) !important;
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.35) !important;
 }
 
 .settings-slider::-moz-range-thumb:active {
@@ -859,4 +879,139 @@ input[type="range"].hand-slider::-ms-thumb {
 .hand-display-spaced svg g[id="n"],
 .hand-display-spaced svg g[id="m"] {
   transform: translateX(4px);
-} 
+}
+
+/* ============================================
+   Keyboard Jump Game Animations
+   Moved from inline styles for better performance
+   ============================================ */
+
+/* Particle falling animation */
+@keyframes fall-particle {
+  0% {
+    transform: translateY(-20px) translateX(0) rotate(0deg);
+    opacity: 0;
+  }
+  10% {
+    opacity: 0.7;
+  }
+  90% {
+    opacity: 0.7;
+  }
+  100% {
+    transform: translateY(520px) translateX(30px) rotate(360deg);
+    opacity: 0;
+  }
+}
+.particle-fall {
+  animation: fall-particle linear infinite;
+}
+
+/* Shake animation for wrong input */
+@keyframes shake {
+  0%,
+  100% {
+    transform: translateX(0) translateY(-4px);
+  }
+  25% {
+    transform: translateX(-4px) translateY(-4px);
+  }
+  75% {
+    transform: translateX(4px) translateY(-4px);
+  }
+}
+.animate-shake {
+  animation: shake 0.2s cubic-bezier(0.36, 0.07, 0.19, 0.97) both;
+}
+
+/* Robot run animations */
+@keyframes run-left {
+  0%,
+  100% {
+    transform: rotate(0deg);
+  }
+  50% {
+    transform: rotate(15deg);
+  }
+}
+@keyframes run-right {
+  0%,
+  100% {
+    transform: rotate(0deg);
+  }
+  50% {
+    transform: rotate(-15deg);
+  }
+}
+.animate-run-left {
+  animation: run-left 0.3s infinite ease-in-out;
+}
+.animate-run-right {
+  animation: run-right 0.3s infinite ease-in-out;
+}
+
+/* Robot arm swing animation */
+@keyframes arm-swing {
+  0%,
+  100% {
+    transform: rotate(8deg);
+  }
+  50% {
+    transform: rotate(-8deg);
+  }
+}
+.animate-arm-left {
+  animation: arm-swing 0.6s infinite ease-in-out;
+}
+.animate-arm-right {
+  animation: arm-swing 0.6s infinite ease-in-out reverse;
+}
+
+/* Sun/moon pulse animation */
+@keyframes sun-pulse {
+  0%,
+  100% {
+    transform: scale(1);
+    filter: drop-shadow(0 0 10px rgba(255, 200, 0, 0.5));
+  }
+  50% {
+    transform: scale(1.1);
+    filter: drop-shadow(0 0 20px rgba(255, 200, 0, 0.8));
+  }
+}
+.animate-sun {
+  animation: sun-pulse 3s infinite ease-in-out;
+}
+
+/* Cloud drift animation */
+@keyframes cloud-drift {
+  0% {
+    transform: translateX(0);
+  }
+  50% {
+    transform: translateX(15px);
+  }
+  100% {
+    transform: translateX(0);
+  }
+}
+.animate-cloud {
+  animation: cloud-drift 8s infinite ease-in-out;
+}
+.animate-cloud-slow {
+  animation: cloud-drift 12s infinite ease-in-out;
+}
+
+/* Robot walk animation */
+@keyframes robot-walk {
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+  50% {
+    transform: translateX(4px);
+  }
+}
+.animate-robot-walk {
+  animation: robot-walk 0.8s infinite ease-in-out;
+}

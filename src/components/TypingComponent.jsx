@@ -677,28 +677,7 @@ const TypingComponent = ({
     }
   }, []);
 
-  // Auto-focus input on any key press
-  useEffect(() => {
-    const handleKeyDown = (e) => {
-      // Don't auto-focus if user is typing in another input field or if test is completed/paused
-      if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || isCompleted || isPaused) {
-        return;
-      }
-      
-      // Don't auto-focus on special keys
-      if (e.ctrlKey || e.altKey || e.metaKey || e.key === 'Tab' || e.key === 'Escape') {
-        return;
-      }
-      
-      // Focus the input field
-      if (inputRef.current) {
-        inputRef.current.focus();
-      }
-    };
-
-    document.addEventListener('keydown', handleKeyDown);
-    return () => document.removeEventListener('keydown', handleKeyDown);
-  }, [isCompleted, isPaused]);
+  // NOTE: Auto-focus on key press is handled in the unified keyboard handler below
 
   // Global keydown for auto-focus and Ctrl+R restart
   useEffect(() => {

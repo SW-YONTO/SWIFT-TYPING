@@ -156,16 +156,19 @@ const AnalyticsCalendar = ({ testResults = [], onClose }) => {
     };
   }, [selectedDate, activityMap]);
 
-  // Calculate overall stats
+  // Calculate overall stats - EXCLUDE games from WPM/accuracy averages
   const overallStats = useMemo(() => {
     const activeDays = Object.keys(activityMap).length;
     const totalTests = testResults.length;
     const totalTime = testResults.reduce((sum, r) => sum + (r.timeSpent || 0), 0);
-    const avgWpm = totalTests > 0 
-      ? Math.round(testResults.reduce((sum, r) => sum + (r.wpm || 0), 0) / totalTests) 
+    
+    // Filter out games for WPM/accuracy calculations
+    const nonGameResults = testResults.filter(r => r.type !== 'game');
+    const avgWpm = nonGameResults.length > 0 
+      ? Math.round(nonGameResults.reduce((sum, r) => sum + (r.wpm || 0), 0) / nonGameResults.length) 
       : 0;
-    const avgAccuracy = totalTests > 0 
-      ? Math.round(testResults.reduce((sum, r) => sum + (r.accuracy || 0), 0) / totalTests) 
+    const avgAccuracy = nonGameResults.length > 0 
+      ? Math.round(nonGameResults.reduce((sum, r) => sum + (r.accuracy || 0), 0) / nonGameResults.length) 
       : 0;
 
     // Calculate streak
@@ -375,9 +378,15 @@ const AnalyticsCalendar = ({ testResults = [], onClose }) => {
                       </div>
                     </div>
                     <div className="flex items-center gap-4">
-                      <div className={`text-sm font-semibold ${theme.mode === 'dark' ? 'text-blue-400' : 'text-blue-600'}`}>
-                        {test.wpm} WPM
-                      </div>
+                      {test.type === 'game' ? (
+                        <div className={`text-sm font-semibold ${theme.mode === 'dark' ? 'text-purple-400' : 'text-purple-600'}`}>
+                          {test.score || test.wpm} pts
+                        </div>
+                      ) : (
+                        <div className={`text-sm font-semibold ${theme.mode === 'dark' ? 'text-blue-400' : 'text-blue-600'}`}>
+                          {test.wpm} WPM
+                        </div>
+                      )}
                       <div className={`text-sm ${theme.mode === 'dark' ? 'text-green-400' : 'text-green-600'}`}>
                         {test.accuracy}%
                       </div>

@@ -1013,8 +1013,17 @@ const Settings = ({ currentUser, settings, onSettingsChange }) => {
                         </div>
                       </div>
                       <div className="text-right ml-3">
-                        <div className="text-sm font-bold text-blue-600">{result.wpm} WPM</div>
-                        <div className={`text-xs ${theme.textSecondary}`}>{result.accuracy}% acc</div>
+                        {result.type === 'game' ? (
+                          <>
+                            <div className="text-sm font-bold text-purple-600">{result.score || result.wpm} pts</div>
+                            <div className={`text-xs ${theme.textSecondary}`}>{result.accuracy}% acc</div>
+                          </>
+                        ) : (
+                          <>
+                            <div className="text-sm font-bold text-blue-600">{result.wpm} WPM</div>
+                            <div className={`text-xs ${theme.textSecondary}`}>{result.accuracy}% acc</div>
+                          </>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -1179,7 +1188,7 @@ const Settings = ({ currentUser, settings, onSettingsChange }) => {
             <div className={`space-y-4`}>
               <div className="flex justify-between items-center py-2">
                 <span className={`${theme.textSecondary} text-sm`}>Version</span>
-                <span className={`font-bold ${theme.text}`}>2.5.1</span>
+                <span className={`font-bold ${theme.text}`}>2.9.1</span>
               </div>
               <div className="flex justify-between items-center py-2">
                 <span className={`${theme.textSecondary} text-sm`}>Developer</span>

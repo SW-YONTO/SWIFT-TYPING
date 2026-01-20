@@ -5,11 +5,46 @@ export const STORAGE_KEYS = {
   USER_PROGRESS: 'typing_app_user_progress'
 };
 
+// Safe localStorage helper with error handling
+const safeStorage = {
+  getItem: (key) => {
+    try {
+      return localStorage.getItem(key);
+    } catch (error) {
+      console.warn('LocalStorage read failed:', error);
+      return null;
+    }
+  },
+  setItem: (key, value) => {
+    try {
+      localStorage.setItem(key, value);
+      return true;
+    } catch (error) {
+      console.warn('LocalStorage write failed:', error);
+      return false;
+    }
+  },
+  removeItem: (key) => {
+    try {
+      localStorage.removeItem(key);
+      return true;
+    } catch (error) {
+      console.warn('LocalStorage remove failed:', error);
+      return false;
+    }
+  }
+};
+
 export const userManager = {
   // Get all users
   getUsers: () => {
-    const users = localStorage.getItem(STORAGE_KEYS.USERS);
-    return users ? JSON.parse(users) : [];
+    try {
+      const users = safeStorage.getItem(STORAGE_KEYS.USERS);
+      return users ? JSON.parse(users) : [];
+    } catch (error) {
+      console.warn('Failed to parse users:', error);
+      return [];
+    }
   },
 
   // Add new user
@@ -134,17 +169,22 @@ export const progressManager = {
 
     progressManager.saveUserProgress(userId, progress);
 
-    // Update user summary
+    // Update user summary - EXCLUDE games from WPM/accuracy averages
     const users = userManager.getUsers();
     const userIndex = users.findIndex(user => user.id === userId);
     if (userIndex !== -1) {
+      // Filter out game results for WPM calculation
+      const nonGameResults = progress.testResults.filter(r => r.type !== 'game');
       users[userIndex].totalTests = progress.stats.totalTests;
-      users[userIndex].averageWPM = Math.round(
-        progress.testResults.reduce((sum, result) => sum + result.wpm, 0) / progress.testResults.length
-      );
-      users[userIndex].averageAccuracy = Math.round(
-        progress.testResults.reduce((sum, result) => sum + result.accuracy, 0) / progress.testResults.length
-      );
+      
+      if (nonGameResults.length > 0) {
+        users[userIndex].averageWPM = Math.round(
+          nonGameResults.reduce((sum, result) => sum + (result.wpm || 0), 0) / nonGameResults.length
+        );
+        users[userIndex].averageAccuracy = Math.round(
+          nonGameResults.reduce((sum, result) => sum + (result.accuracy || 0), 0) / nonGameResults.length
+        );
+      }
       localStorage.setItem(STORAGE_KEYS.USERS, JSON.stringify(users));
     }
   },
@@ -167,17 +207,22 @@ export const progressManager = {
 
     progressManager.saveUserProgress(userId, progress);
 
-    // Update user summary
+    // Update user summary - EXCLUDE games from WPM/accuracy averages
     const users = userManager.getUsers();
     const userIndex = users.findIndex(user => user.id === userId);
     if (userIndex !== -1) {
+      // Filter out game results for WPM calculation
+      const nonGameResults = progress.testResults.filter(r => r.type !== 'game');
       users[userIndex].totalTests = progress.stats.totalTests;
-      users[userIndex].averageWPM = Math.round(
-        progress.testResults.reduce((sum, result) => sum + result.wpm, 0) / progress.testResults.length
-      );
-      users[userIndex].averageAccuracy = Math.round(
-        progress.testResults.reduce((sum, result) => sum + result.accuracy, 0) / progress.testResults.length
-      );
+      
+      if (nonGameResults.length > 0) {
+        users[userIndex].averageWPM = Math.round(
+          nonGameResults.reduce((sum, result) => sum + (result.wpm || 0), 0) / nonGameResults.length
+        );
+        users[userIndex].averageAccuracy = Math.round(
+          nonGameResults.reduce((sum, result) => sum + (result.accuracy || 0), 0) / nonGameResults.length
+        );
+      }
       localStorage.setItem(STORAGE_KEYS.USERS, JSON.stringify(users));
     }
   },

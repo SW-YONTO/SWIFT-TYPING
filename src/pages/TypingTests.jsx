@@ -94,10 +94,12 @@ const TypingTests = ({ currentUser, settings }) => {
             </div>
             <div className="text-center">
               <div className="text-2xl font-bold text-orange-600">
-                {userProgress.testResults.length > 0 
-                  ? Math.round(userProgress.testResults.reduce((sum, result) => sum + result.wpm, 0) / userProgress.testResults.length)
-                  : 0
-                }
+                {(() => {
+                  const nonGameResults = userProgress.testResults.filter(r => r.type !== 'game');
+                  return nonGameResults.length > 0 
+                    ? Math.round(nonGameResults.reduce((sum, result) => sum + (result.wpm || 0), 0) / nonGameResults.length)
+                    : 0;
+                })()}
               </div>
               <div className={`text-sm ${theme.textSecondary}`}>Avg WPM</div>
             </div>

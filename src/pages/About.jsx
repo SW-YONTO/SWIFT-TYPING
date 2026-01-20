@@ -84,7 +84,7 @@ const About = () => {
             
             <div className="flex items-center justify-center gap-4 mt-8">
               <a 
-                href="https://github.com/sw-esports/SWIFT-TYPING/releases/download/v1.0.0/SwiftTyping.zip" 
+                href="https://github.com/sw-esports/SWIFT-TYPING/releases/download/v2.9/SwiftTyping.zip" 
                 download
                 className={`flex items-center gap-2 px-6 py-3 ${theme.primary} text-white rounded-xl hover:${theme.primaryHover} transition-all transform hover:scale-105 shadow-lg text-decoration-none`}
               >
@@ -272,7 +272,7 @@ const About = () => {
           </p>
           <div className="flex items-center justify-center gap-4">
             <a 
-              href="https://github.com/sw-esports/SWIFT-TYPING/releases/download/v1.0.0/SwiftTyping.zip" 
+              href="https://github.com/sw-esports/SWIFT-TYPING/releases/download/v2.9/SwiftTyping.zip" 
               download
               className="flex items-center gap-2 px-8 py-4 bg-white text-gray-800 rounded-xl hover:bg-gray-100 transition-all transform hover:scale-105 shadow-lg font-semibold text-decoration-none"
             >

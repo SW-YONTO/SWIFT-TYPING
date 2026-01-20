@@ -22,7 +22,22 @@ const difficultySettings = {
   hard: { lives: 5, label: 'Hard', wordsPerLevel: 15 }
 };
 
-// 8 Biomes with custom image assets and robot colors
+// Game constants - extracted from magic numbers for better maintainability
+const GAME_CONSTANTS = {
+  GAME_HEIGHT: 500,           // Game area height in pixels
+  INITIAL_PLAYER_Y: 350,      // Starting Y position of robot
+  INITIAL_PLAYER_X: 200,      // Starting X position of robot
+  GROUND_Y: 400,              // Ground level Y position
+  PLATFORM_HEIGHT: 45,        // Height of platforms
+  PLATFORM_WIDTH: 130,        // Width of platforms
+  CLIMB_TOP_Y: -80,           // Y position to climb off screen
+  FALL_START_Y: -60,          // Y position to start falling from
+  ANIMATION_INTERVAL: 16,     // ~60fps animation frame interval
+  CLIMB_SPEED: 8,             // Speed of climbing animation
+  FALL_SPEED: 6,              // Speed of falling animation
+  PARTICLE_COUNT: 15          // Number of background particles
+};
+
 const levelThemes = [
   { 
     name: 'Green Forest', 
@@ -166,15 +181,7 @@ const WindParticlesCSS = React.memo(({ type }) => {
 
   return (
     <div className="absolute inset-0 pointer-events-none overflow-hidden">
-      <style>{`
-        @keyframes fall-particle {
-          0% { transform: translateY(-20px) translateX(0) rotate(0deg); opacity: 0; }
-          10% { opacity: 0.7; }
-          90% { opacity: 0.7; }
-          100% { transform: translateY(520px) translateX(30px) rotate(360deg); opacity: 0; }
-        }
-        .particle-fall { animation: fall-particle linear infinite; }
-      `}</style>
+      {/* Animations now in index.css */}
       {particleStyles.map(p => (
         <div
           key={p.id}
@@ -204,8 +211,8 @@ const KeyboardJumpGame = ({ currentUser, settings }) => {
   const [platforms, setPlatforms] = useState([]);
   const [currentPlatformId, setCurrentPlatformId] = useState(0);
   const [targetPlatformId, setTargetPlatformId] = useState(null);
-  const [playerVisualY, setPlayerVisualY] = useState(350);
-  const [playerVisualX, setPlayerVisualX] = useState(200);
+  const [playerVisualY, setPlayerVisualY] = useState(GAME_CONSTANTS.INITIAL_PLAYER_Y);
+  const [playerVisualX, setPlayerVisualX] = useState(GAME_CONSTANTS.INITIAL_PLAYER_X);
   const [playerState, setPlayerState] = useState('idle');
   const [typedChars, setTypedChars] = useState([]);
   const [currentCharIndex, setCurrentCharIndex] = useState(0);
@@ -226,6 +233,7 @@ const KeyboardJumpGame = ({ currentUser, settings }) => {
   const [showLevelBadge, setShowLevelBadge] = useState(true);
   const [wrongInputShake, setWrongInputShake] = useState(false);
   const [robotFacing, setRobotFacing] = useState('right');
+  const [walkCycle, setWalkCycle] = useState(0); // Robot walk animation cycle
   
   // Level transition states
   const [skyTransitionProgress, setSkyTransitionProgress] = useState(0);
@@ -735,24 +743,7 @@ const KeyboardJumpGame = ({ currentUser, settings }) => {
 
   return (
     <div className="rounded-xl shadow-2xl overflow-hidden border-4 border-white transform transition-all">
-      <style>{`
-        @keyframes shake { 0%, 100% { transform: translateX(0) translateY(-4px); } 25% { transform: translateX(-4px) translateY(-4px); } 75% { transform: translateX(4px) translateY(-4px); } }
-        .animate-shake { animation: shake 0.2s cubic-bezier(.36,.07,.19,.97) both; }
-        @keyframes run-left { 0%, 100% { transform: rotate(0deg); } 50% { transform: rotate(15deg); } }
-        @keyframes run-right { 0%, 100% { transform: rotate(0deg); } 50% { transform: rotate(-15deg); } }
-        .animate-run-left { animation: run-left 0.3s infinite ease-in-out; }
-        .animate-run-right { animation: run-right 0.3s infinite ease-in-out; }
-        @keyframes arm-swing { 0%, 100% { transform: rotate(8deg); } 50% { transform: rotate(-8deg); } }
-        .animate-arm-left { animation: arm-swing 0.6s infinite ease-in-out; }
-        .animate-arm-right { animation: arm-swing 0.6s infinite ease-in-out reverse; }
-        @keyframes sun-pulse { 0%, 100% { transform: scale(1); filter: drop-shadow(0 0 10px rgba(255,200,0,0.5)); } 50% { transform: scale(1.1); filter: drop-shadow(0 0 20px rgba(255,200,0,0.8)); } }
-        .animate-sun { animation: sun-pulse 3s infinite ease-in-out; }
-        @keyframes cloud-drift { 0% { transform: translateX(0); } 50% { transform: translateX(15px); } 100% { transform: translateX(0); } }
-        .animate-cloud { animation: cloud-drift 8s infinite ease-in-out; }
-        .animate-cloud-slow { animation: cloud-drift 12s infinite ease-in-out; }
-        @keyframes robot-walk { 0%, 100% { transform: translateX(0); } 50% { transform: translateX(4px); } }
-        .animate-robot-walk { animation: robot-walk 0.8s infinite ease-in-out; }
-      `}</style>
+      {/* Game animations now in index.css */}
       <input ref={inputRef} type="text" onChange={handleInputChange} className="absolute opacity-0" autoComplete="off" autoFocus />
       <div ref={gameAreaRef} className="relative h-[500px] w-full overflow-hidden font-sans" onClick={() => inputRef.current?.focus()}>
          {/* Sky with gradient - smooth transition */}

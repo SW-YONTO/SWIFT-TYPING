@@ -153,7 +153,7 @@ const Footer = () => {
             </div>
             
             <div className="flex items-center gap-4">
-              <span className={`text-xs ${theme.textSecondary}`}>Version 1.0.0</span>
+              <span className={`text-xs ${theme.textSecondary}`}>Version 2.9</span>
               <div className={`h-4 w-px ${theme.border}`}></div>
               <span className={`text-xs ${theme.textSecondary}`}>Offline Ready</span>
             </div>
