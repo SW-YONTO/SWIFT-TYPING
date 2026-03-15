@@ -3,32 +3,36 @@ const path = require('path');
 const fs = require('fs');
 const isDev = process.env.NODE_ENV === 'development';
 
+// Set the app user model ID BEFORE ready event (critical for Windows taskbar/search icon)
+if (process.platform === 'win32') {
+  app.setAppUserModelId('com.swifttyping.app');
+}
+
 let mainWindow;
 
 function createWindow() {
-  // Set the app user model ID for Windows BEFORE creating window (critical for taskbar icon)
-  if (process.platform === 'win32') {
-    app.setAppUserModelId('com.swifttyping.app');
-  }
-
   // Get the correct icon path based on environment
-  const possiblePaths = [
-    path.join(__dirname, '../public/ICONS/SWIFTLOGO.ico'),  // Dev/testing - public folder
-    path.join(__dirname, '../public/ICONS/icon.png'),       // Dev/testing fallback
-    path.join(__dirname, '../dist/ICONS/SWIFTLOGO.ico'),    // Production packaged - dist folder
-    path.join(__dirname, '../dist/ICONS/icon.png'),         // Production packaged fallback
-    path.join(process.resourcesPath || '', 'SWIFTLOGO.ico'), // Production resources outside asar
-    path.join(process.resourcesPath || '', 'icon.ico')
-  ];
+  // In production (asar), extraResource files go to process.resourcesPath
+  // In dev, use public/ICONS directly
+  const possiblePaths = isDev
+    ? [
+        path.join(__dirname, '../public/ICONS/SWIFTLOGO.ico'),
+        path.join(__dirname, '../public/ICONS/icon.png'),
+      ]
+    : [
+        path.join(process.resourcesPath, 'SWIFTLOGO.ico'),
+        path.join(process.resourcesPath, 'icon.png'),
+      ];
 
-  // Use first existing path
-  const iconPath = possiblePaths.find(p => fs.existsSync(p)) || possiblePaths[0];
+  const iconPath = possiblePaths.find(p => fs.existsSync(p));
 
   // Load icon using nativeImage for better Windows compatibility
   let appIcon = null;
-  if (fs.existsSync(iconPath)) {
+  if (iconPath && fs.existsSync(iconPath)) {
     appIcon = nativeImage.createFromPath(iconPath);
     console.log('Icon loaded:', iconPath, '| Empty:', appIcon.isEmpty());
+  } else {
+    console.warn('WARNING: No icon file found! Searched:', possiblePaths);
   }
 
   mainWindow = new BrowserWindow({

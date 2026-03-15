@@ -12,8 +12,8 @@
     "lint": "eslint .",
     "electron": "electron .",
     "prebuild:icon": "node convert-icon.cjs",
-    "pack": "npm run prebuild:icon && npm run build && electron-builder --win --dir",
-    "dist": "npm run prebuild:icon && npm run build && electron-builder --win"
+    "pack": "npm run prebuild:icon && npm run build && cross-env CSC_IDENTITY_AUTO_DISCOVERY=false electron-builder --win",
+    "dist": "npm run prebuild:icon && npm run build && cross-env CSC_IDENTITY_AUTO_DISCOVERY=false electron-builder --win"
   },
   "dependencies": {
     "@tailwindcss/vite": "^4.1.11",
@@ -37,13 +37,12 @@
     "concurrently": "^9.2.1",
     "cross-env": "^10.1.0",
     "electron": "^39.0.0",
-    "electron-builder": "^26.0.12",
+    "electron-builder": "^26.8.1",
     "eslint": "^9.29.0",
     "eslint-plugin-react-hooks": "^5.2.0",
     "eslint-plugin-react-refresh": "^0.4.20",
     "globals": "^16.2.0",
     "png-to-ico": "^3.0.1",
-    "to-ico": "^1.1.5",
     "vite": "^7.0.0",
     "vite-plugin-pwa": "^1.0.1",
     "wait-on": "^8.0.3",
@@ -63,16 +62,12 @@
     ],
     "extraResources": [
       {
-        "from": "public/ICONS/icon.png",
-        "to": "icon.png"
-      },
-      {
         "from": "public/ICONS/SWIFTLOGO.ico",
         "to": "SWIFTLOGO.ico"
       },
       {
-        "from": "public/ICONS/SWIFTLOGO.ico",
-        "to": "icon.ico"
+        "from": "public/ICONS/icon.png",
+        "to": "icon.png"
       }
     ],
     "win": {
@@ -83,6 +78,7 @@
     "nsis": {
       "oneClick": false,
       "allowToChangeInstallationDirectory": true,
+      "perMachine": false,
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true,
       "shortcutName": "Swift Typing",
