@@ -1,30 +1,34 @@
-const { app, BrowserWindow, globalShortcut } = require('electron');
+const { app, BrowserWindow, nativeImage } = require('electron');
 const path = require('path');
+const fs = require('fs');
 const isDev = process.env.NODE_ENV === 'development';
 
 let mainWindow;
 
 function createWindow() {
+  // Set the app user model ID for Windows BEFORE creating window (critical for taskbar icon)
+  if (process.platform === 'win32') {
+    app.setAppUserModelId('com.swifttyping.app');
+  }
+
   // Get the correct icon path based on environment
-  let iconPath;
-  
-  if (isDev) {
-    // Development: use PNG from public folder
-    iconPath = path.join(__dirname, '../public/favicon_io/icon.png');
-  } else {
-    // Production: try multiple locations
-    const fs = require('fs');
-    const possiblePaths = [
-      path.join(process.resourcesPath, 'icon.ico'),  // Windows prefers .ico
-      path.join(process.resourcesPath, 'icon.png'),
-      path.join(process.resourcesPath, 'app.asar.unpacked', 'icon.png'),
-      path.join(__dirname, '../build/icon.ico'),
-      path.join(__dirname, '../build/icon.png'),
-      path.join(__dirname, '../public/favicon_io/icon.png')
-    ];
-    
-    // Use first existing path
-    iconPath = possiblePaths.find(p => fs.existsSync(p)) || possiblePaths[0];
+  const possiblePaths = [
+    path.join(__dirname, '../public/ICONS/SWIFTLOGO.ico'),  // Dev/testing - public folder
+    path.join(__dirname, '../public/ICONS/icon.png'),       // Dev/testing fallback
+    path.join(__dirname, '../dist/ICONS/SWIFTLOGO.ico'),    // Production packaged - dist folder
+    path.join(__dirname, '../dist/ICONS/icon.png'),         // Production packaged fallback
+    path.join(process.resourcesPath || '', 'SWIFTLOGO.ico'), // Production resources outside asar
+    path.join(process.resourcesPath || '', 'icon.ico')
+  ];
+
+  // Use first existing path
+  const iconPath = possiblePaths.find(p => fs.existsSync(p)) || possiblePaths[0];
+
+  // Load icon using nativeImage for better Windows compatibility
+  let appIcon = null;
+  if (fs.existsSync(iconPath)) {
+    appIcon = nativeImage.createFromPath(iconPath);
+    console.log('Icon loaded:', iconPath, '| Empty:', appIcon.isEmpty());
   }
 
   mainWindow = new BrowserWindow({
@@ -33,19 +37,18 @@ function createWindow() {
     fullscreen: true,
     autoHideMenuBar: true,
     title: 'Swift Typing',
-    icon: iconPath,
+    icon: appIcon || iconPath,
     webPreferences: {
       nodeIntegration: false,
       contextIsolation: true,
       webSecurity: true,
-      // Disable default zoom behavior so our app can handle it
       zoomFactor: 1.0,
     },
   });
 
-  // Set the app user model ID for Windows (important for taskbar icon)
-  if (process.platform === 'win32') {
-    app.setAppUserModelId('com.swifttyping.app');
+  // Also set the window icon explicitly for taskbar
+  if (appIcon && !appIcon.isEmpty()) {
+    mainWindow.setIcon(appIcon);
   }
 
   // Disable Electron's default zoom keyboard shortcuts
@@ -70,7 +73,7 @@ function createWindow() {
 
   // Enter fullscreen mode (F11)
   mainWindow.setFullScreen(true);
-  
+
   // Hide menu bar
   mainWindow.setMenuBarVisibility(false);
 

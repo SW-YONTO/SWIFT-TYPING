@@ -1,7 +1,7 @@
 {
   "name": "swift-typing",
   "private": true,
-  "version": "2.9.0",
+  "version": "2.9.2",
   "author": "SW-YONTO (Suraj Maurya)",
   "type": "module",
   "description": "A comprehensive offline typing tutor desktop application",
@@ -11,10 +11,9 @@
     "build": "vite build",
     "lint": "eslint .",
     "electron": "electron .",
-    "electron:dev": "concurrently \"npm run dev\" \"wait-on http://localhost:5173 && cross-env NODE_ENV=development electron .\"",
-    "prebuild:icon": "node -e \"const fs = require('fs'); const path = require('path'); if (!fs.existsSync('build')) fs.mkdirSync('build'); fs.copyFileSync('public/favicon_io/clipboard256.ico', 'build/icon.ico'); fs.copyFileSync('public/favicon_io/icon.png', 'build/icon.png');\"",
-    "pack": "npm run prebuild:icon && npm run build && electron-builder --dir",
-    "dist": "npm run prebuild:icon && npm run build && electron-builder"
+    "prebuild:icon": "node convert-icon.cjs",
+    "pack": "npm run prebuild:icon && npm run build && electron-builder --win --dir",
+    "dist": "npm run prebuild:icon && npm run build && electron-builder --win"
   },
   "dependencies": {
     "@tailwindcss/vite": "^4.1.11",
@@ -64,19 +63,22 @@
     ],
     "extraResources": [
       {
-        "from": "public/favicon_io/android-chrome-512x512.png",
+        "from": "public/ICONS/icon.png",
         "to": "icon.png"
       },
       {
-        "from": "public/icon.ico",
+        "from": "public/ICONS/SWIFTLOGO.ico",
+        "to": "SWIFTLOGO.ico"
+      },
+      {
+        "from": "public/ICONS/SWIFTLOGO.ico",
         "to": "icon.ico"
       }
     ],
     "win": {
       "target": "nsis",
       "icon": "build/icon.ico",
-      "requestedExecutionLevel": "asInvoker",
-      "signAndEditExecutable": false
+      "requestedExecutionLevel": "asInvoker"
     },
     "nsis": {
       "oneClick": false,

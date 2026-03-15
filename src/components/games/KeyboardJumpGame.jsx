@@ -4,6 +4,22 @@ import { useTheme } from '../../contexts/ThemeContext';
 import { progressManager } from '../../utils/storage';
 import { playSound } from '../../utils/soundEffects';
 
+// Helper to get correct base path for assets (handles both dev server and Electron file:// protocol)
+const getBasePath = () => {
+  // In Electron production, window.location is file:///path/to/dist/index.html
+  // We need to extract the directory path
+  if (window.location.protocol === 'file:') {
+    const pathname = window.location.pathname;
+    // Remove the filename (index.html) to get the directory
+    const dir = pathname.substring(0, pathname.lastIndexOf('/'));
+    return dir;
+  }
+  // In dev mode, use empty string (relative to current origin)
+  return '';
+};
+
+const BASE_PATH = getBasePath();
+
 // Theme words (4-5 letters only)
 const WORDS = {
   'Green Forest': ['tree', 'leaf', 'bird', 'nest', 'moss', 'fern', 'bark', 'vine', 'root', 'bush', 'wood', 'twig', 'palm', 'pine', 'deer'],
@@ -263,7 +279,7 @@ const KeyboardJumpGame = ({ currentUser, settings }) => {
       const allImages = [];
       levelThemes.forEach(theme => {
         theme.files.forEach(file => {
-          allImages.push(`/assets/keyboard_jump/biomes/${encodeURIComponent(theme.folder)}/${encodeURIComponent(file)}`);
+          allImages.push(`${BASE_PATH}/assets/keyboard_jump/biomes/${encodeURIComponent(theme.folder)}/${encodeURIComponent(file)}`);
         });
       });
       
@@ -582,7 +598,7 @@ const KeyboardJumpGame = ({ currentUser, settings }) => {
 
   // Get biome asset path
   const getBiomeAssetPath = (theme, index) => {
-    return `/assets/keyboard_jump/biomes/${encodeURIComponent(theme.folder)}/${encodeURIComponent(theme.files[index])}`;
+    return `${BASE_PATH}/assets/keyboard_jump/biomes/${encodeURIComponent(theme.folder)}/${encodeURIComponent(theme.files[index])}`;
   };
 
   const renderRobot = () => {
