@@ -1188,7 +1188,7 @@ const Settings = ({ currentUser, settings, onSettingsChange }) => {
             <div className={`space-y-4`}>
               <div className="flex justify-between items-center py-2">
                 <span className={`${theme.textSecondary} text-sm`}>Version</span>
-                <span className={`font-bold ${theme.text}`}>2.9.1</span>
+                <span className={`font-bold ${theme.text}`}>3.26.6</span>
               </div>
               <div className="flex justify-between items-center py-2">
                 <span className={`${theme.textSecondary} text-sm`}>Developer</span>

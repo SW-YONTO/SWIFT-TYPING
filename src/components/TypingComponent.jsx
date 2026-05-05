@@ -10,15 +10,102 @@ import { soundEffects } from '../utils/soundEffects';
 import { achievementManager, ACHIEVEMENTS } from '../utils/achievements';
 import { AchievementToast } from './AchievementsPanel';
 
-// MONKEYTYPE-INSPIRED: Word-based rendering with line jumping
-// Removes previous lines as user progresses, keeps only 2-3 visible lines
+// MONKEYTYPE-INSPIRED: High-performance continuous word rendering
+// Performance strategy:
+//  - Individual words are memoized and only re-render when their state changes
+//  - Uses refs for hot-path values (currentIndex, errors) to avoid unnecessary re-renders
+//  - Line-jump DOM queries are throttled to only run on word boundary changes
+//  - No CSS transitions on letters - instant color changes like MonkeyType
+//  - GPU-accelerated container transform for smooth line jumping
+const VISIBLE_WORD_BUFFER = 60;
+const LINE_JUMP_THRESHOLD = 2;
+
+// Determine if a word has any errors by checking each character directly
+// This is O(wordLength) per word, much faster than Array.from(errors).some() which is O(totalErrors)
+const wordHasError = (errors, startIndex, endIndex) => {
+  for (let i = startIndex; i <= endIndex; i++) {
+    if (errors.has(i)) return true;
+  }
+  return false;
+};
+
+// Individual memoized word component - only re-renders when its specific state changes
+const MemoizedWord = React.memo(({ 
+  word, 
+  actualWordIndex, 
+  wordState, // 'active' | 'typed' | 'untyped'
+  hasError, 
+  currentIndex, 
+  errors, 
+  cursorPos, 
+  isAtSpace,
+  caretColor 
+}) => {
+  const isThisWordBeforeSpace = isAtSpace && word.endIndex === cursorPos;
+  
+  return (
+    <div
+      className={`word ${wordState === 'active' ? 'active' : ''} ${hasError ? 'error' : ''}`}
+      data-wordindex={actualWordIndex}
+    >
+      {word.text.split('').map((char, letterIdx) => {
+        const charIndex = word.startIndex + letterIdx;
+        
+        // Inline letter class logic to avoid function call overhead
+        let letterClass;
+        if (charIndex < currentIndex) {
+          letterClass = errors.has(charIndex) ? 'letter-incorrect' : 'letter-correct';
+        } else if (charIndex === currentIndex) {
+          letterClass = 'letter-current';
+        } else {
+          letterClass = 'letter-untyped';
+        }
+        
+        const shouldShowCaret = charIndex === cursorPos && !isAtSpace;
+        
+        return (
+          <span
+            key={charIndex}
+            className={`letter ${letterClass}`}
+          >
+            {char}
+            {shouldShowCaret && (
+              <span className="caret" style={{ backgroundColor: caretColor }} />
+            )}
+          </span>
+        );
+      })}
+      {/* Cursor after last letter when at space between words */}
+      {isThisWordBeforeSpace && (
+        <span 
+          className="caret caret-after-word"
+          style={{ backgroundColor: caretColor }}
+        />
+      )}
+    </div>
+  );
+}, (prev, next) => {
+  // Custom comparison: only re-render if this word's visual state actually changed
+  return (
+    prev.wordState === next.wordState &&
+    prev.hasError === next.hasError &&
+    prev.cursorPos === next.cursorPos &&
+    prev.isAtSpace === next.isAtSpace &&
+    prev.currentIndex === next.currentIndex &&
+    prev.word.startIndex === next.word.startIndex
+  );
+});
+
+MemoizedWord.displayName = 'MemoizedWord';
+
 const MonkeyTypeText = React.memo(({ 
   content, 
   currentIndex, 
   errors, 
   theme, 
   fontSize, 
-  fontFamily
+  fontFamily,
+  onNeedMoreWords
 }) => {
   const containerRef = useRef(null);
   const wordsRef = useRef(null);
@@ -26,8 +113,11 @@ const MonkeyTypeText = React.memo(({
   const [visibleStartIndex, setVisibleStartIndex] = useState(0);
   const lastLineTopRef = useRef(0);
   const lineHeightRef = useRef(0);
+  const prevContentLenRef = useRef(0);
+  // Track previous word index to throttle line-jump checks
+  const prevWordIndexRef = useRef(-1);
   
-  const getTypingFontSize = () => {
+  const typingFontSize = useMemo(() => {
     const fontSizeMap = {
       'small': 'text-lg',
       'medium': 'text-xl',
@@ -36,9 +126,9 @@ const MonkeyTypeText = React.memo(({
       '2xl': 'text-4xl'
     };
     return fontSizeMap[fontSize] || fontSizeMap['medium'];
-  };
+  }, [fontSize]);
 
-  const getTypingFontFamily = () => {
+  const typingFontFamily = useMemo(() => {
     const fontFamilyMap = {
       'inter': 'Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
       'roboto': 'Roboto, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
@@ -46,7 +136,7 @@ const MonkeyTypeText = React.memo(({
       'serif': 'ui-serif, Georgia, Cambria, "Times New Roman", Times, serif'
     };
     return fontFamilyMap[fontFamily] || fontFamilyMap['mono'];
-  };
+  }, [fontFamily]);
 
   // Split content into words with position tracking
   const allWords = useMemo(() => {
@@ -89,26 +179,53 @@ const MonkeyTypeText = React.memo(({
         return i;
       }
     }
-    return allWords.length - 1;
+    if (allWords.length > 0 && currentIndex > allWords[allWords.length - 1].endIndex) {
+      return allWords.length - 1;
+    }
+    return Math.max(0, allWords.length - 1);
   }, [allWords, currentIndex]);
 
-  // Filter visible words - show current word and upcoming words only
-  const visibleWords = useMemo(() => {
-    // Show from visibleStartIndex onwards (max ~40 words for 2-3 lines)
-    return allWords.slice(visibleStartIndex, visibleStartIndex + 40);
-  }, [allWords, visibleStartIndex]);
-
-  // MONKEYTYPE-STYLE LINE JUMP: 3-line system - user always types on middle line
-  // Line 1 (top) -> Line 2 (middle/active) -> Line 3 (bottom)
-  // When user moves from Line 1 to Line 2: no scroll
-  // When user moves from Line 2 to Line 3: Line 1 scrolls up and disappears
+  // Reset when content is reset (restart)
   useEffect(() => {
+    if (content.length < prevContentLenRef.current) {
+      setVisibleStartIndex(0);
+      setTranslateY(0);
+      lastLineTopRef.current = 0;
+      lineHeightRef.current = 0;
+      prevWordIndexRef.current = -1;
+    }
+    prevContentLenRef.current = content.length;
+  }, [content]);
+
+  // Request more words when buffer is low
+  useEffect(() => {
+    if (!onNeedMoreWords) return;
+    const remainingWords = allWords.length - currentWordIndex;
+    if (remainingWords < 30) {
+      onNeedMoreWords();
+    }
+  }, [currentWordIndex, allWords.length, onNeedMoreWords]);
+
+  // Compute visible words
+  const safeStart = Math.min(visibleStartIndex, currentWordIndex);
+  const visibleWords = useMemo(() => {
+    const end = Math.min(safeStart + VISIBLE_WORD_BUFFER, allWords.length);
+    return allWords.slice(safeStart, end);
+  }, [allWords, safeStart]);
+
+  // LINE JUMP: Only check when the current WORD changes (not every keystroke)
+  // This dramatically reduces DOM queries from ~300/min to ~60/min for a 60 WPM typist
+  useEffect(() => {
+    // Skip if word hasn't changed
+    if (currentWordIndex === prevWordIndexRef.current) return;
+    prevWordIndexRef.current = currentWordIndex;
+    
     if (!wordsRef.current || currentWordIndex < 0 || visibleWords.length === 0) return;
 
-    const wordElements = Array.from(wordsRef.current.querySelectorAll('.word'));
+    const wordElements = wordsRef.current.querySelectorAll('.word');
     if (wordElements.length === 0) return;
 
-    const currentVisibleIndex = currentWordIndex - visibleStartIndex;
+    const currentVisibleIndex = currentWordIndex - safeStart;
     if (currentVisibleIndex < 0 || currentVisibleIndex >= wordElements.length) return;
     
     const currentWordEl = wordElements[currentVisibleIndex];
@@ -116,187 +233,76 @@ const MonkeyTypeText = React.memo(({
 
     const currentTop = currentWordEl.offsetTop;
     
-    // Initialize on first render
+    // Initialize line height on first render
     if (lineHeightRef.current === 0 && wordElements[0]) {
-      const firstWordHeight = wordElements[0].offsetHeight;
-      // Calculate line height based on actual rendered height + line spacing
       const computedStyle = window.getComputedStyle(wordElements[0]);
-      const lineHeight = parseFloat(computedStyle.lineHeight) || firstWordHeight * 1.6;
-      lineHeightRef.current = lineHeight;
+      lineHeightRef.current = parseFloat(computedStyle.lineHeight) || wordElements[0].offsetHeight * 1.6;
       lastLineTopRef.current = 0;
       return;
     }
 
-    // Detect when user moves to a new line
-    // Use a threshold to avoid false positives from small position changes
     const lineChangeThreshold = lineHeightRef.current * 0.5;
     
     if (currentTop > lastLineTopRef.current + lineChangeThreshold) {
-      // User moved to a new line!
-      const newLineTop = currentTop;
-      lastLineTopRef.current = newLineTop;
+      lastLineTopRef.current = currentTop;
       
-      // Find all words on previous lines (lines above current line)
+      // Find words on previous lines
       const wordsOnPreviousLines = [];
-      
       for (let i = 0; i < currentVisibleIndex; i++) {
-        const wordEl = wordElements[i];
-        if (!wordEl) continue;
-        
-        // If word is on a line above the current line
-        if (wordEl.offsetTop < currentTop - lineChangeThreshold) {
+        if (wordElements[i] && wordElements[i].offsetTop < currentTop - lineChangeThreshold) {
           wordsOnPreviousLines.push(i);
         }
       }
 
-      // Count how many distinct lines are above the current line
+      // Count distinct lines above
       const linesAbove = new Set();
-      wordsOnPreviousLines.forEach(idx => {
-        const wordTop = wordElements[idx].offsetTop;
-        const lineNumber = Math.round(wordTop / lineHeightRef.current);
-        linesAbove.add(lineNumber);
-      });
+      for (const idx of wordsOnPreviousLines) {
+        linesAbove.add(Math.round(wordElements[idx].offsetTop / lineHeightRef.current));
+      }
 
-      // Only scroll if there are 2+ lines above current (meaning we're on line 3 or beyond)
-      // This keeps user typing on the middle line
-      if (linesAbove.size >= 2 && wordsOnPreviousLines.length > 0) {
-        // Find the words on the topmost line only
+      if (linesAbove.size >= LINE_JUMP_THRESHOLD && wordsOnPreviousLines.length > 0) {
+        // Find topmost line words
         let minTop = Infinity;
-        wordsOnPreviousLines.forEach(idx => {
-          const wordTop = wordElements[idx].offsetTop;
-          if (wordTop < minTop) minTop = wordTop;
-        });
+        for (const idx of wordsOnPreviousLines) {
+          const top = wordElements[idx].offsetTop;
+          if (top < minTop) minTop = top;
+        }
         
-        // Get all words on the topmost line
-        const topLineWords = wordsOnPreviousLines.filter(idx => {
-          const wordTop = wordElements[idx].offsetTop;
-          return Math.abs(wordTop - minTop) < 5; // Same line threshold
-        });
+        const topLineWords = wordsOnPreviousLines.filter(idx => 
+          Math.abs(wordElements[idx].offsetTop - minTop) < 5
+        );
         
         if (topLineWords.length > 0) {
-          const lastWordOfTopLine = Math.max(...topLineWords);
-          const newVisibleStart = visibleStartIndex + lastWordOfTopLine + 1;
+          const newVisibleStart = safeStart + Math.max(...topLineWords) + 1;
           
-          // Instant line jump - no animation
           setTranslateY(-lineHeightRef.current);
-          
-          // Immediately remove the words and reset (no delay)
-          setTimeout(() => {
+          requestAnimationFrame(() => {
             setVisibleStartIndex(newVisibleStart);
             setTranslateY(0);
             lastLineTopRef.current = 0;
-          }, 0); // 0ms = instant
+          });
         }
       }
     }
-  }, [currentWordIndex, visibleStartIndex, visibleWords.length]);
+  }, [currentWordIndex, safeStart, visibleWords.length]);
 
-  // Get color class for a letter based on its state
-  const getLetterClass = (charIndex) => {
-    const isCurrentChar = charIndex === currentIndex;
-    
-    if (charIndex < currentIndex) {
-      // Typed character
-      if (errors.has(charIndex)) {
-        return 'letter-incorrect';
-      }
-      return 'letter-correct';
-    } else if (isCurrentChar) {
-      return 'letter-current';
-    }
-    return 'letter-untyped';
-  };
+  // Precompute cursor state once per render (not per word)
+  const isAtSpace = currentIndex < content.length && content[currentIndex] === ' ';
+  const cursorPos = (isAtSpace && currentIndex > 0) ? currentIndex - 1 : currentIndex;
+  const caretColor = theme.css?.['--theme-cursor'] || '#3b82f6';
 
-  // Check if current position is a space - cursor should show at end of previous word
-  const isCurrentPositionSpace = () => {
-    return currentIndex < content.length && content[currentIndex] === ' ';
-  };
-
-  // Get the position where cursor should be displayed
-  const getCursorPosition = () => {
-    // If we're at a space, show cursor at the end of previous word
-    if (isCurrentPositionSpace() && currentIndex > 0) {
-      return currentIndex - 1; // Show at last letter of previous word
-    }
-    return currentIndex;
-  };
-
-  // Render a single word with its letters
-  const renderWord = (word, wordIndex) => {
-    const actualWordIndex = visibleStartIndex + wordIndex;
-    const isActive = actualWordIndex === currentWordIndex;
-    const hasError = Array.from(errors).some(
-      errorIdx => errorIdx >= word.startIndex && errorIdx <= word.endIndex
-    );
-    
-    const cursorPos = getCursorPosition();
-    const isAtSpace = isCurrentPositionSpace();
-    const isThisWordBeforeSpace = isAtSpace && word.endIndex === cursorPos;
-    
-    return (
-      <div
-        key={`word-${actualWordIndex}-${word.startIndex}`}
-        className={`word ${isActive ? 'active' : ''} ${hasError ? 'error' : ''}`}
-        data-wordindex={actualWordIndex}
-        style={{ position: 'relative' }}
-      >
-        {word.text.split('').map((char, letterIdx) => {
-          const charIndex = word.startIndex + letterIdx;
-          const letterClass = getLetterClass(charIndex);
-          const isLastLetter = charIndex === word.endIndex;
-          const shouldShowCursorOnLetter = charIndex === cursorPos && !isAtSpace;
-          
-          return (
-            <span
-              key={`letter-${charIndex}`}
-              className={`letter ${letterClass}`}
-              data-index={charIndex}
-              style={{ position: 'relative' }}
-            >
-              {char}
-              {shouldShowCursorOnLetter && (
-                <span 
-                  className="caret"
-                  style={{ 
-                    backgroundColor: theme.css?.['--theme-cursor'] || '#3b82f6'
-                  }}
-                />
-              )}
-            </span>
-          );
-        })}
-        {/* Show cursor AFTER last letter when at space */}
-        {isThisWordBeforeSpace && (
-          <span 
-            className="caret"
-            style={{ 
-              position: 'absolute',
-              right: '-2px',
-              top: '25%',
-              height: '65%',
-              width: '2px',
-              backgroundColor: theme.css?.['--theme-cursor'] || '#3b82f6',
-              animation: 'caretBlink 1s ease-in-out infinite',
-              borderRadius: '2px'
-            }}
-          />
-        )}
-      </div>
-    );
-  };
-
-  const fontStyle = { fontFamily: getTypingFontFamily() };
+  const containerStyle = useMemo(() => ({
+    fontFamily: typingFontFamily,
+    width: '100%',
+    overflow: 'hidden',
+    position: 'relative'
+  }), [typingFontFamily]);
 
   return (
     <div 
       ref={containerRef}
-      className={`monkeytype-container ${getTypingFontSize()}`}
-      style={{ 
-        ...fontStyle,
-        width: '100%',
-        overflow: 'hidden',
-        position: 'relative'
-      }}
+      className={`monkeytype-container ${typingFontSize}`}
+      style={containerStyle}
     >
       <div 
         ref={wordsRef}
@@ -308,10 +314,38 @@ const MonkeyTypeText = React.memo(({
           gap: '0',
           alignItems: 'flex-start',
           transform: `translateY(${translateY}px)`,
-          position: 'relative'
         }}
       >
-        {visibleWords.map((word, index) => renderWord(word, index))}
+        {visibleWords.map((word, index) => {
+          const actualWordIndex = safeStart + index;
+          
+          // Determine word state for memo comparison
+          let wordState;
+          if (actualWordIndex < currentWordIndex) {
+            wordState = 'typed';
+          } else if (actualWordIndex === currentWordIndex) {
+            wordState = 'active';
+          } else {
+            wordState = 'untyped';
+          }
+          
+          const hasError = wordState !== 'untyped' && wordHasError(errors, word.startIndex, word.endIndex);
+          
+          return (
+            <MemoizedWord
+              key={`${actualWordIndex}-${word.startIndex}`}
+              word={word}
+              actualWordIndex={actualWordIndex}
+              wordState={wordState}
+              hasError={hasError}
+              currentIndex={currentIndex}
+              errors={errors}
+              cursorPos={cursorPos}
+              isAtSpace={isAtSpace}
+              caretColor={caretColor}
+            />
+          );
+        })}
       </div>
     </div>
   );
@@ -428,20 +462,34 @@ const TypingComponent = ({
     return () => window.removeEventListener('keydown', handleKeyDown, { capture: true });
   }, [fontSize, changeFontSize]);
 
-  // Memoized content generation to avoid recalculation
+  // Memoized content generation - creates initial chunk of words
+  // For time/word modes, generates enough content to start typing smoothly.
+  // Additional content is appended on-demand via handleNeedMoreWords.
   const generateInfiniteContent = useCallback(() => {
     if (practiceSettings.practiceMode === 'time' || practiceSettings.practiceMode === 'word') {
       let infiniteContent = '';
       const baseContent = content.trim();
-      
-      for (let i = 0; i < 5; i++) {
+      // Generate ~10 repetitions initially (~100-200 words depending on content)
+      // This ensures enough buffer for fast typists while keeping initial load light
+      for (let i = 0; i < 10; i++) {
         infiniteContent += (i > 0 ? ' ' : '') + baseContent;
       }
-      
       return infiniteContent;
     } else {
       return content;
     }
+  }, [content, practiceSettings.practiceMode]);
+
+  // Callback for MonkeyTypeText to request more words when buffer runs low
+  // This appends content in chunks (3 repetitions at a time) for smooth streaming
+  const handleNeedMoreWords = useCallback(() => {
+    if (practiceSettings.practiceMode !== 'time' && practiceSettings.practiceMode !== 'word') return;
+    const baseContent = content.trim();
+    let extension = '';
+    for (let i = 0; i < 5; i++) {
+      extension += ' ' + baseContent;
+    }
+    setGeneratedContent(prev => prev + extension);
   }, [content, practiceSettings.practiceMode]);
 
   // Memoized stats calculation
@@ -513,40 +561,9 @@ const TypingComponent = ({
     setCurrentKey(infiniteContent[0]?.toLowerCase() || '');
   }, [content, practiceSettings.practiceMode]);
 
-  // Handle auto-scroll when user completes lines (only scroll after full line completion)
-  useEffect(() => {
-    if ((practiceSettings.practiceMode === 'time' || practiceSettings.practiceMode === 'word') && 
-        textRef.current) {
-      
-      // More conservative calculation - wait longer before scrolling
-      const approxCharsPerLine = 60; // Increased from 50 to wait longer per line
-      const approxLineHeight = 30; // Reduced from 40 to scroll less per line
-      
-      // Calculate current line number (0-based)
-      const currentLine = Math.floor(currentIndex / approxCharsPerLine);
-      
-      // Only scroll when user has completed at least 3 full lines (instead of 2)
-      // This prevents early scrolling and keeps text stable longer
-      if (currentLine >= 3) {
-        // Keep the typing position visible but don't scroll too aggressively
-        // Show 2 lines above and keep current line visible
-        const scrollLines = Math.max(0, currentLine - 2); // More conservative scrolling
-        const newScrollOffset = scrollLines * approxLineHeight;
-        
-        // Only update if scroll offset changed by at least one full line (prevents micro-scrolls)
-        setScrollOffset(prevOffset => {
-          const diff = Math.abs(newScrollOffset - prevOffset);
-          if (diff >= approxLineHeight) { // Only scroll by full line heights
-            return newScrollOffset;
-          }
-          return prevOffset;
-        });
-      } else {
-        // Keep scroll at 0 for first 3 lines (instead of 2)
-        setScrollOffset(0);
-      }
-    }
-  }, [currentIndex, practiceSettings.practiceMode]);
+  // NOTE: Auto-scroll is now handled inside MonkeyTypeText via line-jumping.
+  // The MonkeyTypeText component manages its own visible window and requests
+  // more content via onNeedMoreWords when the buffer runs low.
 
   // Timer effect - runs continuously once typing starts
   useEffect(() => {
@@ -722,51 +739,13 @@ const TypingComponent = ({
       setIsActive(true);
     }
 
-    // For time/word modes, extend content if user is approaching the end
-    if ((practiceSettings.practiceMode === 'time' || practiceSettings.practiceMode === 'word') && 
-        newLength > generatedContent.length - 150) { // Extend when 150 chars left
-      const baseContent = content.trim();
-      // Add just 3 more repetitions to keep it lightweight
-      let extension = '';
-      for (let i = 0; i < 3; i++) {
-        extension += ' ' + baseContent;
-      }
-      setGeneratedContent(prev => prev + extension);
-    }
+    // Content extension is now handled by MonkeyTypeText's onNeedMoreWords callback.
+    // No need for character-based content extension or trimming here.
 
-    // Trim old content if it gets too long (keep last 2000 characters)
-    if ((practiceSettings.practiceMode === 'time' || practiceSettings.practiceMode === 'word') && 
-        generatedContent.length > 3000 && newLength > 800) {
-      const trimAmount = generatedContent.length - 2000;
-      const newContent = generatedContent.substring(trimAmount);
-      const newIndex = Math.max(0, newLength - trimAmount);
-      
-      setGeneratedContent(newContent);
-      setCurrentIndex(newIndex);
-      setUserInput(value.substring(trimAmount));
-      
-      // Adjust scroll offset when trimming
-      setScrollOffset(prev => Math.max(0, prev - (trimAmount * 0.8))); // Rough adjustment
-      
-      // Adjust errors sets
-      const newErrors = new Set();
-      const newAllErrors = new Set();
-      errors.forEach(errorIndex => {
-        const adjustedIndex = errorIndex - trimAmount;
-        if (adjustedIndex >= 0) newErrors.add(adjustedIndex);
-      });
-      allErrors.forEach(errorIndex => {
-        const adjustedIndex = errorIndex - trimAmount;
-        if (adjustedIndex >= 0) newAllErrors.add(adjustedIndex);
-      });
-      setErrors(newErrors);
-      setAllErrors(newAllErrors);
-      
-      return; // Early return to avoid duplicate processing
-    }
-
-    // Prevent going beyond current content length (except in time/word modes where content repeats)
-    if (practiceSettings.practiceMode === 'lesson' && newLength > generatedContent.length) return;
+    // Prevent going beyond generated content length
+    // For time/word modes, MonkeyTypeText will request more content via onNeedMoreWords
+    // before user reaches the end, so this should rarely be hit
+    if (newLength > generatedContent.length) return;
 
     setUserInput(value);
     setCurrentIndex(newLength);
@@ -778,35 +757,48 @@ const TypingComponent = ({
       setCurrentKey('');
     }
 
-    // Check for errors and correct characters
-    const newErrors = new Set();
-    const newAllErrors = new Set(allErrors);
-    let correctCount = 0;
-    let hasNewError = false;
-    
-    for (let i = 0; i < newLength; i++) {
-      if (value[i] === generatedContent[i]) {
-        correctCount++;
+    // Optimized error checking: only check the last character change
+    // instead of re-scanning all characters on every keystroke.
+    // This keeps input handling O(1) even for very long typing sessions.
+    if (newLength > userInput.length) {
+      // Character was added (typing forward)
+      const i = newLength - 1;
+      const isCorrect = value[i] === generatedContent[i];
+      
+      const newErrors = new Set(errors);
+      const newAllErrors = new Set(allErrors);
+      let hasNewError = false;
+      
+      if (isCorrect) {
+        newErrors.delete(i);
       } else {
-        if (!errors.has(i)) hasNewError = true;
+        hasNewError = !errors.has(i);
         newErrors.add(i);
         newAllErrors.add(i);
       }
-    }
-    
-    // Play sound effects
-    if (newLength > userInput.length) {
-      // Only play sound on typing forward (not backspace)
-      if (hasNewError || (newLength > 0 && value[newLength - 1] !== generatedContent[newLength - 1])) {
+      
+      // Play sound effects
+      if (hasNewError || !isCorrect) {
         soundEffects.playError();
       } else {
         soundEffects.playKeypress();
       }
+      
+      setErrors(newErrors);
+      setAllErrors(newAllErrors);
+      setCorrectCharacters(isCorrect ? correctCharacters + 1 : correctCharacters);
+    } else if (newLength < userInput.length) {
+      // Character was deleted (backspace)
+      const deletedIndex = newLength;
+      const newErrors = new Set(errors);
+      newErrors.delete(deletedIndex);
+      
+      const wasDeletedCharCorrect = userInput[deletedIndex] === generatedContent[deletedIndex];
+      setErrors(newErrors);
+      if (wasDeletedCharCorrect) {
+        setCorrectCharacters(prev => Math.max(0, prev - 1));
+      }
     }
-    
-    setErrors(newErrors);
-    setAllErrors(newAllErrors);
-    setCorrectCharacters(correctCount);
 
   // Check for completion based on practice mode
     const wordsTyped = calculateWordsTyped(value);
@@ -1153,7 +1145,7 @@ const TypingComponent = ({
             </div>
           )}
           
-          {/* MONKEYTYPE-INSPIRED: Word-based Text Display */}
+          {/* MONKEYTYPE-INSPIRED: Continuous Word-based Text Display */}
           <MonkeyTypeText
             content={generatedContent}
             currentIndex={currentIndex}
@@ -1161,6 +1153,7 @@ const TypingComponent = ({
             theme={theme}
             fontSize={fontSize}
             fontFamily={fontFamily}
+            onNeedMoreWords={handleNeedMoreWords}
           />
           
           {/* Completion Celebration - Theme-aware */}
