@@ -54,7 +54,7 @@ const About = () => {
     {
       name: "Suraj Maurya",
       role: "Lead Developer & Founder",
-      avatar: "./suraj.png",
+      avatar: "../public/ICONS/suraj.jpg",
       bio: "Full-stack developer passionate about creating educational tools and competitive gaming.",
       social: {
         github: "https://github.com/sw-esports/SWIFT-TYPING",

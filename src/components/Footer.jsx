@@ -17,7 +17,7 @@ const Footer = () => {
             <div className="flex items-center justify-center lg:justify-start gap-4 mb-6">
               <div className="relative">
                 <img 
-                  src="./suraj.png" 
+                  src="../public/ICONS/suraj.jpg" 
                   alt="Suraj Maurya" 
                   className="w-16 h-16 rounded-full border-4 border-gradient-to-r from-blue-500 to-purple-600 shadow-lg"
                 />
