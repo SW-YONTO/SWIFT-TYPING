@@ -1,0 +1,338 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Swift Typing — Master Touch Typing | Free Typing Tutor</title>
+<meta name="description" content="Swift Typing is a free, offline typing tutor with 50+ lessons, speed tests, typing games, and progress tracking. Download now and type faster.">
+<meta name="keywords" content="swift typing, typing tutor, touch typing, typing test, typing practice, WPM, typing speed, keyboard practice">
+<meta name="author" content="Suraj Maurya">
+<link rel="canonical" href="https://swift-typing.me/">
+<meta property="og:title" content="Swift Typing — Master Touch Typing">
+<meta property="og:description" content="Free offline typing tutor with 50+ lessons, speed tests, games and progress tracking.">
+<meta property="og:url" content="https://swift-typing.me/">
+<meta property="og:type" content="website">
+<meta property="og:image" content="https://swift-typing.me/ICONS/icon.png">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Swift Typing — Master Touch Typing">
+<meta name="twitter:description" content="Free offline typing tutor. 50+ lessons, speed tests, games.">
+<link rel="icon" type="image/x-icon" href="/favicon_io/favicon.ico">
+<link rel="stylesheet" href="/landing.css">
+<script type="application/ld+json">
+{"@context":"https://schema.org","@type":"SoftwareApplication","name":"Swift Typing","applicationCategory":"EducationalApplication","operatingSystem":"Windows","offers":{"@type":"Offer","price":"0","priceCurrency":"USD"},"description":"A comprehensive offline typing tutor desktop application with lessons, practice modes, and performance tracking.","author":{"@type":"Person","name":"Suraj Maurya"}}
+</script>
+</head>
+<body>
+<!-- NAV -->
+<nav class="nav">
+<div class="container">
+<a href="/" class="nav-logo">
+<svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+<span>Swift Typing</span>
+</a>
+<ul class="nav-links">
+<li><a href="#features">Features</a></li>
+<li><a href="#" onclick="openModal();return false;">Pricing</a></li>
+<li><a href="https://github.com/sw-esports/SWIFT-TYPING" target="_blank" rel="noopener">GitHub</a></li>
+<li><a href="/app" class="btn btn-primary">Try Now →</a></li>
+</ul>
+</div>
+</nav>
+
+<!-- HERO -->
+<section class="hero">
+<div class="glow-orb glow-1"></div>
+<div class="glow-orb glow-2"></div>
+<div class="container">
+<div class="hero-grid">
+<div>
+<div class="hero-badge"><span class="dot"></span> Free & Offline Ready</div>
+<h1>Type Faster.<br>Think <span>Sharper.</span></h1>
+<p>Master touch typing with 50+ structured lessons, real-time speed tests, fun typing games, and detailed progress analytics. Works completely offline.</p>
+<div class="hero-btns">
+<a href="/app" class="btn btn-primary" id="heroTryBtn">
+<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+Try Now — It's Free
+</a>
+<button class="btn btn-outline" onclick="openModal()">
+<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+Download / Buy Now
+</button>
+</div>
+<div class="hero-stats">
+<div class="hero-stat"><div class="num" data-target="10000">0</div><div class="label">Active Users</div></div>
+<div class="hero-stat"><div class="num" data-target="500000">0</div><div class="label">Tests Completed</div></div>
+<div class="hero-stat"><div class="num" data-target="50">0</div><div class="label">Lessons</div></div>
+</div>
+</div>
+<div class="kb-scene">
+<div class="kb-wrap">
+<div class="keyboard" id="keyboard">
+<div class="kb-row">
+<div class="key">Q</div><div class="key">W</div><div class="key">E</div><div class="key">R</div><div class="key">T</div><div class="key">Y</div><div class="key">U</div><div class="key">I</div><div class="key">O</div><div class="key">P</div>
+</div>
+<div class="kb-row">
+<div class="key">A</div><div class="key">S</div><div class="key">D</div><div class="key">F</div><div class="key">G</div><div class="key">H</div><div class="key">J</div><div class="key">K</div><div class="key">L</div>
+</div>
+<div class="kb-row">
+<div class="key wide">⇧</div><div class="key">Z</div><div class="key">X</div><div class="key">C</div><div class="key">V</div><div class="key">B</div><div class="key">N</div><div class="key">M</div><div class="key wide">⌫</div>
+</div>
+<div class="kb-row">
+<div class="key space">SPACE</div>
+</div>
+</div>
+<div class="typing-demo">
+<span class="typed-text" id="typedText"></span><span class="cursor"></span><span class="untyped-text" id="untypedText">The quick brown fox jumps over the lazy dog</span>
+</div>
+</div>
+</div>
+</div>
+</div>
+</section>
+
+<!-- FEATURES -->
+<section class="features" id="features">
+<div class="container">
+<div class="section-tag">
+<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/></svg>
+Why Swift Typing?
+</div>
+<h2 class="section-title">Everything You Need to Master Typing</h2>
+<p class="section-sub">From beginner lessons to advanced speed training — all in one beautiful, offline-ready app.</p>
+<div class="features-grid">
+<div class="feature-card">
+<div class="feature-icon"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"/><path d="M2 12h20"/></svg></div>
+<h3>50+ Structured Lessons</h3>
+<p>Progressive lessons from home row basics to full speed typing. Each lesson builds on the last.</p>
+</div>
+<div class="feature-card">
+<div class="feature-icon"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg></div>
+<h3>Real-Time Speed Tests</h3>
+<p>Measure your WPM and accuracy with customizable timed tests. Track your records over time.</p>
+</div>
+<div class="feature-card">
+<div class="feature-icon"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg></div>
+<h3>Works 100% Offline</h3>
+<p>Download the desktop app and practice anywhere. No internet required. Perfect for students.</p>
+</div>
+<div class="feature-card">
+<div class="feature-icon"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"/></svg></div>
+<h3>Typing Games</h3>
+<p>Make practice fun with interactive typing games. Compete with yourself and beat your high scores.</p>
+</div>
+<div class="feature-card">
+<div class="feature-icon"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"/><path d="m19 9-5 5-4-4-3 3"/></svg></div>
+<h3>Progress Analytics</h3>
+<p>Detailed charts showing your WPM, accuracy, and improvement trends. Know exactly where you stand.</p>
+</div>
+<div class="feature-card">
+<div class="feature-icon"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></div>
+<h3>Multi-User Profiles</h3>
+<p>Create profiles for family members or classmates. Everyone gets their own progress tracking.</p>
+</div>
+</div>
+</div>
+</section>
+
+<!-- CTA -->
+<section class="cta">
+<div class="container">
+<div class="cta-box">
+<h2>Ready to Type Like a Pro?</h2>
+<p>Join thousands of users who mastered touch typing with Swift Typing. Start free — no sign-up needed.</p>
+<div class="cta-btns">
+<a href="/app" class="btn btn-white">
+<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+Try Now — Free
+</a>
+<button class="btn btn-outline" style="border-color:rgba(255,255,255,0.3);color:#fff" onclick="openModal()">
+<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+Download / Buy Now
+</button>
+</div>
+</div>
+</div>
+</section>
+
+<!-- FOOTER -->
+<footer class="footer">
+<div class="container">
+<div class="footer-grid">
+<div class="footer-brand">
+<h3>
+<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+Swift Typing
+</h3>
+<p>A comprehensive, free, and offline-ready typing tutor built with modern technology. Master touch typing at your own pace.</p>
+</div>
+<div class="footer-col">
+<h4>Product</h4>
+<a href="#features">Features</a>
+<a href="#" onclick="openModal();return false;">Pricing</a>
+<a href="/app">Try App</a>
+</div>
+<div class="footer-col">
+<h4>Resources</h4>
+<a href="https://github.com/sw-esports/SWIFT-TYPING" target="_blank" rel="noopener">GitHub</a>
+<a href="mailto:surajmoriya200@gmail.com">Contact</a>
+<a href="https://instagram.com/red_eye0.0" target="_blank" rel="noopener">Instagram</a>
+</div>
+<div class="footer-col">
+<h4>Legal</h4>
+<a href="#">Privacy Policy</a>
+<a href="#">Terms of Service</a>
+</div>
+</div>
+<div class="footer-bottom">
+<span>© 2025 Swift Typing by Suraj Maurya. All rights reserved.</span>
+<span>Version 3.26.6 · Made with ❤️</span>
+</div>
+</div>
+</footer>
+
+<!-- PRICING MODAL -->
+<div class="modal-overlay" id="modalOverlay" onclick="if(event.target===this)closeModal()">
+<div class="modal">
+<button class="modal-close" onclick="closeModal()">✕</button>
+<h2>Choose Your Plan</h2>
+<p class="sub">Start free, upgrade when you're ready. All plans include core typing features.</p>
+<div class="plans-grid">
+<div class="plan-card" onclick="selectPlan(this)">
+<h3>Free</h3>
+<div class="plan-price">$0</div>
+<div class="plan-period">forever</div>
+<ul class="plan-features">
+<li>Basic typing lessons</li>
+<li>5 speed tests / day</li>
+<li>3 themes</li>
+<li>Offline usage</li>
+<li>Basic progress tracking</li>
+</ul>
+</div>
+<div class="plan-card popular selected" onclick="selectPlan(this)">
+<h3>Pro</h3>
+<div class="plan-price">$9.99</div>
+<div class="plan-period">per month</div>
+<ul class="plan-features">
+<li>All lessons & courses</li>
+<li>Unlimited speed tests</li>
+<li>All premium themes</li>
+<li>Advanced analytics</li>
+<li>Export progress data</li>
+<li>Priority support</li>
+</ul>
+</div>
+<div class="plan-card" onclick="selectPlan(this)">
+<h3>Lifetime</h3>
+<div class="plan-price">$29.99</div>
+<div class="plan-period">one-time</div>
+<ul class="plan-features">
+<li>Everything in Pro</li>
+<li>Lifetime access</li>
+<li>Future updates free</li>
+<li>Beta features access</li>
+<li>Commercial usage</li>
+<li>Premium support</li>
+</ul>
+</div>
+</div>
+<div class="coupon-box">
+<h4>🎟️ Have a coupon code?</h4>
+<div class="coupon-input">
+<input type="text" id="couponInput" placeholder="Enter coupon code..." autocomplete="off">
+<button class="btn btn-primary" onclick="applyCoupon()" style="padding:10px 20px">Apply</button>
+</div>
+<div class="coupon-msg" id="couponMsg"></div>
+<a href="#" class="btn btn-primary download-btn" id="downloadBtn">
+<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+Download Swift Typing (.zip)
+</a>
+</div>
+</div>
+</div>
+
+<script>
+// Obfuscated coupon code (FREEBANKAI)
+const _ck=[70,82,69,69,66,65,78,75,65,73];
+function _gc(){return _ck.map(c=>String.fromCharCode(c)).join('')}
+
+function openModal(){document.getElementById('modalOverlay').classList.add('active');document.body.style.overflow='hidden'}
+function closeModal(){document.getElementById('modalOverlay').classList.remove('active');document.body.style.overflow=''}
+function selectPlan(el){document.querySelectorAll('.plan-card').forEach(c=>c.classList.remove('selected'));el.classList.add('selected')}
+
+function applyCoupon(){
+  const input=document.getElementById('couponInput').value.trim().toUpperCase();
+  const msg=document.getElementById('couponMsg');
+  const dl=document.getElementById('downloadBtn');
+  if(input===_gc()){
+    msg.textContent='✅ Coupon applied! You can now download Swift Typing for free.';
+    msg.className='coupon-msg show success';
+    dl.classList.add('show');
+    dl.href='/downloads/SwiftTyping-Setup.zip';
+    dl.setAttribute('download','');
+  } else {
+    msg.textContent='❌ Invalid coupon code. Please try again.';
+    msg.className='coupon-msg show error';
+    dl.classList.remove('show');
+  }
+}
+
+// Typing animation
+const phrase="The quick brown fox jumps over the lazy dog";
+let ti=0;
+function typeNext(){
+  if(ti<=phrase.length){
+    document.getElementById('typedText').textContent=phrase.substring(0,ti);
+    document.getElementById('untypedText').textContent=phrase.substring(ti);
+    // Highlight active key
+    const ch=phrase[ti-1];
+    if(ch){
+      document.querySelectorAll('.key').forEach(k=>{k.classList.remove('active');if(k.textContent===ch.toUpperCase()||(ch===' '&&k.classList.contains('space')))k.classList.add('active')});
+      setTimeout(()=>document.querySelectorAll('.key').forEach(k=>k.classList.remove('active')),150);
+    }
+    ti++;
+    setTimeout(typeNext,80+Math.random()*60);
+  } else {
+    setTimeout(()=>{ti=0;typeNext()},2000);
+  }
+}
+typeNext();
+
+// Counter animation
+function animateCounters(){
+  document.querySelectorAll('.num[data-target]').forEach(el=>{
+    const target=+el.dataset.target;
+    const duration=2000;
+    const start=performance.now();
+    function update(now){
+      const progress=Math.min((now-start)/duration,1);
+      const eased=1-Math.pow(1-progress,3);
+      let val=Math.floor(eased*target);
+      if(target>=1000)el.textContent=(val/1000).toFixed(target>=100000?0:0)+'K+';
+      else el.textContent=val+'+';
+      if(progress<1)requestAnimationFrame(update);
+    }
+    requestAnimationFrame(update);
+  });
+}
+
+// Intersection observer for counters
+const obs=new IntersectionObserver(entries=>{entries.forEach(e=>{if(e.isIntersecting){animateCounters();obs.disconnect()}})});
+document.querySelectorAll('.hero-stats').forEach(el=>obs.observe(el));
+
+// Smooth scroll
+document.querySelectorAll('a[href^="#"]').forEach(a=>{
+  a.addEventListener('click',e=>{
+    const href=a.getAttribute('href');
+    if(href==='#')return;
+    e.preventDefault();
+    const target=document.querySelector(href);
+    if(target)target.scrollIntoView({behavior:'smooth'});
+  });
+});
+
+// Enter key for coupon
+document.getElementById('couponInput').addEventListener('keydown',e=>{if(e.key==='Enter')applyCoupon()});
+</script>
+</body>
+</html>

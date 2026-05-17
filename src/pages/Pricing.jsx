@@ -1,4 +1,5 @@
-import React from 'react';
+import React, { useState } from 'react';
+import PricingModal from '../components/PricingModal';
 import { useTheme } from '../contexts/ThemeContext';
 import { 
   Star, 
@@ -20,6 +21,7 @@ import {
 
 const Pricing = () => {
   const { theme } = useTheme();
+  const [showModal, setShowModal] = useState(false);
 
   const plans = [
     {
@@ -147,6 +149,7 @@ const Pricing = () => {
   ];
 
   return (
+    <>
     <div className={`min-h-screen ${theme.background}`}>
       {/* Hero Section */}
       <div className="relative overflow-hidden">
@@ -224,6 +227,7 @@ const Pricing = () => {
                 </div>
 
                 <button 
+                  onClick={() => setShowModal(true)}
                   className={`w-full py-4 rounded-xl font-semibold transition-all ${
                     plan.popular 
                       ? `bg-linear-to-r ${plan.color} text-white hover:shadow-lg transform hover:scale-105` 
@@ -322,11 +326,11 @@ const Pricing = () => {
             Start with our free plan and upgrade when you're ready.
           </p>
           <div className="flex items-center justify-center gap-4">
-            <button className="flex items-center gap-2 px-8 py-4 bg-white text-gray-800 rounded-xl hover:bg-gray-100 transition-all transform hover:scale-105 shadow-lg font-semibold">
+            <button onClick={() => setShowModal(true)} className="flex items-center gap-2 px-8 py-4 bg-white text-gray-800 rounded-xl hover:bg-gray-100 transition-all transform hover:scale-105 shadow-lg font-semibold">
               <Download className="w-5 h-5" />
               Start Free Trial
             </button>
-            <button className="flex items-center gap-2 px-8 py-4 border-2 border-white text-white rounded-xl hover:bg-white hover:text-gray-800 transition-all font-semibold">
+            <button onClick={() => setShowModal(true)} className="flex items-center gap-2 px-8 py-4 border-2 border-white text-white rounded-xl hover:bg-white hover:text-gray-800 transition-all font-semibold">
               <Heart className="w-5 h-5" />
               Buy Lifetime
             </button>
@@ -338,6 +342,8 @@ const Pricing = () => {
         </div>
       </div>
     </div>
+    <PricingModal isOpen={showModal} onClose={() => setShowModal(false)} />
+    </>
   );
 };
 
