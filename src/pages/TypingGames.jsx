@@ -1,5 +1,5 @@
 import React, { useState, Suspense } from 'react';
-import { Gamepad2, Wind, Box, ArrowLeft, Trophy, Star, Clock, Car, Loader2, Mountain } from 'lucide-react';
+import { Gamepad2, Wind, Box, ArrowLeft, Trophy, Star, Clock, Car, Loader2, Mountain, AlertTriangle } from 'lucide-react';
 import { useTheme } from '../contexts/ThemeContext';
 
 // Lazy load game components for better performance
@@ -23,8 +23,9 @@ import wordCrusherImg from '../assets/games/word-crusher.png';
 import wordRacerImg from '../assets/games/word-racer.png';
 import keyboardJumpImg from '../assets/games/keyboard-jump.png';
 
-const TypingGames = ({ currentUser, settings }) => {
+const TypingGames = ({ currentUser }) => {
   const [selectedGame, setSelectedGame] = useState(null);
+  const [showExitConfirm, setShowExitConfirm] = useState(false);
   const { theme } = useTheme();
 
   const games = [
@@ -36,6 +37,7 @@ const TypingGames = ({ currentUser, settings }) => {
       image: balloonPopImg,
       color: 'from-pink-500 to-purple-600',
       bgColor: 'bg-pink-100 dark:bg-pink-900/30',
+      shadowColor: 'hover:shadow-pink-500/25 dark:hover:shadow-pink-500/15 hover:border-pink-500/40',
       difficulty: 'Easy',
       avgTime: '2-5 min'
     },
@@ -47,6 +49,7 @@ const TypingGames = ({ currentUser, settings }) => {
       image: wordCrusherImg,
       color: 'from-cyan-500 to-blue-600',
       bgColor: 'bg-cyan-100 dark:bg-cyan-900/30',
+      shadowColor: 'hover:shadow-cyan-500/25 dark:hover:shadow-cyan-500/15 hover:border-cyan-500/40',
       difficulty: 'Medium',
       avgTime: '3-7 min'
     },
@@ -58,6 +61,7 @@ const TypingGames = ({ currentUser, settings }) => {
       image: wordRacerImg,
       color: 'from-orange-500 to-red-600',
       bgColor: 'bg-orange-100 dark:bg-orange-900/30',
+      shadowColor: 'hover:shadow-orange-500/25 dark:hover:shadow-orange-500/15 hover:border-orange-500/40',
       difficulty: 'Hard',
       avgTime: '1-3 min'
     },
@@ -69,6 +73,7 @@ const TypingGames = ({ currentUser, settings }) => {
       image: keyboardJumpImg,
       color: 'from-green-500 to-teal-600',
       bgColor: 'bg-green-100 dark:bg-green-900/30',
+      shadowColor: 'hover:shadow-green-500/25 dark:hover:shadow-green-500/15 hover:border-green-500/40',
       difficulty: 'Medium',
       avgTime: '3-5 min'
     }
@@ -81,82 +86,61 @@ const TypingGames = ({ currentUser, settings }) => {
 
   // Handle back to games list
   const handleBackToGames = () => {
-    setSelectedGame(null);
+    setShowExitConfirm(true);
   };
 
   // Render selected game
-  if (selectedGame === 'balloon') {
+  if (selectedGame) {
     return (
       <div className="p-6">
         <div className="max-w-4xl mx-auto">
           <button
             onClick={handleBackToGames}
-            className={`flex items-center gap-2 mb-4 px-4 py-2 rounded-lg ${theme.secondary} ${theme.text} hover:opacity-80 transition-opacity`}
+            className={`flex items-center gap-2 mb-4 px-4 py-2 rounded-lg ${theme.secondary} ${theme.text} hover:opacity-80 transition-opacity cursor-pointer`}
           >
             <ArrowLeft className="w-4 h-4" />
             Back to Games
           </button>
+          
           <Suspense fallback={<GameLoadingFallback theme={theme} />}>
-            <BalloonGame currentUser={currentUser} settings={settings} />
+            {selectedGame === 'balloon' && <BalloonGame currentUser={currentUser} />}
+            {selectedGame === 'container' && <BlockContainerGame currentUser={currentUser} />}
+            {selectedGame === 'racer' && <WordRacerGame currentUser={currentUser} />}
+            {selectedGame === 'keyboard-jump' && <KeyboardJumpGame currentUser={currentUser} />}
           </Suspense>
         </div>
-      </div>
-    );
-  }
 
-  if (selectedGame === 'container') {
-    return (
-      <div className="p-6">
-        <div className="max-w-4xl mx-auto">
-          <button
-            onClick={handleBackToGames}
-            className={`flex items-center gap-2 mb-4 px-4 py-2 rounded-lg ${theme.secondary} ${theme.text} hover:opacity-80 transition-opacity`}
-          >
-            <ArrowLeft className="w-4 h-4" />
-            Back to Games
-          </button>
-          <Suspense fallback={<GameLoadingFallback theme={theme} />}>
-            <BlockContainerGame currentUser={currentUser} settings={settings} />
-          </Suspense>
-        </div>
-      </div>
-    );
-  }
-
-  if (selectedGame === 'racer') {
-    return (
-      <div className="p-6">
-        <div className="max-w-4xl mx-auto">
-          <button
-            onClick={handleBackToGames}
-            className={`flex items-center gap-2 mb-4 px-4 py-2 rounded-lg ${theme.secondary} ${theme.text} hover:opacity-80 transition-opacity`}
-          >
-            <ArrowLeft className="w-4 h-4" />
-            Back to Games
-          </button>
-          <Suspense fallback={<GameLoadingFallback theme={theme} />}>
-            <WordRacerGame currentUser={currentUser} settings={settings} />
-          </Suspense>
-        </div>
-      </div>
-    );
-  }
-
-  if (selectedGame === 'keyboard-jump') {
-    return (
-      <div className="p-6">
-        <div className="max-w-4xl mx-auto">
-          <button
-            onClick={handleBackToGames}
-            className={`flex items-center gap-2 mb-4 px-4 py-2 rounded-lg ${theme.secondary} ${theme.text} hover:opacity-80 transition-opacity`}
-          >
-            <ArrowLeft className="w-4 h-4" />
-            Back to Games
-          </button>
-          <Suspense fallback={<GameLoadingFallback theme={theme} />}>
-            <KeyboardJumpGame currentUser={currentUser} settings={settings} />
-          </Suspense>
-        </div>
+        {/* Custom Glassmorphic Exit Confirmation Dialog */}
+        {showExitConfirm && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-md animate-fade-in">
+            <div className={`${theme.cardBg} border ${theme.border} rounded-2xl p-6 max-w-md w-full shadow-2xl animate-scale-in text-center`}>
+              <div className="w-16 h-16 bg-red-100 dark:bg-red-900/30 rounded-full flex items-center justify-center mx-auto mb-4 animate-bounce-subtle">
+                <AlertTriangle className="w-8 h-8 text-red-500" />
+              </div>
+              <h3 className={`text-xl font-bold ${theme.text} mb-2`}>Exit Current Game?</h3>
+              <p className={`${theme.textSecondary} text-sm mb-6`}>
+                Are you sure you want to quit? Your current score, combo, and gameplay progress will be permanently lost.
+              </p>
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setShowExitConfirm(false)}
+                  className={`flex-1 py-3 rounded-lg ${theme.secondary} ${theme.text} font-semibold hover:opacity-90 active:scale-95 transition-all cursor-pointer`}
+                >
+                  Resume Playing
+                </button>
+                <button
+                  onClick={() => {
+                    setShowExitConfirm(false);
+                    setSelectedGame(null);
+                  }}
+                  className="flex-1 py-3 rounded-lg bg-red-600 hover:bg-red-700 text-white font-semibold active:scale-95 transition-all cursor-pointer"
+                >
+                  Quit Game
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     );
   }
@@ -184,7 +168,7 @@ const TypingGames = ({ currentUser, settings }) => {
               <div
                 key={game.id}
                 onClick={() => handleGameSelect(game.id)}
-                className={`${theme.cardBg} rounded-2xl shadow-lg border ${theme.border} overflow-hidden cursor-pointer transform transition-all duration-300 hover:scale-105 hover:shadow-xl group`}
+                className={`${theme.cardBg} rounded-2xl shadow-lg border ${theme.border} overflow-hidden cursor-pointer transform transition-all duration-300 hover:-translate-y-2 hover:shadow-2xl ${game.shadowColor} group`}
               >
                 {/* Game Preview Area */}
                 <div className={`h-48 relative overflow-hidden group`}>

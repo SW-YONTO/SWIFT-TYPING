@@ -319,12 +319,12 @@ function typeNext(){
     const ch=phrase[ti-1];
     if(ch){
       document.querySelectorAll('.key').forEach(k=>{k.classList.remove('active');if(k.textContent===ch.toUpperCase()||(ch===' '&&k.classList.contains('space')))k.classList.add('active')});
-      setTimeout(()=>document.querySelectorAll('.key').forEach(k=>k.classList.remove('active')),150);
+      setTimeout(()=>document.querySelectorAll('.key').forEach(k=>k.classList.remove('active')),180);
     }
     ti++;
-    setTimeout(typeNext,80+Math.random()*60);
+    setTimeout(typeNext,180+Math.random()*120);
   } else {
-    setTimeout(()=>{ti=0;typeNext()},2000);
+    setTimeout(()=>{ti=0;typeNext()},2500);
   }
 }
 typeNext();
