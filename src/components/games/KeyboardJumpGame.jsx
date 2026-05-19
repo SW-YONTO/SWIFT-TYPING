@@ -466,10 +466,16 @@ const KeyboardJumpGame = ({ currentUser, settings }) => {
   };
 
   const handleInputChange = (e) => {
-    const value = e.target.value; e.target.value = '';
-    if (gameState !== 'playing' || !targetPlatform || value.length === 0 || playerState === 'climb' || playerState === 'fall' || playerState === 'jump') return;
+    const rawValue = e.target.value; 
+    e.target.value = '';
+    if (gameState !== 'playing' || !targetPlatform || rawValue.length === 0 || playerState === 'climb' || playerState === 'fall' || playerState === 'jump') return;
     
-    const typedChar = value[value.length - 1].toLowerCase();
+    // Ignore spacebar completely
+    if (rawValue[rawValue.length - 1] === ' ') {
+      return;
+    }
+    
+    const typedChar = rawValue[rawValue.length - 1].toLowerCase();
     const expectedChar = targetPlatform.word[currentCharIndex];
     if (!expectedChar) return;
     

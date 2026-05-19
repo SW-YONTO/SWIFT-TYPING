@@ -408,55 +408,20 @@ const WordRacerGame = () => {
     
     // Only apply checks if the user is typing a new character (not backspacing)
     if (value.length > userInput.length) {
-      const newChar = value[value.length - 1];
-      const expectedChar = currentSentence[value.length - 1];
+      // Check if userInput ALREADY has an error.
+      // If it does, block any further typing until they backspace to fix it.
+      let existingError = false;
+      for (let i = 0; i < userInput.length; i++) {
+        if (userInput[i] !== currentSentence[i]) {
+          existingError = true;
+          break;
+        }
+      }
       
-      // Rule 1: Must type space where there is a space in the target sentence
-      if (expectedChar === ' ' && newChar !== ' ') {
+      if (existingError) {
         if (soundEnabled) playSound('error');
         setTotalKeystrokes(prev => prev + 1);
-        return; // Block input
-      }
-      
-      // Rule 2: Cannot type space where there is no space in the target sentence
-      if (newChar === ' ' && expectedChar !== ' ') {
-        if (soundEnabled) playSound('error');
-        setTotalKeystrokes(prev => prev + 1);
-        return; // Block input
-      }
-      
-      // Rule 3: Cannot type space (move to next word) if the previous word has errors
-      if (newChar === ' ') {
-        let hasError = false;
-        for (let i = 0; i < value.length - 1; i++) {
-          if (value[i] !== currentSentence[i]) {
-            hasError = true;
-            break;
-          }
-        }
-        if (hasError) {
-          if (soundEnabled) playSound('error');
-          setTotalKeystrokes(prev => prev + 1);
-          return; // Block space until word is fixed
-        }
-      }
-      
-      // Rule 4: Cannot type the final character of the race if there are any errors
-      if (value.length === currentSentence.length) {
-        let hasError = false;
-        for (let i = 0; i < value.length; i++) {
-          const charToCheck = i === value.length - 1 ? newChar : value[i];
-          if (charToCheck !== currentSentence[i]) {
-            hasError = true;
-            break;
-          }
-        }
-        
-        if (hasError) {
-          if (soundEnabled) playSound('error');
-          setTotalKeystrokes(prev => prev + 1);
-          return; // Block finishing
-        }
+        return; // Block typing further until they backspace
       }
     }
     
@@ -479,8 +444,8 @@ const WordRacerGame = () => {
     const newProgress = (value.length / currentSentence.length) * 100;
     setPlayerProgress(newProgress);
     
-    // Check if completed
-    if (value.length >= currentSentence.length) {
+    // Check if completed perfectly
+    if (value === currentSentence) {
       setPlayerProgress(100);
       if (soundEnabled) playSound('levelUp');
     } else if (value.length > userInput.length) {

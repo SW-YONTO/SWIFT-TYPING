@@ -267,7 +267,17 @@ const BlockContainerGame = ({ currentUser, settings }) => {
 
   // Handle input change - update crack levels on matching blocks
   const handleInputChange = (e) => {
-    const value = e.target.value.toLowerCase();
+    let value = e.target.value.toLowerCase();
+    
+    // Ignore spaces completely
+    if (value.includes(' ')) {
+      value = value.replace(/\s/g, '');
+    }
+    
+    if (value === userInput && e.nativeEvent?.inputType !== 'deleteContentBackward') {
+      return; // Ignore if only spaces were added
+    }
+    
     setUserInput(value);
     setTotalChars(prev => prev + 1);
 
