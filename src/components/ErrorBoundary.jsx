@@ -25,6 +25,18 @@ class ErrorBoundary extends React.Component {
     console.error('ErrorBoundary caught an error:', error, errorInfo);
     this.setState({ errorInfo });
     
+    // Check if error is due to a failed dynamic import (e.g., new deployment invalidated old chunks)
+    if (
+      error && 
+      error.message && 
+      (error.message.includes('Failed to fetch dynamically imported module') || 
+       error.message.includes('Importing a module script failed'))
+    ) {
+      // Force a reload to fetch the latest assets from the server
+      window.location.reload();
+      return;
+    }
+    
     // Could send to error reporting service here
     // e.g., Sentry.captureException(error);
   }
