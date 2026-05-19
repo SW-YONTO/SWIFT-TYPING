@@ -162,9 +162,9 @@ const WordRacerGame = () => {
   
   // Difficulty affects AI speed multiplier
   const difficultyMultiplier = {
-    easy: 0.7,    // AI slower
-    medium: 1.0,  // Normal
-    hard: 1.3     // AI faster
+    easy: 0.8,    // AI slower
+    medium: 1.2,  // Normal
+    hard: 1.6     // AI faster
   };
   
   // Calculate time to complete sentence based on WPM
@@ -192,9 +192,14 @@ const WordRacerGame = () => {
     if (!startTimeRef.current || userInput.length === 0) return 0;
     const elapsedMinutes = (Date.now() - startTimeRef.current) / 60000;
     if (elapsedMinutes < 0.01) return 0;
+    let errorCount = 0;
+    for (let i = 0; i < userInput.length && i < currentSentence.length; i++) {
+      if (userInput[i] !== currentSentence[i]) errorCount++;
+    }
     const wordsTyped = userInput.length / 5; // Standard: 5 chars = 1 word
-    return Math.round(wordsTyped / elapsedMinutes);
-  }, [userInput]);
+    const rawWPM = wordsTyped / elapsedMinutes;
+    return Math.max(0, Math.round(rawWPM - errorCount));
+  }, [userInput, currentSentence]);
   
   // Start countdown
   const startCountdown = useCallback(() => {
@@ -392,19 +397,20 @@ const WordRacerGame = () => {
   const handleInputChange = (e) => {
     if (gameState !== 'playing') return;
     
-    const value = e.target.value;
+    const value = e.target.value.substring(0, currentSentence.length);
     
     // Detect paste attempt: if length jumped by more than 1 character at once, reject it
     const lengthDiff = Math.abs(value.length - userInput.length);
     if (lengthDiff > 1) {
-      // Paste or multi-character input detected - reject
       if (soundEnabled) playSound('error');
       return;
     }
     
     // Allow any input including wrong characters
     setUserInput(value);
-    setTotalKeystrokes(prev => prev + 1);
+    if (value.length > userInput.length) {
+      setTotalKeystrokes(prev => prev + 1);
+    }
     
     // Count correct characters for accuracy
     let correctCount = 0;
@@ -415,27 +421,18 @@ const WordRacerGame = () => {
     }
     setCorrectKeystrokes(correctCount);
     
-    // Only update progress based on CORRECT consecutive characters from start
-    let correctLength = 0;
-    for (let i = 0; i < value.length && i < currentSentence.length; i++) {
-      if (value[i] === currentSentence[i]) {
-        correctLength++;
-      } else {
-        break; // Stop at first mistake
-      }
-    }
-    
-    const newProgress = (correctLength / currentSentence.length) * 100;
+    // Progress based on total length typed, regardless of correctness
+    const newProgress = (value.length / currentSentence.length) * 100;
     setPlayerProgress(newProgress);
     
-    // Check if completed correctly
-    if (value === currentSentence) {
+    // Check if completed
+    if (value.length >= currentSentence.length) {
       setPlayerProgress(100);
       if (soundEnabled) playSound('levelUp');
     } else if (value.length > userInput.length) {
-      // New character typed
-      const lastTypedIndex = value.length - 1;
-      if (lastTypedIndex < currentSentence.length && value[lastTypedIndex] === currentSentence[lastTypedIndex]) {
+      // Play sound based on correctness of the last typed character
+      const lastIndex = value.length - 1;
+      if (value[lastIndex] === currentSentence[lastIndex]) {
         if (soundEnabled) playSound('pop');
       } else {
         if (soundEnabled) playSound('error');
@@ -715,7 +712,7 @@ const WordRacerGame = () => {
         
         {/* Countdown overlay */}
         {gameState === 'countdown' && (
-          <div className="absolute inset-0 flex items-center justify-center bg-black/60 backdrop-blur-sm">
+          <div className="absolute inset-0 flex items-center justify-center bg-black/60 backdrop-blur-sm z-50">
             <div className="text-center">
               <div className="text-8xl font-bold text-white mb-4 animate-pulse">
                 {countdown > 0 ? countdown : 'GO!'}
@@ -727,7 +724,7 @@ const WordRacerGame = () => {
         
         {/* Idle State */}
         {gameState === 'idle' && (
-          <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/40 backdrop-blur-sm">
+          <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/40 backdrop-blur-sm z-50">
             <div className="mb-4 transform scale-150">
               <RaceCar bodyColor="#06b6d4" windowColor="#67e8f9" size="lg" isMoving={false} />
             </div>
@@ -774,13 +771,13 @@ const WordRacerGame = () => {
         
         {/* Finished State */}
         {gameState === 'finished' && (
-          <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/60 backdrop-blur-sm overflow-y-auto py-4">
+          <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/60 backdrop-blur-sm overflow-y-auto py-4 z-50">
             {finishOrder[0] === 'player' ? (
               <>
                 <div className="text-5xl mb-1" style={{ animation: 'checkeredWave 0.5s ease-in-out infinite' }}>🏆</div>
                 <h3 className="text-2xl font-bold text-yellow-400 mb-1">Victory!</h3>
                 {isNewHighScore && (
-                  <div className="flex items-center gap-2 mb-1 text-amber-300 text-sm">
+                  <div className="flex items-center gap-2 mb-4 text-amber-300 text-sm">
                     <Star className="w-4 h-4" />
                     <span className="font-bold">New Best WPM!</span>
                     <Star className="w-4 h-4" />
@@ -790,97 +787,100 @@ const WordRacerGame = () => {
             ) : (
               <>
                 <div className="text-5xl mb-1">🏁</div>
-                <h3 className="text-xl font-bold text-white mb-1">Race Complete!</h3>
+                <h3 className="text-xl font-bold text-white mb-4">Race Complete!</h3>
               </>
             )}
             
-            {/* Leaderboard */}
-            <div className={`${theme.cardBg} rounded-xl p-3 mb-3 w-full max-w-sm`}>
-              <div className="flex items-center justify-center gap-2 mb-2">
-                <Trophy className="w-4 h-4 text-yellow-500" />
-                <span className={`font-bold ${theme.text}`}>Leaderboard</span>
-              </div>
-              <div className="space-y-1">
-                {/* Sort all racers by progress/finish order */}
-                {(() => {
-                  const allRacers = [
-                    { id: 'player', name: playerName, wpm: playerWPM, bodyColor: '#06b6d4', windowColor: '#67e8f9', isPlayer: true, progress: playerProgress },
-                    ...aiRacers.map((ai, i) => ({ id: `ai_${i}`, name: ai.name, wpm: ai.baseWPM, bodyColor: ai.bodyColor, windowColor: ai.windowColor, isPlayer: false, progress: aiProgress[i] }))
-                  ];
-                  
-                  // Sort by finish order first, then by progress
-                  allRacers.sort((a, b) => {
-                    const aFinished = finishOrder.indexOf(a.id);
-                    const bFinished = finishOrder.indexOf(b.id);
-                    if (aFinished !== -1 && bFinished !== -1) return aFinished - bFinished;
-                    if (aFinished !== -1) return -1;
-                    if (bFinished !== -1) return 1;
-                    return b.progress - a.progress;
-                  });
-                  
-                  return allRacers.map((racer, pos) => (
-                    <div 
-                      key={racer.id}
-                      className={`flex items-center gap-2 px-3 py-2 rounded-lg ${
-                        racer.isPlayer 
-                          ? 'bg-gradient-to-r from-cyan-500/30 to-blue-500/30 border border-cyan-400/50' 
-                          : theme.mode === 'dark' ? 'bg-gray-800/50' : 'bg-gray-200/50'
-                      }`}
-                    >
-                      {/* Position */}
-                      <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm ${
-                        pos === 0 ? 'bg-yellow-500 text-black' :
-                        pos === 1 ? 'bg-gray-400 text-black' :
-                        pos === 2 ? 'bg-amber-600 text-white' :
-                        'bg-gray-600 text-white'
-                      }`}>
-                        #{pos + 1}
+            <div className="flex flex-col md:flex-row gap-6 w-full max-w-3xl justify-center items-stretch px-4">
+              {/* Leaderboard */}
+              <div className={`${theme.cardBg} rounded-xl p-4 w-full md:w-1/2 flex flex-col`}>
+                <div className="flex items-center justify-center gap-2 mb-4">
+                  <Trophy className="w-5 h-5 text-yellow-500" />
+                  <span className={`text-lg font-bold ${theme.text}`}>Leaderboard</span>
+                </div>
+                <div className="space-y-2 overflow-y-auto">
+                  {/* Sort all racers by progress/finish order */}
+                  {(() => {
+                    const allRacers = [
+                      { id: 'player', name: playerName, wpm: playerWPM, bodyColor: '#06b6d4', windowColor: '#67e8f9', isPlayer: true, progress: playerProgress },
+                      ...aiRacers.map((ai, i) => ({ id: `ai_${i}`, name: ai.name, wpm: ai.baseWPM, bodyColor: ai.bodyColor, windowColor: ai.windowColor, isPlayer: false, progress: aiProgress[i] }))
+                    ];
+                    
+                    allRacers.sort((a, b) => {
+                      const aFinished = finishOrder.indexOf(a.id);
+                      const bFinished = finishOrder.indexOf(b.id);
+                      if (aFinished !== -1 && bFinished !== -1) return aFinished - bFinished;
+                      if (aFinished !== -1) return -1;
+                      if (bFinished !== -1) return 1;
+                      return b.progress - a.progress;
+                    });
+                    
+                    return allRacers.map((racer, pos) => (
+                      <div 
+                        key={racer.id}
+                        className={`flex items-center gap-2 px-3 py-2.5 rounded-lg ${
+                          racer.isPlayer 
+                            ? 'bg-gradient-to-r from-cyan-500/30 to-blue-500/30 border border-cyan-400/50' 
+                            : theme.mode === 'dark' ? 'bg-gray-800/50' : 'bg-gray-200/50'
+                        }`}
+                      >
+                        {/* Position */}
+                        <div className={`w-8 h-8 flex-shrink-0 rounded-full flex items-center justify-center font-bold text-sm ${
+                          pos === 0 ? 'bg-yellow-500 text-black' :
+                          pos === 1 ? 'bg-gray-400 text-black' :
+                          pos === 2 ? 'bg-amber-600 text-white' :
+                          'bg-gray-600 text-white'
+                        }`}>
+                          #{pos + 1}
+                        </div>
+                        
+                        {/* Car */}
+                        <RaceCar bodyColor={racer.bodyColor} windowColor={racer.windowColor} size="sm" isMoving={false} />
+                        
+                        {/* Name */}
+                        <span className={`flex-1 font-medium truncate ${racer.isPlayer ? 'text-cyan-400' : theme.text}`}>
+                          {racer.name}
+                          {racer.isPlayer && <span className="ml-1 text-xs text-cyan-300">(You)</span>}
+                        </span>
+                        
+                        {/* WPM */}
+                        <span className={`text-sm font-mono ${theme.textSecondary}`}>
+                          {racer.isPlayer ? playerWPM : racer.wpm} WPM
+                        </span>
                       </div>
-                      
-                      {/* Car */}
-                      <RaceCar bodyColor={racer.bodyColor} windowColor={racer.windowColor} size="sm" isMoving={false} />
-                      
-                      {/* Name */}
-                      <span className={`flex-1 font-medium ${racer.isPlayer ? 'text-cyan-400' : theme.text}`}>
-                        {racer.name}
-                        {racer.isPlayer && <span className="ml-1 text-xs text-cyan-300">(You)</span>}
-                      </span>
-                      
-                      {/* WPM */}
-                      <span className={`text-sm font-mono ${theme.textSecondary}`}>
-                        {racer.isPlayer ? playerWPM : racer.wpm} WPM
-                      </span>
+                    ));
+                  })()}
+                </div>
+              </div>
+              
+              {/* Right Side: Stats & Action */}
+              <div className="w-full md:w-[40%] flex flex-col justify-center gap-6">
+                <div className={`${theme.cardBg} rounded-xl p-5 border ${theme.border}`}>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="text-center col-span-2 mb-2">
+                      <div className={`text-4xl font-bold ${theme.accent}`}>{playerWPM}</div>
+                      <div className={`text-sm font-semibold uppercase tracking-wider ${theme.textSecondary}`}>WPM</div>
                     </div>
-                  ));
-                })()}
+                    <div className="text-center bg-black/10 rounded-lg p-2">
+                      <div className={`text-xl font-bold ${theme.text}`}>{formatTime(raceTime)}</div>
+                      <div className={`text-xs ${theme.textSecondary}`}>Time</div>
+                    </div>
+                    <div className="text-center bg-black/10 rounded-lg p-2">
+                      <div className={`text-xl font-bold ${theme.text}`}>{accuracy}%</div>
+                      <div className={`text-xs ${theme.textSecondary}`}>Accuracy</div>
+                    </div>
+                  </div>
+                </div>
+                
+                <button
+                  onClick={startCountdown}
+                  className="flex items-center justify-center gap-2 w-full py-4 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 text-white font-bold text-lg shadow-lg hover:scale-105 transition-transform"
+                >
+                  <RotateCcw className="w-5 h-5" />
+                  Race Again
+                </button>
               </div>
             </div>
-            
-            {/* Stats */}
-            <div className={`${theme.cardBg} rounded-xl p-3 mb-3`}>
-              <div className="grid grid-cols-3 gap-4">
-                <div className="text-center">
-                  <div className={`text-xl font-bold ${theme.accent}`}>{playerWPM}</div>
-                  <div className={`text-xs ${theme.textSecondary}`}>WPM</div>
-                </div>
-                <div className="text-center">
-                  <div className={`text-xl font-bold ${theme.accent}`}>{formatTime(raceTime)}</div>
-                  <div className={`text-xs ${theme.textSecondary}`}>Time</div>
-                </div>
-                <div className="text-center">
-                  <div className={`text-xl font-bold ${theme.accent}`}>{accuracy}%</div>
-                  <div className={`text-xs ${theme.textSecondary}`}>Accuracy</div>
-                </div>
-              </div>
-            </div>
-            
-            <button
-              onClick={startCountdown}
-              className="flex items-center gap-2 px-5 py-2 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 text-white font-bold shadow-lg hover:scale-105 transition-transform"
-            >
-              <RotateCcw className="w-4 h-4" />
-              Race Again
-            </button>
           </div>
         )}
       </div>
