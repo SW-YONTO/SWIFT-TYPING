@@ -16,6 +16,7 @@ const Results = React.lazy(() => import('./pages/Results'));
 const About = React.lazy(() => import('./pages/About'));
 const Features = React.lazy(() => import('./pages/Features'));
 const Pricing = React.lazy(() => import('./pages/Pricing'));
+const NotFound = React.lazy(() => import('./pages/NotFound'));
 
 // Loading fallback component
 const PageLoader = () => {
@@ -155,6 +156,7 @@ function App() {
                 <Route path="/about" element={<About />} />
                 <Route path="/features" element={<Features />} />
                 <Route path="/pricing" element={<Pricing />} />
+                <Route path="*" element={<NotFound />} />
               </Routes>
             </Suspense>
           </main>

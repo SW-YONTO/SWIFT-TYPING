@@ -308,6 +308,27 @@ function applyCoupon(){
   }
 }
 
+// Interactive Keyboard Wave Effect
+const kbel = document.getElementById('keyboard');
+const allKeys = document.querySelectorAll('.key');
+kbel.addEventListener('mousemove', e => {
+  allKeys.forEach(k => {
+    const kRect = k.getBoundingClientRect();
+    const kX = kRect.left + kRect.width / 2;
+    const kY = kRect.top + kRect.height / 2;
+    const dist = Math.sqrt(Math.pow(e.clientX - kX, 2) + Math.pow(e.clientY - kY, 2));
+    const maxDist = 150;
+    let wave = 0;
+    if (dist < maxDist) {
+      wave = Math.pow(1 - (dist / maxDist), 1.5);
+    }
+    k.style.setProperty('--wave', wave.toFixed(3));
+  });
+});
+kbel.addEventListener('mouseleave', () => {
+  allKeys.forEach(k => k.style.setProperty('--wave', '0'));
+});
+
 // Typing animation
 const phrase="The quick brown fox jumps over the lazy dog";
 let ti=0;
