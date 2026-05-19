@@ -116,7 +116,7 @@ const Navigation = ({ currentUser, onLogout, onThemeChange, currentTheme }) => {
           {/* Logo */}
           <div className="flex items-center space-x-2">
             <Zap className={`w-6 h-6 ${theme.accent} drop-shadow-sm`} />
-            <span className={`text-lg font-bold ${theme.navText}`}>Swift Typing</span>
+            <Link to={'/'}>   <span className={`text-lg font-bold ${theme.navText}`}>Swift Typing</span></Link>
           </div>
 
           {/* Navigation Items */}

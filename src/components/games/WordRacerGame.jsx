@@ -791,24 +791,6 @@ const WordRacerGame = () => {
         {/* Finished State */}
         {gameState === 'finished' && (
           <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/60 backdrop-blur-sm overflow-y-auto py-4 z-50">
-            {finishOrder[0] === 'player' ? (
-              <>
-                <div className="text-5xl mb-1" style={{ animation: 'checkeredWave 0.5s ease-in-out infinite' }}>🏆</div>
-                <h3 className="text-2xl font-bold text-yellow-400 mb-1">Victory!</h3>
-                {isNewHighScore && (
-                  <div className="flex items-center gap-2 mb-4 text-amber-300 text-sm">
-                    <Star className="w-4 h-4" />
-                    <span className="font-bold">New Best WPM!</span>
-                    <Star className="w-4 h-4" />
-                  </div>
-                )}
-              </>
-            ) : (
-              <>
-                <div className="text-5xl mb-1">🏁</div>
-                <h3 className="text-xl font-bold text-white mb-4">Race Complete!</h3>
-              </>
-            )}
             
             <div className="flex flex-col md:flex-row gap-6 w-full max-w-3xl justify-center items-stretch px-4">
               {/* Leaderboard */}
@@ -873,8 +855,18 @@ const WordRacerGame = () => {
               </div>
               
               {/* Right Side: Stats & Action */}
-              <div className="w-full md:w-[40%] flex flex-col justify-center gap-6">
+              <div className="w-full md:w-[40%] flex flex-col justify-center gap-4">
                 <div className={`${theme.cardBg} rounded-xl p-5 border ${theme.border}`}>
+                  {isNewHighScore && (
+                    <div className="mb-3 py-1 px-3 bg-gradient-to-r from-yellow-400 to-orange-500 rounded-lg text-center">
+                      <span className="text-white font-bold text-sm">🏆 New Record!</span>
+                    </div>
+                  )}
+                  {finishOrder[0] === 'player' && !isNewHighScore && (
+                    <div className="mb-3 py-1 px-3 bg-gradient-to-r from-green-500 to-emerald-600 rounded-lg text-center">
+                      <span className="text-white font-bold text-sm">🏆 Victory!</span>
+                    </div>
+                  )}
                   <div className="grid grid-cols-2 gap-4">
                     <div className="text-center col-span-2 mb-2">
                       <div className={`text-4xl font-bold ${theme.accent}`}>{playerWPM}</div>

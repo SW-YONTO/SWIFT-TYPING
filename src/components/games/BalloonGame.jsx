@@ -532,15 +532,9 @@ const BalloonGame = ({ currentUser, settings }) => {
         {gameState === 'gameOver' && (
           <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/60 backdrop-blur-sm">
             {isNewHighScore ? (
-              <>
-                <div className="text-4xl mb-2">👑</div>
-                <h3 className="text-2xl font-bold text-yellow-400 mb-2">New High Score!</h3>
-              </>
+              <h3 className="text-2xl font-bold text-yellow-400 mb-2">New High Score!</h3>
             ) : (
-              <>
-                <div className="text-4xl mb-2">💥</div>
-                <h3 className="text-2xl font-bold text-white mb-2">Game Over!</h3>
-              </>
+              <h3 className="text-2xl font-bold text-white mb-2">Game Over!</h3>
             )}
             <div className={`${theme.cardBg} rounded-xl p-6 mb-6 text-center`}>
               {isNewHighScore && (
