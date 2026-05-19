@@ -22,10 +22,9 @@
 {"@context":"https://schema.org","@type":"SoftwareApplication","name":"Swift Typing","applicationCategory":"EducationalApplication","operatingSystem":"Windows","offers":{"@type":"Offer","price":"0","priceCurrency":"USD"},"description":"A comprehensive offline typing tutor desktop application with lessons, practice modes, and performance tracking.","author":{"@type":"Person","name":"Suraj Maurya"}}
 </script>
 <script>
-  // Check for saved theme or system preference
+  // Check for saved theme
   const savedTheme = localStorage.getItem('landing_theme');
-  const systemPrefersLight = window.matchMedia('(prefers-color-scheme: light)').matches;
-  if (savedTheme === 'light' || (!savedTheme && systemPrefersLight)) {
+  if (savedTheme === 'light') {
     document.documentElement.setAttribute('data-theme', 'light');
   }
 </script>
