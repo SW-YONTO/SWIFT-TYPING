@@ -16,6 +16,7 @@ import {
   ArrowRight,
   Download
 } from 'lucide-react';
+import surajAvatar from '../assets/suraj.jpg';
 
 const About = () => {
   const { theme } = useTheme();
@@ -54,7 +55,7 @@ const About = () => {
     {
       name: "Suraj Maurya",
       role: "Lead Developer & Founder",
-      avatar: "/ICONS/suraj.jpg",
+      avatar: surajAvatar,
       bio: "Full-stack developer passionate about creating educational tools and competitive gaming.",
       social: {
         github: "https://github.com/SW-YONTO/SWIFT-TYPING",

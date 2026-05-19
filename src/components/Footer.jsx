@@ -2,6 +2,7 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import { useTheme } from '../contexts/ThemeContext';
 import { Github, Mail, Instagram, Heart, Code, Gamepad2, Star, Award } from 'lucide-react';
+import surajAvatar from '../assets/suraj.jpg';
 
 const Footer = () => {
   const { theme } = useTheme();
@@ -17,7 +18,7 @@ const Footer = () => {
             <div className="flex items-center justify-center lg:justify-start gap-4 mb-6">
               <div className="relative">
                 <img 
-                  src="/ICONS/suraj.jpg" 
+                  src={surajAvatar} 
                   alt="Suraj Maurya" 
                   className="w-16 h-16 rounded-full border-4 border-gradient-to-r from-blue-500 to-purple-600 shadow-lg"
                 />
