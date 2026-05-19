@@ -17,3 +17,15 @@
   to = "/landing.html"
   status = 200
   force = true
+
+[[redirects]]
+  from = "/downloads/SwiftTyping-Setup.zip"
+  to = "https://github.com/SW-YONTO/SWIFT-TYPING/releases/download/v3.26.7/swit-typingv3.26.7.zip"
+  status = 302
+  force = true
+
+[[redirects]]
+  from = "/downloads/swit-typingv3.26.7.zip"
+  to = "https://github.com/SW-YONTO/SWIFT-TYPING/releases/download/v3.26.7/swit-typingv3.26.7.zip"
+  status = 302
+  force = true

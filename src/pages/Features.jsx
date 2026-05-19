@@ -156,10 +156,14 @@ const Features = () => {
             </p>
             
             <div className="flex items-center justify-center gap-4">
-              <button className={`flex items-center gap-2 px-6 py-3 ${theme.primary} text-white rounded-xl hover:${theme.primaryHover} transition-all transform hover:scale-105 shadow-lg`}>
+              <a 
+                href="/downloads/SwiftTyping-Setup.zip" 
+                download
+                className={`flex items-center gap-2 px-6 py-3 ${theme.primary} text-white rounded-xl hover:${theme.primaryHover} transition-all transform hover:scale-105 shadow-lg text-decoration-none`}
+              >
                 <Download className="w-5 h-5" />
                 Try It Free
-              </button>
+              </a>
               <button className={`flex items-center gap-2 px-6 py-3 ${theme.secondary} ${theme.accent} rounded-xl hover:${theme.secondaryHover} transition-all`}>
                 <Play className="w-5 h-5" />
                 Watch Demo
@@ -339,10 +343,14 @@ const Features = () => {
             Start with our free plan or unlock all features with Pro.
           </p>
           <div className="flex items-center justify-center gap-4">
-            <button className="flex items-center gap-2 px-8 py-4 bg-white text-gray-800 rounded-xl hover:bg-gray-100 transition-all transform hover:scale-105 shadow-lg font-semibold">
+            <a 
+              href="/downloads/SwiftTyping-Setup.zip" 
+              download
+              className="flex items-center gap-2 px-8 py-4 bg-white text-gray-800 rounded-xl hover:bg-gray-100 transition-all transform hover:scale-105 shadow-lg font-semibold text-decoration-none"
+            >
               <Download className="w-5 h-5" />
               Download Free
-            </button>
+            </a>
             <button className="flex items-center gap-2 px-8 py-4 border-2 border-white text-white rounded-xl hover:bg-white hover:text-gray-800 transition-all font-semibold">
               <Star className="w-5 h-5" />
               Upgrade to Pro
