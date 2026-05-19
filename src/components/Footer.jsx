@@ -17,7 +17,7 @@ const Footer = () => {
             <div className="flex items-center justify-center lg:justify-start gap-4 mb-6">
               <div className="relative">
                 <img 
-                  src="../public/ICONS/suraj.jpg" 
+                  src="/ICONS/suraj.jpg" 
                   alt="Suraj Maurya" 
                   className="w-16 h-16 rounded-full border-4 border-gradient-to-r from-blue-500 to-purple-600 shadow-lg"
                 />
@@ -73,9 +73,9 @@ const Footer = () => {
           <div className="text-center lg:text-left">
             <h3 className={`text-lg font-semibold ${theme.text} mb-6`}>Quick Links</h3>
             <div className="space-y-3">
-              <Link to="/about" className={`block ${theme.textSecondary} hover:${theme.accent} transition-colors duration-200 hover:translate-x-1 transform`}>
+              <a href="https://swift-typing.me" target="_blank" rel="noopener noreferrer" className={`block ${theme.textSecondary} hover:${theme.accent} transition-colors duration-200 hover:translate-x-1 transform`}>
                 About Swift Typing
-              </Link>
+              </a>
               <Link to="/features" className={`block ${theme.textSecondary} hover:${theme.accent} transition-colors duration-200 hover:translate-x-1 transform`}>
                 Features
               </Link>
@@ -118,13 +118,13 @@ const Footer = () => {
               </a>
               
               <a 
-                href="https://github.com/sw-esports" 
+                href="https://github.com/SW-YONTO" 
                 target="_blank" 
                 rel="noopener noreferrer"
                 className={`flex items-center justify-center lg:justify-start gap-3 p-3 rounded-lg ${theme.secondary} hover:bg-gray-800 hover:text-white transition-all duration-200 transform hover:scale-105`}
               >
                 <Github className="w-5 h-5" />
-                <span className="text-sm">sw-esports</span>
+                <span className="text-sm">SW-YONTO</span>
               </a>
             </div>
 

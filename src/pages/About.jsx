@@ -1,13 +1,13 @@
 import React from 'react';
 import { useTheme } from '../contexts/ThemeContext';
-import { 
-  Target, 
-  Users, 
-  Award, 
-  Clock, 
-  BarChart3, 
-  Zap, 
-  Shield, 
+import {
+  Target,
+  Users,
+  Award,
+  Clock,
+  BarChart3,
+  Zap,
+  Shield,
   Heart,
   Code,
   Gamepad2,
@@ -54,10 +54,10 @@ const About = () => {
     {
       name: "Suraj Maurya",
       role: "Lead Developer & Founder",
-      avatar: "../public/ICONS/suraj.jpg",
+      avatar: "/ICONS/suraj.jpg",
       bio: "Full-stack developer passionate about creating educational tools and competitive gaming.",
       social: {
-        github: "https://github.com/sw-esports/SWIFT-TYPING",
+        github: "https://github.com/SW-YONTO/SWIFT-TYPING",
         instagram: "https://instagram.com/red_eye0.0",
         email: "surajmoriya200@gmail.com"
       }
@@ -77,22 +77,22 @@ const About = () => {
               <h1 className={`text-5xl font-bold ${theme.text}`}>About Swift Typing</h1>
             </div>
             <p className={`text-xl ${theme.textSecondary} max-w-3xl mx-auto leading-relaxed`}>
-              Swift Typing is a comprehensive offline typing tutor designed to help you master the art of 
-              touch typing. Built with modern technology and educational expertise, we provide a complete 
+              Swift Typing is a comprehensive offline typing tutor designed to help you master the art of
+              touch typing. Built with modern technology and educational expertise, we provide a complete
               learning experience that adapts to your skill level.
             </p>
-            
+
             <div className="flex items-center justify-center gap-4 mt-8">
-              <a 
-                href="https://github.com/sw-esports/SWIFT-TYPING/releases/download/v3.26.6/SwiftTyping.zip" 
+              <a
+                href="https://github.com/SW-YONTO/SWIFT-TYPING/releases/download/v3.26.6/SwiftTyping.zip"
                 download
                 className={`flex items-center gap-2 px-6 py-3 ${theme.primary} text-white rounded-xl hover:${theme.primaryHover} transition-all transform hover:scale-105 shadow-lg text-decoration-none`}
               >
                 <Download className="w-5 h-5" />
                 Download SwiftTyping
               </a>
-              <a 
-                href="https://github.com/sw-esports/SWIFT-TYPING"
+              <a
+                href="https://github.com/SW-YONTO/SWIFT-TYPING"
                 target="_blank"
                 rel="noopener noreferrer"
                 className={`flex items-center gap-2 px-6 py-3 ${theme.secondary} ${theme.accent} rounded-xl hover:${theme.secondaryHover} transition-all text-decoration-none`}
@@ -103,7 +103,7 @@ const About = () => {
             </div>
           </div>
         </div>
-        
+
         {/* Background decoration */}
         <div className="absolute inset-0 overflow-hidden pointer-events-none">
           <div className="absolute top-20 left-10 w-72 h-72 bg-linear-to-br from-blue-500/10 to-purple-600/10 rounded-full blur-3xl"></div>
@@ -137,8 +137,8 @@ const About = () => {
             <div>
               <h2 className={`text-4xl font-bold ${theme.text} mb-6`}>Our Mission</h2>
               <p className={`text-lg ${theme.textSecondary} mb-6 leading-relaxed`}>
-                We believe that typing is a fundamental skill in the digital age. Our mission is to make 
-                learning touch typing engaging, effective, and accessible to everyone. Swift Typing combines 
+                We believe that typing is a fundamental skill in the digital age. Our mission is to make
+                learning touch typing engaging, effective, and accessible to everyone. Swift Typing combines
                 proven teaching methods with modern technology to create the ultimate typing education experience.
               </p>
               <div className="space-y-4">
@@ -160,7 +160,7 @@ const About = () => {
                 </div>
               </div>
             </div>
-            
+
             <div className={`${theme.cardBg} rounded-2xl p-8 border ${theme.border} shadow-lg`}>
               <h3 className={`text-2xl font-semibold ${theme.text} mb-6`}>Why Choose Swift Typing?</h3>
               <div className="space-y-6">
@@ -190,14 +190,14 @@ const About = () => {
               Passionate developers and educators working together to create the best typing education experience.
             </p>
           </div>
-          
+
           <div className="flex justify-center">
             {team.map((member, index) => (
               <div key={index} className={`${theme.cardBg} rounded-2xl p-8 border ${theme.border} shadow-lg max-w-md`}>
                 <div className="text-center">
                   <div className="relative mb-6">
-                    <img 
-                      src={member.avatar} 
+                    <img
+                      src={member.avatar}
                       alt={member.name}
                       className="w-24 h-24 rounded-full mx-auto border-4 border-gradient-to-r from-blue-500 to-purple-600 shadow-lg"
                     />
@@ -205,13 +205,13 @@ const About = () => {
                       <Gamepad2 className="w-4 h-4 text-white" />
                     </div>
                   </div>
-                  
+
                   <h3 className={`text-xl font-bold ${theme.text} mb-2`}>{member.name}</h3>
                   <p className={`${theme.textSecondary} mb-4`}>{member.role}</p>
                   <p className={`text-sm ${theme.textSecondary} mb-6`}>{member.bio}</p>
-                  
+
                   <div className="flex items-center justify-center gap-4">
-                    <a 
+                    <a
                       href={member.social.github}
                       target="_blank"
                       rel="noopener noreferrer"
@@ -219,7 +219,7 @@ const About = () => {
                     >
                       <Code className="w-5 h-5" />
                     </a>
-                    <a 
+                    <a
                       href={`mailto:${member.social.email}`}
                       className={`p-2 ${theme.secondary} rounded-lg hover:${theme.primary} hover:text-white transition-all`}
                     >
@@ -242,7 +242,7 @@ const About = () => {
               Swift Typing is built using cutting-edge technologies to ensure the best performance and user experience.
             </p>
           </div>
-          
+
           <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
             {[
               { name: "React", color: "bg-blue-500", desc: "Modern UI Framework" },
@@ -267,20 +267,20 @@ const About = () => {
         <div className="max-w-4xl mx-auto px-4 text-center">
           <h2 className="text-4xl font-bold mb-6">Ready to Master Touch Typing?</h2>
           <p className="text-xl mb-8 opacity-90">
-            Join thousands of users who have improved their typing skills with Swift Typing. 
+            Join thousands of users who have improved their typing skills with Swift Typing.
             Start your journey to faster, more accurate typing today.
           </p>
           <div className="flex items-center justify-center gap-4">
-            <a 
-              href="https://github.com/sw-esports/SWIFT-TYPING/releases/download/v3.26.6/SwiftTyping.zip" 
+            <a
+              href="https://github.com/SW-YONTO/SWIFT-TYPING/releases/download/v3.26.6/SwiftTyping.zip"
               download
               className="flex items-center gap-2 px-8 py-4 bg-white text-gray-800 rounded-xl hover:bg-gray-100 transition-all transform hover:scale-105 shadow-lg font-semibold text-decoration-none"
             >
               <Download className="w-5 h-5" />
               Download Now
             </a>
-            <a 
-              href="https://github.com/sw-esports/SWIFT-TYPING"
+            <a
+              href="https://github.com/SW-YONTO/SWIFT-TYPING"
               target="_blank"
               rel="noopener noreferrer"
               className="flex items-center gap-2 px-8 py-4 border-2 border-white text-white rounded-xl hover:bg-white hover:text-gray-800 transition-all font-semibold text-decoration-none"
