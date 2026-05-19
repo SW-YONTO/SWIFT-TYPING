@@ -14,7 +14,7 @@ import {
   BarChart3,
   Shield,
   Clock,
-  Infinity,
+  Infinity as InfinityIcon,
   Award,
   Sparkles
 } from 'lucide-react';
@@ -87,7 +87,7 @@ const Pricing = () => {
       ],
       limitations: [],
       buttonText: "Buy Lifetime",
-      icon: Infinity,
+      icon: InfinityIcon,
       color: "from-green-500 to-emerald-600"
     }
   ];

@@ -167,21 +167,6 @@ const WordRacerGame = () => {
     hard: 1.6     // AI faster
   };
   
-  // Calculate time to complete sentence based on WPM
-  // Formula: WPM * 5 chars/word / 60 = chars per second
-  // Time to complete = sentence length / chars per second
-  const calculateTimeToComplete = useCallback((wpm, sentenceLength) => {
-    const charsPerSecond = (wpm * 5) / 60;
-    return sentenceLength / charsPerSecond; // seconds to complete
-  }, []);
-  
-  // Calculate progress based on elapsed time and WPM
-  const calculateProgressFromTime = useCallback((elapsedSeconds, wpm, sentenceLength) => {
-    const timeToComplete = calculateTimeToComplete(wpm, sentenceLength);
-    const progress = (elapsedSeconds / timeToComplete) * 100;
-    return Math.min(100, progress);
-  }, [calculateTimeToComplete]);
-  
   // Get random sentence
   const getRandomSentence = useCallback(() => {
     return sentences[Math.floor(Math.random() * sentences.length)];

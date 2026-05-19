@@ -69,7 +69,7 @@ const saveHighScore = (difficulty, score) => {
   return false;
 };
 
-const BlockContainerGame = ({ currentUser, settings }) => {
+const BlockContainerGame = ({ currentUser }) => {
   const { theme } = useTheme();
   const [gameState, setGameState] = useState('idle'); // idle, playing, paused, gameOver
   const [score, setScore] = useState(0);

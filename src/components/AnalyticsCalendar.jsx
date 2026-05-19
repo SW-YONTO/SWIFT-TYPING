@@ -10,7 +10,6 @@ import { formatTime } from '../utils/storage';
 const AnalyticsCalendar = ({ testResults = [], onClose }) => {
   const { theme } = useTheme();
   const [selectedDate, setSelectedDate] = useState(null);
-  const [currentMonth, setCurrentMonth] = useState(new Date());
 
   // Process test results into a map of date -> activities
   const activityMap = useMemo(() => {
@@ -173,7 +172,6 @@ const AnalyticsCalendar = ({ testResults = [], onClose }) => {
 
     // Calculate streak
     let currentStreak = 0;
-    let maxStreak = 0;
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     

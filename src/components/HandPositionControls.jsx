@@ -5,7 +5,6 @@ import { useTheme } from '../contexts/ThemeContext';
 
 const HandPositionControls = ({ settings, onSettingChange, onSave }) => {
   const [isOpen, setIsOpen] = useState(false);
-  const [showControls, setShowControls] = useState(false);
   const { theme } = useTheme();
 
   // Toggle panel visibility only when virtual hands are enabled

@@ -73,7 +73,7 @@ const saveHighScore = (difficulty, score) => {
   return false;
 };
 
-const BalloonGame = ({ currentUser, settings }) => {
+const BalloonGame = ({ currentUser }) => {
   const { theme } = useTheme();
   const [gameState, setGameState] = useState('idle'); // idle, playing, paused, gameOver
   const [score, setScore] = useState(0);

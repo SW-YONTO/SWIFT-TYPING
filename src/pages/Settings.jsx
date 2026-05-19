@@ -111,8 +111,6 @@ const Settings = ({ currentUser, settings, onSettingsChange }) => {
     setShowAvatarModal(false);
     soundEffects.playSuccess();
     
-    // Update current user object
-    const updatedUser = { ...currentUser, avatar: newAvatar };
     // Trigger re-render by updating through parent if available
     window.location.reload(); // Simple solution to refresh user data
   };
@@ -437,7 +435,7 @@ const Settings = ({ currentUser, settings, onSettingsChange }) => {
                       <span>☀️</span> Light Themes
                     </h3>
                     <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                      {Object.entries(themes).filter(([_, themeData]) => themeData.mode === 'light').map(([key, themeData]) => (
+                      {Object.entries(themes).filter(([, themeData]) => themeData.mode === 'light').map(([key, themeData]) => (
                         <div
                           key={key}
                           className={`p-3 rounded-lg border-2 cursor-pointer transition-all hover:scale-105 ${
@@ -462,7 +460,7 @@ const Settings = ({ currentUser, settings, onSettingsChange }) => {
                       <span>🌙</span> Dark Themes
                     </h3>
                     <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                      {Object.entries(themes).filter(([_, themeData]) => themeData.mode === 'dark').map(([key, themeData]) => (
+                      {Object.entries(themes).filter(([, themeData]) => themeData.mode === 'dark').map(([key, themeData]) => (
                         <div
                           key={key}
                           className={`p-3 rounded-lg border-2 cursor-pointer transition-all hover:scale-105 ${

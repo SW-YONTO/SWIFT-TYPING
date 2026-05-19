@@ -357,7 +357,6 @@ const TypingComponent = ({
   content, 
   onComplete, 
   settings = { timeLimit: 60, wordLimit: 50, theme: 'blue' },
-  onSettingsChange,
   title = "Typing Practice",
   isLesson = false // New prop to identify lesson mode
 }) => {
@@ -409,8 +408,6 @@ const TypingComponent = ({
     return savedSettings ? { ...defaultSettings, ...JSON.parse(savedSettings) } : defaultSettings;
   });
   const [generatedContent, setGeneratedContent] = useState(content);
-  const [endTime, setEndTime] = useState(null); // Add missing endTime state
-  const [scrollOffset, setScrollOffset] = useState(0); // For smooth scrolling
   
   const inputRef = useRef(null);
   const textRef = useRef(null);
@@ -492,22 +489,6 @@ const TypingComponent = ({
     setGeneratedContent(prev => prev + extension);
   }, [content, practiceSettings.practiceMode]);
 
-  // Memoized stats calculation
-  const currentStats = useMemo(() => {
-    const currentWPM = (!startTime || timeElapsed === 0) ? 0 : calculateWPM(correctCharacters, timeElapsed);
-    const grossWPM = timeElapsed > 0 ? calculateGrossWPM(userInput.length, timeElapsed) : 0;
-    const accuracy = calculateAccuracy(correctCharacters, userInput.length);
-    
-    return { currentWPM, grossWPM, accuracy };
-  }, [correctCharacters, timeElapsed, userInput.length, startTime]);
-
-  // Optimized customize modal handler with useCallback
-  const handleCustomizeApply = useCallback((newSettings) => {
-    setPracticeSettings(newSettings);
-    safeLocalStorage.setItem('typing_app_practice_settings', JSON.stringify(newSettings));
-    handleRestart();
-  }, [safeLocalStorage]);
-
   // Optimized restart handler with useCallback
   const handleRestart = useCallback(() => {
     completedRef.current = false;
@@ -516,14 +497,12 @@ const TypingComponent = ({
     setErrors(new Set());
     setAllErrors(new Set());
     setStartTime(null);
-    setEndTime(null);
     setTimeElapsed(0);
     setIsActive(false);
     setIsPaused(false);
     setIsCompleted(false);
     setWpmHistory([]);
     setCorrectCharacters(0);
-    setScrollOffset(0);
     
     const infiniteContent = generateInfiniteContent();
     setGeneratedContent(infiniteContent);
@@ -553,9 +532,7 @@ const TypingComponent = ({
     const infiniteContent = generateInfiniteContent();
     setGeneratedContent(infiniteContent);
     setCurrentIndex(0);
-    setScrollOffset(0);
     setStartTime(null);
-    setEndTime(null);
     setErrors(new Set());
     setIsCompleted(false);
     setCurrentKey(infiniteContent[0]?.toLowerCase() || '');
@@ -730,7 +707,7 @@ const TypingComponent = ({
     const lengthDiff = Math.abs(newLength - userInput.length);
     if (lengthDiff > 1) {
       // Paste or multi-character input detected - reject
-      if (settings.soundEnabled) playSound('error');
+      if (soundEnabled) soundEffects.playError();
       return;
     }
     
@@ -822,99 +799,6 @@ const TypingComponent = ({
     }
   };
 
-  const handleComplete = useCallback(() => {
-    if (completedRef.current) {
-      return;
-    }
-    
-    completedRef.current = true;
-    setIsActive(false);
-    setIsCompleted(true);
-    
-    // Play success sound
-    soundEffects.playSuccess();
-    
-    const actualTimeElapsed = startTime ? Math.floor((Date.now() - startTime) / 1000) : timeElapsed;
-    
-    let finalTime = Math.max(actualTimeElapsed, timeElapsed, 1);
-    
-    if (practiceSettings.practiceMode === 'time' && practiceSettings.timeLimit > 0) {
-      finalTime = Math.min(finalTime, practiceSettings.timeLimit + 2);
-    }
-    
-    const totalCharacters = userInput.length;
-    const wordsTyped = calculateWordsTyped(userInput);
-    
-    // Remove debug logging for production
-    if (process.env.NODE_ENV === 'development') {
-      console.log('Completion Debug:', {
-        mode: practiceSettings.practiceMode,
-        timeLimit: practiceSettings.timeLimit,
-        actualTimeElapsed,
-        timeElapsed,
-        finalTime,
-        totalCharacters,
-        correctCharacters,
-        wordsTyped,
-        userInput: userInput.substring(0, 50) + '...'
-      });
-    }
-    
-    const grossWPM = calculateGrossWPM(totalCharacters, finalTime);
-    const netWPM = calculateWPM(correctCharacters, finalTime);
-    const rawAccuracy = calculateAccuracy(correctCharacters, totalCharacters);
-    
-    // Build final WPM history with the completion entry
-    const finalWpmHistory = [...wpmHistory];
-    if (finalWpmHistory.length === 0 || finalWpmHistory[finalWpmHistory.length - 1].time !== finalTime) {
-      finalWpmHistory.push({ time: finalTime, wpm: netWPM });
-    }
-    
-    // Update state (for display purposes)
-    setWpmHistory(finalWpmHistory);
-
-    const result = {
-      wpm: netWPM,
-      grossWPM: grossWPM,
-      accuracy: rawAccuracy,
-      timeSpent: finalTime,
-      totalCharacters: totalCharacters,
-      correctCharacters: correctCharacters,
-      errors: allErrors.size,
-      wordsTyped: wordsTyped,
-      content: title,
-      wpmHistory: finalWpmHistory,
-      completedAt: new Date().toISOString()
-    };
-
-    // Check for new achievements
-    const userId = localStorage.getItem('typing_app_current_user') || 'default';
-    const newAchievements = achievementManager.checkAchievements(userId, {
-      bestWPM: netWPM,
-      bestAccuracy: rawAccuracy,
-      totalTests: 1,
-      totalTime: finalTime,
-      lessonsCompleted: isLesson ? 1 : 0,
-      currentStreak: 1
-    });
-    
-    // Show achievement toast if any new achievements
-    if (newAchievements.length > 0) {
-      soundEffects.playAchievement();
-      setNewAchievement(newAchievements[0]); // Show first new achievement
-    }
-
-    // Navigate to results page
-    navigate('/results', { state: { results: result, newAchievements } });
-
-    // Call onComplete callback
-    if (onComplete) {
-      onComplete(result);
-    }
-  }, [startTime, timeElapsed, practiceSettings, userInput, correctCharacters, allErrors, title, wpmHistory, navigate, onComplete, isLesson]);
-
-
-
   // Calculate live stats with accurate real-time formulas
   const calculateCurrentWPM = () => {
     if (!startTime || timeElapsed === 0) return 0;
@@ -922,7 +806,6 @@ const TypingComponent = ({
   };
 
   const currentNetWPM = calculateCurrentWPM();
-  const currentGrossWPM = timeElapsed > 0 ? calculateGrossWPM(userInput.length, timeElapsed) : 0;
   const currentAccuracy = calculateAccuracy(correctCharacters, userInput.length);
   
   // Calculate progress based on typing completion
@@ -939,18 +822,6 @@ const TypingComponent = ({
     // For other modes, show progress through visible content
     progress = generatedContent.length > 0 ? Math.min((currentIndex / generatedContent.length) * 100, 100) : 0;
   }
-
-  // Font size mapping for typing area
-  const getTypingFontSize = () => {
-    const fontSizeMap = {
-      'small': 'text-xl',     // 20px for typing area
-      'medium': 'text-2xl',   // 24px for typing area  
-      'large': 'text-3xl',    // 30px for typing area
-      'xl': 'text-4xl',       // 36px for typing area
-      '2xl': 'text-5xl'       // 48px for typing area
-    };
-    return fontSizeMap[fontSize] || fontSizeMap['medium'];
-  };
 
   // Font family mapping for typing area with offline fallbacks
   const getTypingFontFamily = () => {

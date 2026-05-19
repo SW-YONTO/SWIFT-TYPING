@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { RotateCcw, Heart } from 'lucide-react';
-import { useTheme } from '../../contexts/ThemeContext';
+
 import { progressManager } from '../../utils/storage';
 import { playSound } from '../../utils/soundEffects';
 
@@ -216,8 +216,7 @@ const WindParticlesCSS = React.memo(({ type }) => {
   );
 });
 
-const KeyboardJumpGame = ({ currentUser, settings }) => {
-  const { theme } = useTheme();
+const KeyboardJumpGame = ({ currentUser }) => {
   const [isLoading, setIsLoading] = useState(true);
   const [loadProgress, setLoadProgress] = useState(0);
   const [gameState, setGameState] = useState('idle');
@@ -243,13 +242,11 @@ const KeyboardJumpGame = ({ currentUser, settings }) => {
   const [combo, setCombo] = useState(0);
   const [maxCombo, setMaxCombo] = useState(0);
   const [highScores, setHighScores] = useState(getHighScores());
-  const [isNewHighScore, setIsNewHighScore] = useState(false);
   const [showLevelBanner, setShowLevelBanner] = useState(false);
   const [levelBannerText, setLevelBannerText] = useState('');
   const [showLevelBadge, setShowLevelBadge] = useState(true);
   const [wrongInputShake, setWrongInputShake] = useState(false);
   const [robotFacing, setRobotFacing] = useState('right');
-  const [walkCycle, setWalkCycle] = useState(0); // Robot walk animation cycle
   
   // Level transition states
   const [skyTransitionProgress, setSkyTransitionProgress] = useState(0);
@@ -586,17 +583,15 @@ const KeyboardJumpGame = ({ currentUser, settings }) => {
     setWordsTyped(0); setLevelWordsTyped(0); setCurrentLevel(1); setAccuracy(100);
     setTotalChars(0); setCorrectChars(0); setCombo(0); setMaxCombo(0);
     setTypedChars([]); setCurrentCharIndex(0); setCharLostLife(false);
-    setTargetPlatformId(null); setIsNewHighScore(false); setPlayerState('idle');
+    setTargetPlatformId(null); setPlayerState('idle');
     setShowLevelBanner(false); setGameState('playing'); setRobotFacing('right');
     setSkyTransitionProgress(0); setPreviousTheme(null); setIsTransitioning(false);
-    setWalkCycle(0);
     setTimeout(() => { if (inputRef.current) inputRef.current.focus(); }, 100);
   };
 
   useEffect(() => {
     if (gameState === 'gameOver' && currentUser) {
       const inh = saveHighScore(difficulty, score);
-      setIsNewHighScore(inh);
       setHighScores(getHighScores());
       progressManager.saveTestResult(currentUser.id, { type: 'game', gameType: 'keyboard-jump', score, wordsTyped, accuracy, maxCombo, difficulty, level: currentLevel, isHighScore: inh, timeSpent: wordsTyped * 2, wpm: Math.round(wordsTyped * 12), totalCharacters: correctChars, testTitle: `Keyboard Jump (${difficulty})` });
     }

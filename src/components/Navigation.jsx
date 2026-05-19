@@ -4,7 +4,7 @@ import { Book, Trophy, Zap, Settings, User, LogOut, ChevronDown, Palette, Gamepa
 import { themes } from '../utils/storage';
 import { useTheme } from '../contexts/ThemeContext';
 
-const Navigation = ({ currentUser, onLogout, onThemeChange, currentTheme }) => {
+const Navigation = ({ currentUser, onLogout, onThemeChange }) => {
   const [showUserDropdown, setShowUserDropdown] = useState(false);
   const [showThemeDropdown, setShowThemeDropdown] = useState(false);
   const [themeFocusIndex, setThemeFocusIndex] = useState(-1);
@@ -14,12 +14,11 @@ const Navigation = ({ currentUser, onLogout, onThemeChange, currentTheme }) => {
   // Refs for dropdown elements
   const themeDropdownRef = useRef(null);
   const themeButtonRef = useRef(null);
-  const userDropdownRef = useRef(null);
   const userButtonRef = useRef(null);
 
   // Get theme items for keyboard navigation
-  const lightThemes = Object.entries(themes).filter(([_, t]) => t.mode === 'light');
-  const darkThemes = Object.entries(themes).filter(([_, t]) => t.mode === 'dark');
+  const lightThemes = Object.entries(themes).filter(([, t]) => t.mode === 'light');
+  const darkThemes = Object.entries(themes).filter(([, t]) => t.mode === 'dark');
   const allThemes = [...lightThemes, ...darkThemes];
 
   // Handle keyboard navigation for theme dropdown
