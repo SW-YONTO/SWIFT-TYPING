@@ -406,7 +406,61 @@ const WordRacerGame = () => {
       return;
     }
     
-    // Allow any input including wrong characters
+    // Only apply checks if the user is typing a new character (not backspacing)
+    if (value.length > userInput.length) {
+      const newChar = value[value.length - 1];
+      const expectedChar = currentSentence[value.length - 1];
+      
+      // Rule 1: Must type space where there is a space in the target sentence
+      if (expectedChar === ' ' && newChar !== ' ') {
+        if (soundEnabled) playSound('error');
+        setTotalKeystrokes(prev => prev + 1);
+        return; // Block input
+      }
+      
+      // Rule 2: Cannot type space where there is no space in the target sentence
+      if (newChar === ' ' && expectedChar !== ' ') {
+        if (soundEnabled) playSound('error');
+        setTotalKeystrokes(prev => prev + 1);
+        return; // Block input
+      }
+      
+      // Rule 3: Cannot type space (move to next word) if the previous word has errors
+      if (newChar === ' ') {
+        let hasError = false;
+        for (let i = 0; i < value.length - 1; i++) {
+          if (value[i] !== currentSentence[i]) {
+            hasError = true;
+            break;
+          }
+        }
+        if (hasError) {
+          if (soundEnabled) playSound('error');
+          setTotalKeystrokes(prev => prev + 1);
+          return; // Block space until word is fixed
+        }
+      }
+      
+      // Rule 4: Cannot type the final character of the race if there are any errors
+      if (value.length === currentSentence.length) {
+        let hasError = false;
+        for (let i = 0; i < value.length; i++) {
+          const charToCheck = i === value.length - 1 ? newChar : value[i];
+          if (charToCheck !== currentSentence[i]) {
+            hasError = true;
+            break;
+          }
+        }
+        
+        if (hasError) {
+          if (soundEnabled) playSound('error');
+          setTotalKeystrokes(prev => prev + 1);
+          return; // Block finishing
+        }
+      }
+    }
+    
+    // Allow input
     setUserInput(value);
     if (value.length > userInput.length) {
       setTotalKeystrokes(prev => prev + 1);
@@ -421,7 +475,7 @@ const WordRacerGame = () => {
     }
     setCorrectKeystrokes(correctCount);
     
-    // Progress based on total length typed, regardless of correctness
+    // Progress based on total length typed
     const newProgress = (value.length / currentSentence.length) * 100;
     setPlayerProgress(newProgress);
     
