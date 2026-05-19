@@ -1,7 +1,13 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
 *{margin:0;padding:0;box-sizing:border-box}
 :root{--bg:#0a0a0f;--bg2:#12121a;--card:#1a1a2e;--border:#2a2a3e;--text:#e4e4e7;--text2:#a1a1aa;--accent:#6366f1;--accent2:#8b5cf6;--glow:rgba(99,102,241,0.15)}
-body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);overflow-x:hidden}
+[data-theme="light"]{--bg:#f8fafc;--bg2:#f1f5f9;--card:#ffffff;--border:#e2e8f0;--text:#0f172a;--text2:#475569;--accent:#4f46e5;--accent2:#7c3aed;--glow:rgba(79,70,229,0.15)}
+body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);overflow-x:hidden;transition:background 0.3s, color 0.3s}
+.theme-toggle{background:transparent;border:1px solid var(--border);color:var(--text);width:36px;height:36px;border-radius:10px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .2s;margin-left:16px;}
+.theme-toggle:hover{background:var(--glow);border-color:var(--accent)}
+.theme-toggle .moon-icon{display:none}
+[data-theme="light"] .theme-toggle .sun-icon{display:none}
+[data-theme="light"] .theme-toggle .moon-icon{display:block}
 a{text-decoration:none;color:inherit}
 .container{max-width:1200px;margin:0 auto;padding:0 24px}
 .nav{position:fixed;top:0;left:0;right:0;z-index:100;padding:16px 0;backdrop-filter:blur(20px);background:rgba(10,10,15,0.8);border-bottom:1px solid var(--border);transition:all .3s}

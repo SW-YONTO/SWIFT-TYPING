@@ -73,22 +73,22 @@ const Footer = () => {
           <div className="text-center lg:text-left">
             <h3 className={`text-lg font-semibold ${theme.text} mb-6`}>Quick Links</h3>
             <div className="space-y-3">
-              <a href="https://swift-typing.me" target="_blank" rel="noopener noreferrer" className={`block ${theme.textSecondary} hover:${theme.accent} transition-colors duration-200 hover:translate-x-1 transform`}>
+              <a href="https://swift-typing.me" target="_blank" rel="noopener noreferrer" className={`block ${theme.textSecondary} hover:${theme.accent} transition-colors duration-200`}>
                 About Swift Typing
               </a>
-              <Link to="/features" className={`block ${theme.textSecondary} hover:${theme.accent} transition-colors duration-200 hover:translate-x-1 transform`}>
+              <Link to="/features" className={`block ${theme.textSecondary} hover:${theme.accent} transition-colors duration-200`}>
                 Features
               </Link>
-              <Link to="/pricing" className={`block ${theme.textSecondary} hover:${theme.accent} transition-colors duration-200 hover:translate-x-1 transform`}>
+              <Link to="/pricing" className={`block ${theme.textSecondary} hover:${theme.accent} transition-colors duration-200`}>
                 Pricing
               </Link>
-              <Link to="/lessons" className={`block ${theme.textSecondary} hover:${theme.accent} transition-colors duration-200 hover:translate-x-1 transform`}>
+              <Link to="/lessons" className={`block ${theme.textSecondary} hover:${theme.accent} transition-colors duration-200`}>
                 Typing Lessons
               </Link>
-              <Link to="/tests" className={`block ${theme.textSecondary} hover:${theme.accent} transition-colors duration-200 hover:translate-x-1 transform`}>
+              <Link to="/tests" className={`block ${theme.textSecondary} hover:${theme.accent} transition-colors duration-200`}>
                 Speed Tests
               </Link>
-              <Link to="/settings" className={`block ${theme.textSecondary} hover:${theme.accent} transition-colors duration-200 hover:translate-x-1 transform`}>
+              <Link to="/settings" className={`block ${theme.textSecondary} hover:${theme.accent} transition-colors duration-200`}>
                 Settings
               </Link>
             </div>
