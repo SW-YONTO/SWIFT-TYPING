@@ -42,12 +42,12 @@ const TypingControls = React.memo(({
       {/* Focus Mode Toggle */}
       <button
         onClick={onToggleFocusMode}
-        className={`flex items-center gap-2 ${theme.accent} text-white px-4 py-2 rounded-lg text-sm ${theme.accentHover} transition-all duration-200 hover:scale-105 hover:shadow-lg transform active:scale-95`}
+        className={`flex items-center justify-center gap-2 ${theme.primary} text-white py-2 rounded-lg text-sm ${theme.primaryHover} transition-all duration-200 hover:scale-105 hover:shadow-lg transform active:scale-95 w-10 sm:w-28`}
         aria-label={focusMode ? 'Exit focus mode' : 'Enter focus mode'}
         aria-pressed={focusMode}
       >
-        {focusMode ? <EyeOff className="w-4 h-4 text-white" aria-hidden="true" /> : <Eye className="w-4 h-4 text-white" aria-hidden="true" />}
-        <span className="hidden sm:inline">{focusMode ? 'Exit Focus' : 'Focus'}</span>
+        {focusMode ? <EyeOff className="w-4 h-4 text-white flex-shrink-0" aria-hidden="true" /> : <Eye className="w-4 h-4 text-white flex-shrink-0" aria-hidden="true" />}
+        <span className="hidden sm:inline whitespace-nowrap">{focusMode ? 'Exit Focus' : 'Focus'}</span>
       </button>
       
       {/* Pause/Resume Button */}
