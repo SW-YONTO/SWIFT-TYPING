@@ -120,7 +120,7 @@ const TypingTests = ({ currentUser, settings }) => {
               >
                 <div className="flex items-start justify-between mb-4">
                   <div className="flex items-center gap-3">
-                    <Zap className="w-6 h-6 text-yellow-600" />
+                    <Zap className={`w-6 h-6 ${theme.mode === 'dark' ? 'text-yellow-600' : 'text-amber-500'}`} />
                     <h2 className={`text-lg font-semibold ${theme.text}`}>{test.title}</h2>
                   </div>
                   <Play className={`w-5 h-5 ${theme.accent}`} />

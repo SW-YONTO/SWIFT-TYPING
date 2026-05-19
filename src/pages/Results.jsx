@@ -204,7 +204,7 @@ const Results = () => {
           
           {/* Test Type with Subtle Animation */}
           <div className={`${theme.textSecondary} text-lg animate-fade-in`}>
-            <span className="inline-block px-4 py-2 rounded-full bg-gray-100 dark:bg-gray-800">
+            <span className={`inline-block px-4 py-2 rounded-full ${theme.mode === 'dark' ? 'bg-gray-800 text-gray-300' : 'bg-gray-200 text-gray-800'}`}>
               {results.content}
             </span>
           </div>
@@ -226,7 +226,7 @@ const Results = () => {
             <div className={`${theme.textSecondary} text-xs mt-1 opacity-70`}>Net Speed</div>
             {results.wpm > 60 && (
               <div className="mt-2">
-                <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200 animate-pulse">
+                <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${theme.mode === 'dark' ? 'bg-blue-900/60 text-blue-300' : 'bg-blue-100 text-blue-800'} animate-pulse`}>
                   🚀 Excellent!
                 </span>
               </div>
@@ -249,7 +249,7 @@ const Results = () => {
             <div className={`${theme.textSecondary} text-xs mt-1 opacity-70`}>Correct Characters</div>
             {results.accuracy >= 95 && (
               <div className="mt-2">
-                <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200 animate-pulse">
+                <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${theme.mode === 'dark' ? 'bg-green-900/60 text-green-300' : 'bg-green-100 text-green-800'} animate-pulse`}>
                   🎯 Perfect!
                 </span>
               </div>
