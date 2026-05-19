@@ -11,8 +11,8 @@
     <meta name="autocomplete" content="off" />
     <meta name="format-detection" content="telephone=no, date=no, email=no, address=no" />
     
-    <!-- Content Security Policy for Electron -->
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; connect-src 'self'; object-src 'none'; base-uri 'self';">
+    <!-- Content Security Policy for Electron and Web (Whitelisting Clerk) -->
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://*.clerk.accounts.dev blob:; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; img-src 'self' data: blob: https://img.clerk.com; font-src 'self' data: https://fonts.gstatic.com; connect-src 'self' https://*.clerk.accounts.dev; frame-src 'self' https://*.clerk.accounts.dev; object-src 'none'; base-uri 'self';">
     
     <title>Swift Typing - Desktop Typing Tutor</title>
     
