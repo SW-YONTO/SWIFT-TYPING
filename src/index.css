@@ -1031,3 +1031,24 @@ input[type="range"].hand-slider::-ms-thumb {
 .animate-robot-walk {
   animation: robot-walk 0.8s infinite ease-in-out;
 }
+
+/* ============================================
+   Clerk & Stripe Billing Portal Z-Index Fixes
+   Forces all third-party popups, drawers, and
+   payment frames to float above modal backdrops.
+   ============================================ */
+.cl-portal,
+.cl-root,
+.cl-internal-portal,
+.cl-modalBackdrop,
+.cl-modalContent,
+.cl-drawerRoot,
+.cl-drawerContent,
+.cl-drawerBody,
+.cl-drawerHeader,
+[data-clerk-portal],
+#clerk-components,
+.cl-page-content-wrapper,
+.clerk-portal-root {
+  z-index: 999999999 !important;
+}

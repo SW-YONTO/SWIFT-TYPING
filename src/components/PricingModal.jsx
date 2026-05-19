@@ -71,14 +71,18 @@ const PricingModal = ({ isOpen, onClose }) => {
   ];
 
   return (
-    <div className="fixed inset-0 z-[200] flex items-center justify-center p-4" style={{ background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(8px)' }} onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
+    <div className={`fixed inset-0 ${showClerkPricing ? 'z-[40]' : 'z-[200]'} flex items-center justify-center p-4`} style={{ background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(8px)' }} onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
       <div className={`${theme.cardBg} border ${theme.border} rounded-2xl max-w-[900px] w-full max-h-[90vh] overflow-y-auto p-8 relative shadow-2xl`}>
         <button onClick={onClose} className={`absolute top-4 right-4 w-9 h-9 rounded-lg border ${theme.border} ${theme.secondary} ${theme.text} flex items-center justify-center hover:bg-red-500 hover:text-white hover:border-red-500 transition-all`}>
           <X className="w-4 h-4" />
         </button>
 
-        <h2 className={`text-2xl font-bold ${theme.text} mb-2`}>Choose Your Plan</h2>
-        <p className={`${theme.textSecondary} mb-8`}>Start free, upgrade when you're ready.</p>
+        {!showClerkPricing && (
+          <>
+            <h2 className={`text-2xl font-bold ${theme.text} mb-2`}>Choose Your Plan</h2>
+            <p className={`${theme.textSecondary} mb-8`}>Start free, upgrade when you're ready.</p>
+          </>
+        )}
 
         {/* Offline notice */}
         {(isElectron || !isOnline) && (
@@ -92,53 +96,57 @@ const PricingModal = ({ isOpen, onClose }) => {
         )}
 
         {/* Plans */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-          {plans.map((plan) => {
-            const Icon = plan.icon;
-            return (
-              <div key={plan.id} onClick={() => setSelectedPlan(plan.id)} className={`relative ${theme.cardBg} border-2 rounded-2xl p-6 text-center cursor-pointer transition-all hover:shadow-xl ${selectedPlan === plan.id ? 'border-blue-500 shadow-lg shadow-blue-500/20' : theme.border} ${plan.popular ? 'md:scale-105' : ''}`}>
-                {plan.popular && (
-                  <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-gradient-to-r from-blue-500 to-purple-600 text-white text-xs font-bold px-4 py-1 rounded-full flex items-center gap-1">
-                    <Star className="w-3 h-3" /> POPULAR
+        {!showClerkPricing && (
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+            {plans.map((plan) => {
+              const Icon = plan.icon;
+              return (
+                <div key={plan.id} onClick={() => setSelectedPlan(plan.id)} className={`relative ${theme.cardBg} border-2 rounded-2xl p-6 text-center cursor-pointer transition-all hover:shadow-xl ${selectedPlan === plan.id ? 'border-blue-500 shadow-lg shadow-blue-500/20' : theme.border} ${plan.popular ? 'md:scale-105' : ''}`}>
+                  {plan.popular && (
+                    <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-gradient-to-r from-blue-500 to-purple-600 text-white text-xs font-bold px-4 py-1 rounded-full flex items-center gap-1">
+                      <Star className="w-3 h-3" /> POPULAR
+                    </div>
+                  )}
+                  <div className={`w-12 h-12 bg-gradient-to-r ${plan.gradient} rounded-xl mx-auto mb-3 flex items-center justify-center`}>
+                    <Icon className="w-6 h-6 text-white" />
                   </div>
-                )}
-                <div className={`w-12 h-12 bg-gradient-to-r ${plan.gradient} rounded-xl mx-auto mb-3 flex items-center justify-center`}>
-                  <Icon className="w-6 h-6 text-white" />
+                  <h3 className={`text-lg font-bold ${theme.text} mb-2`}>{plan.name}</h3>
+                  <div className={`text-3xl font-black ${theme.text} mb-1`}>{plan.price}</div>
+                  <div className={`text-xs ${theme.textSecondary} mb-4`}>{plan.period}</div>
+                  <ul className="text-left space-y-2">
+                    {plan.features.map((f, i) => (
+                      <li key={i} className={`flex items-center gap-2 text-sm ${theme.textSecondary}`}>
+                        <Check className="w-4 h-4 text-green-500 shrink-0" />{f}
+                      </li>
+                    ))}
+                  </ul>
+                  <button onClick={(e) => { e.stopPropagation(); handlePlanAction(plan.id); }} className={`w-full mt-4 py-2.5 rounded-xl text-sm font-semibold transition-all ${plan.id === 'free' ? `${theme.secondary} ${theme.text} hover:opacity-80` : 'bg-gradient-to-r from-blue-500 to-purple-600 text-white hover:shadow-lg hover:scale-105'}`}>
+                    {plan.id === 'free' ? 'Current Plan' : `Subscribe to ${plan.name}`}
+                  </button>
                 </div>
-                <h3 className={`text-lg font-bold ${theme.text} mb-2`}>{plan.name}</h3>
-                <div className={`text-3xl font-black ${theme.text} mb-1`}>{plan.price}</div>
-                <div className={`text-xs ${theme.textSecondary} mb-4`}>{plan.period}</div>
-                <ul className="text-left space-y-2">
-                  {plan.features.map((f, i) => (
-                    <li key={i} className={`flex items-center gap-2 text-sm ${theme.textSecondary}`}>
-                      <Check className="w-4 h-4 text-green-500 shrink-0" />{f}
-                    </li>
-                  ))}
-                </ul>
-                <button onClick={(e) => { e.stopPropagation(); handlePlanAction(plan.id); }} className={`w-full mt-4 py-2.5 rounded-xl text-sm font-semibold transition-all ${plan.id === 'free' ? `${theme.secondary} ${theme.text} hover:opacity-80` : 'bg-gradient-to-r from-blue-500 to-purple-600 text-white hover:shadow-lg hover:scale-105'}`}>
-                  {plan.id === 'free' ? 'Current Plan' : `Subscribe to ${plan.name}`}
-                </button>
-              </div>
-            );
-          })}
-        </div>
+              );
+            })}
+          </div>
+        )}
 
         {/* Coupon */}
-        <div className={`${theme.cardBg} border ${theme.border} rounded-xl p-5`}>
-          <h4 className={`text-sm font-semibold ${theme.text} mb-3`}>🎟️ Have a coupon code?</h4>
-          <div className="flex gap-2">
-            <input type="text" value={couponCode} onChange={(e) => setCouponCode(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') applyCoupon(); }} placeholder="Enter coupon code..." autoComplete="off" className={`flex-1 px-4 py-2.5 ${theme.background} border ${theme.border} rounded-lg ${theme.text} text-sm outline-none focus:border-blue-500 transition-colors`} />
-            <button onClick={applyCoupon} className="px-5 py-2.5 bg-gradient-to-r from-blue-500 to-purple-600 text-white rounded-lg text-sm font-semibold hover:shadow-lg transition-all">Apply</button>
+        {!showClerkPricing && (
+          <div className={`${theme.cardBg} border ${theme.border} rounded-xl p-5`}>
+            <h4 className={`text-sm font-semibold ${theme.text} mb-3`}>🎟️ Have a coupon code?</h4>
+            <div className="flex gap-2">
+              <input type="text" value={couponCode} onChange={(e) => setCouponCode(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') applyCoupon(); }} placeholder="Enter coupon code..." autoComplete="off" className={`flex-1 px-4 py-2.5 ${theme.background} border ${theme.border} rounded-lg ${theme.text} text-sm outline-none focus:border-blue-500 transition-colors`} />
+              <button onClick={applyCoupon} className="px-5 py-2.5 bg-gradient-to-r from-blue-500 to-purple-600 text-white rounded-lg text-sm font-semibold hover:shadow-lg transition-all">Apply</button>
+            </div>
+            {couponStatus && (
+              <div className={`mt-3 text-sm p-3 rounded-lg ${couponStatus === 'success' ? 'bg-green-500/10 text-green-500 border border-green-500/20' : 'bg-red-500/10 text-red-500 border border-red-500/20'}`}>{couponMessage}</div>
+            )}
+            {showDownload && (
+              <a href="/downloads/SwiftTyping-Setup.zip" download className="mt-3 inline-flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-green-500 to-emerald-600 text-white rounded-lg text-sm font-semibold hover:shadow-lg transition-all">
+                <Download className="w-4 h-4" />Download Swift Typing (.zip)
+              </a>
+            )}
           </div>
-          {couponStatus && (
-            <div className={`mt-3 text-sm p-3 rounded-lg ${couponStatus === 'success' ? 'bg-green-500/10 text-green-500 border border-green-500/20' : 'bg-red-500/10 text-red-500 border border-red-500/20'}`}>{couponMessage}</div>
-          )}
-          {showDownload && (
-            <a href="/downloads/SwiftTyping-Setup.zip" download className="mt-3 inline-flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-green-500 to-emerald-600 text-white rounded-lg text-sm font-semibold hover:shadow-lg transition-all">
-              <Download className="w-4 h-4" />Download Swift Typing (.zip)
-            </a>
-          )}
-        </div>
+        )}
 
         {/* Clerk Pricing Table */}
         {showClerkPricing && !isElectron && isOnline && (
