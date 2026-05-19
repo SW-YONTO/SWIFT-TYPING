@@ -189,7 +189,7 @@ const Results = () => {
           
           {/* Performance Level Badge with Enhanced Animation */}
           <div className="flex items-center justify-center gap-3 mb-4 animate-fade-in">
-            <div className={`p-3 rounded-full ${performance.level === 'Expert' ? 'bg-purple-100 dark:bg-purple-900/30' : performance.level === 'Advanced' ? 'bg-blue-100 dark:bg-blue-900/30' : 'bg-green-100 dark:bg-green-900/30'} animate-float`}>
+            <div className={`p-3 rounded-full ${performance.level === 'Expert' ? (theme.mode === 'dark' ? 'bg-purple-900/30' : 'bg-purple-100') : performance.level === 'Advanced' ? (theme.mode === 'dark' ? 'bg-blue-900/30' : 'bg-blue-100') : (theme.mode === 'dark' ? 'bg-green-900/30' : 'bg-green-100')} animate-float`}>
               <PerformanceIcon className={`w-6 h-6 ${performance.color}`} />
             </div>
             <div className="text-center">

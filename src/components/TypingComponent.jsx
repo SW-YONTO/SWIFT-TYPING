@@ -975,7 +975,7 @@ const TypingComponent = ({
           <div className="flex items-center gap-6">
             {/* WPM Indicator - Theme-aware icon colors */}
             <div className="flex items-center gap-2 group">
-              <div className={`p-2 ${theme.mode === 'dark' ? 'bg-blue-900/40' : 'bg-blue-100'} rounded-full group-hover:scale-110 transition-transform duration-200 shadow-lg`}>
+              <div className={`p-2 ${theme.mode === 'dark' ? 'bg-blue-900/40 shadow-lg' : 'bg-blue-100 shadow-sm'} rounded-full group-hover:scale-110 transition-transform duration-200`}>
                 <Zap className={`w-4 h-4 ${theme.mode === 'dark' ? 'text-blue-300' : 'text-blue-600'} drop-shadow-sm`} />
               </div>
               <div className="flex flex-col items-center">
@@ -988,7 +988,7 @@ const TypingComponent = ({
             
             {/* Accuracy Indicator - Theme-aware icon colors */}
             <div className="flex items-center gap-2 group">
-              <div className={`p-2 ${theme.mode === 'dark' ? 'bg-green-900/40' : 'bg-green-100'} rounded-full group-hover:scale-110 transition-transform duration-200 shadow-lg`}>
+              <div className={`p-2 ${theme.mode === 'dark' ? 'bg-green-900/40 shadow-lg' : 'bg-green-100 shadow-sm'} rounded-full group-hover:scale-110 transition-transform duration-200`}>
                 <Target className={`w-4 h-4 ${theme.mode === 'dark' ? 'text-green-300' : 'text-green-600'} drop-shadow-sm`} />
               </div>
               <div className="flex flex-col items-center">
@@ -1001,7 +1001,7 @@ const TypingComponent = ({
             
             {/* Time Indicator - Theme-aware icon colors */}
             <div className="flex items-center gap-2 group">
-              <div className={`p-2 ${theme.mode === 'dark' ? 'bg-orange-900/40' : 'bg-orange-100'} rounded-full group-hover:scale-110 transition-transform duration-200 shadow-lg`}>
+              <div className={`p-2 ${theme.mode === 'dark' ? 'bg-orange-900/40 shadow-lg' : 'bg-orange-100 shadow-sm'} rounded-full group-hover:scale-110 transition-transform duration-200`}>
                 <Clock className={`w-4 h-4 ${theme.mode === 'dark' ? 'text-orange-300' : 'text-orange-600'} drop-shadow-sm`} />
               </div>
               <div className="flex flex-col items-center">
