@@ -401,9 +401,9 @@ const TypingComponent = ({
   const [practiceSettings, setPracticeSettings] = useState(() => {
     const savedSettings = safeLocalStorage.getItem('typing_app_practice_settings');
     const defaultSettings = {
-      practiceMode: isLesson ? 'lesson' : 'time',
-      timeLimit: 60,
-      wordLimit: 50
+      practiceMode: isLesson ? 'lesson' : (settings?.practiceMode || 'time'),
+      timeLimit: settings?.timeLimit || 60,
+      wordLimit: settings?.wordLimit || 50
     };
     return savedSettings ? { ...defaultSettings, ...JSON.parse(savedSettings) } : defaultSettings;
   });
@@ -412,6 +412,18 @@ const TypingComponent = ({
   const inputRef = useRef(null);
   const textRef = useRef(null);
   const completedRef = useRef(false);
+
+  // Sync practiceSettings from settings prop whenever the parent updates it
+  // This ensures time/word limits set in Settings page take effect immediately
+  useEffect(() => {
+    if (!settings || isLesson) return;
+    setPracticeSettings(prev => ({
+      ...prev,
+      timeLimit: settings.timeLimit ?? prev.timeLimit,
+      wordLimit: settings.wordLimit ?? prev.wordLimit,
+    }));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [settings?.timeLimit, settings?.wordLimit]);
 
   // Caps Lock detection and Keyboard shortcuts (Ctrl+Plus/Minus for zoom)
   useEffect(() => {

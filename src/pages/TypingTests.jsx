@@ -52,7 +52,7 @@ const TypingTests = ({ currentUser, settings }) => {
               setShowTyping(false);
               setSelectedTest(null);
             }}
-            className={`${theme.accent} hover:${theme.accentHover} transition-colors`}
+            className={`flex items-center gap-2 ${theme.primary} text-white px-4 py-2 rounded-lg hover:opacity-90 transition-all font-medium`}
           >
             ← Back to Tests
           </button>
@@ -85,15 +85,15 @@ const TypingTests = ({ currentUser, settings }) => {
               <div className={`text-sm ${theme.textSecondary}`}>Tests Taken</div>
             </div>
             <div className="text-center">
-              <div className="text-2xl font-bold text-green-600">{userProgress.stats.bestWPM}</div>
+              <div className={`text-2xl font-bold ${theme.mode === 'dark' ? 'text-green-400' : 'text-green-600'}`}>{userProgress.stats.bestWPM}</div>
               <div className={`text-sm ${theme.textSecondary}`}>Best WPM</div>
             </div>
             <div className="text-center">
-              <div className="text-2xl font-bold text-purple-600">{userProgress.stats.bestAccuracy}%</div>
+              <div className={`text-2xl font-bold ${theme.mode === 'dark' ? 'text-purple-400' : 'text-purple-600'}`}>{userProgress.stats.bestAccuracy}%</div>
               <div className={`text-sm ${theme.textSecondary}`}>Best Accuracy</div>
             </div>
             <div className="text-center">
-              <div className="text-2xl font-bold text-orange-600">
+              <div className={`text-2xl font-bold ${theme.mode === 'dark' ? 'text-orange-400' : 'text-orange-600'}`}>
                 {(() => {
                   const nonGameResults = userProgress.testResults.filter(r => r.type !== 'game');
                   return nonGameResults.length > 0 
@@ -113,8 +113,7 @@ const TypingTests = ({ currentUser, settings }) => {
             const attempts = getTestResults(test.id).length;
 
             return (
-              <div
-                key={test.id}
+              <div key={test.id}
                 className={`${theme.cardBg} rounded-lg shadow-lg p-6 hover:shadow-xl transition-shadow cursor-pointer border ${theme.border}`}
                 onClick={() => handleStartTest(test)}
               >

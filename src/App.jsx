@@ -21,10 +21,12 @@ const NotFound = React.lazy(() => import('./pages/NotFound'));
 // Loading fallback component
 const PageLoader = () => {
   const { theme } = useTheme();
+  // Derive border colour from theme.accent (e.g. 'text-blue-600' → 'border-blue-600')
+  const spinnerBorder = theme?.accent?.replace('text-', 'border-') || 'border-blue-600';
   return (
     <div className={`flex items-center justify-center min-h-[60vh] ${theme?.background || ''}`}>
       <div className="text-center">
-        <div className="w-12 h-12 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+        <div className={`w-12 h-12 border-4 ${spinnerBorder} border-t-transparent rounded-full animate-spin mx-auto mb-4`}></div>
         <p className={`${theme?.textSecondary || 'text-gray-500'}`}>Loading...</p>
       </div>
     </div>
@@ -68,6 +70,15 @@ function App() {
 
   const handleSettingsChange = (newSettings) => {
     setUserSettings(newSettings);
+  };
+
+  // Refreshes currentUser from storage — used after avatar/username changes in Settings
+  // so we avoid window.location.reload() which drops the user back to the login screen.
+  const handleUserUpdate = () => {
+    const freshUser = userManager.getCurrentUser();
+    if (freshUser) {
+      setCurrentUser(freshUser);
+    }
   };
 
   const handleThemeChange = (newTheme) => {
@@ -149,6 +160,7 @@ function App() {
                       currentUser={currentUser}
                       settings={userSettings}
                       onSettingsChange={handleSettingsChange}
+                      onUserUpdate={handleUserUpdate}
                     />
                   } 
                 />

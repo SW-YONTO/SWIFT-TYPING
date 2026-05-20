@@ -53,12 +53,13 @@ const getPlayerName = () => {
   }
 };
 
-// AI racers with base WPM speeds
+// AI racers with base WPM speeds and natural variation ranges
+// minWPM/maxWPM define the random band each racer stays within
 const createAIRacers = () => [
-  { id: 1, name: 'Rookie', baseWPM: 20, bodyColor: '#10b981', windowColor: '#6ee7b7', glow: 'rgba(16, 185, 129, 0.6)' },
-  { id: 2, name: 'Speedy', baseWPM: 30, bodyColor: '#f59e0b', windowColor: '#fcd34d', glow: 'rgba(245, 158, 11, 0.6)' },
-  { id: 3, name: 'Master', baseWPM: 40, bodyColor: '#8b5cf6', windowColor: '#c4b5fd', glow: 'rgba(147, 51, 234, 0.6)' },
-  { id: 4, name: 'Lightning', baseWPM: 50, bodyColor: '#ef4444', windowColor: '#fca5a5', glow: 'rgba(239, 68, 68, 0.6)' }
+  { id: 1, name: 'Rookie',    baseWPM: 20, minWPM: 18, maxWPM: 24, bodyColor: '#10b981', windowColor: '#6ee7b7', glow: 'rgba(16, 185, 129, 0.6)' },
+  { id: 2, name: 'Speedy',    baseWPM: 30, minWPM: 27, maxWPM: 35, bodyColor: '#f59e0b', windowColor: '#fcd34d', glow: 'rgba(245, 158, 11, 0.6)' },
+  { id: 3, name: 'Master',    baseWPM: 40, minWPM: 37, maxWPM: 45, bodyColor: '#8b5cf6', windowColor: '#c4b5fd', glow: 'rgba(147, 51, 234, 0.6)' },
+  { id: 4, name: 'Lightning', baseWPM: 50, minWPM: 47, maxWPM: 57, bodyColor: '#ef4444', windowColor: '#fca5a5', glow: 'rgba(239, 68, 68, 0.6)' }
 ];
 
 // CSS Car Component - faces right (toward finish line)
@@ -150,6 +151,9 @@ const WordRacerGame = () => {
   const [aiRacers, setAiRacers] = useState(createAIRacers());
   const [aiProgress, setAiProgress] = useState([0, 0, 0, 0]); // Progress for each AI
   const [aiCurrentWPM, setAiCurrentWPM] = useState([0, 0, 0, 0]); // Current WPM display for each AI
+  // Use a ref (not state) so the running average is always synchronously current
+  // when the leaderboard renders after the race ends — avoids React batching stale reads.
+  const aiFinalWpmRef = useRef([0, 0, 0, 0]);
   
   // Stats
   const [totalKeystrokes, setTotalKeystrokes] = useState(0);
@@ -162,9 +166,9 @@ const WordRacerGame = () => {
   
   // Difficulty affects AI speed multiplier
   const difficultyMultiplier = {
-    easy: 0.8,    // AI slower
-    medium: 1.2,  // Normal
-    hard: 1.6     // AI faster
+    easy:   0.75, // AI slower
+    medium: 1.0,  // Normal — use the natural WPM bands
+    hard:   1.55  // AI significantly faster; Lightning reaches ~75-85 WPM
   };
   
   // Get random sentence
@@ -193,6 +197,7 @@ const WordRacerGame = () => {
     setPlayerProgress(0);
     setAiProgress([0, 0, 0, 0]);
     setAiCurrentWPM([0, 0, 0, 0]);
+    aiFinalWpmRef.current = [0, 0, 0, 0];
     setRaceTime(0);
     setPlayerWPM(0);
     setFinishOrder([]);
@@ -249,11 +254,13 @@ const WordRacerGame = () => {
   
   useEffect(() => {
     aiBaseDataRef.current = aiRacers.map(ai => ({
-      baseWPM: ai.baseWPM
+      baseWPM: ai.baseWPM,
+      minWPM:  ai.minWPM,
+      maxWPM:  ai.maxWPM
     }));
   }, [aiRacers]);
   
-  // Game loop for AI movement and time tracking - COMPLETELY INDEPENDENT of typing
+  // Game loop for AI movement and time tracking
   useEffect(() => {
     if (gameState !== 'playing') return;
     
@@ -262,28 +269,35 @@ const WordRacerGame = () => {
     let lastTime = startTime;
     let intervalId;
     
-    // Create AI state that persists across intervals - initialized once at start
-    const aiState = aiBaseDataRef.current.map(ai => ({
-      baseWPM: ai.baseWPM,
-      currentWPM: ai.baseWPM * multiplier * (0.85 + Math.random() * 0.30),
-      nextVariationTime: performance.now() + Math.random() * 2000,
-      mistakeEndTime: 0,
-      progress: 0
-    }));
+    // Running average WPM accumulators for leaderboard display
+    const aiWpmSamples = aiBaseDataRef.current.map(() => []);
+
+    // Create AI state with true per-racer WPM bands (clamped by min/maxWPM * multiplier)
+    const aiState = aiBaseDataRef.current.map(ai => {
+      const minWPM = (ai.minWPM ?? ai.baseWPM * 0.85) * multiplier;
+      const maxWPM = (ai.maxWPM ?? ai.baseWPM * 1.15) * multiplier;
+      const startWPM = minWPM + Math.random() * (maxWPM - minWPM);
+      return {
+        baseWPM: ai.baseWPM,
+        minWPM,
+        maxWPM,
+        currentWPM: startWPM,
+        nextVariationTime: performance.now() + 800 + Math.random() * 1500,
+        mistakeEndTime: 0,
+        progress: 0
+      };
+    });
     
-    // Use setInterval for consistent timing regardless of React rendering
     intervalId = setInterval(() => {
       const currentTime = performance.now();
-      const delta = (currentTime - lastTime) / 1000; // Convert to seconds
+      const delta = (currentTime - lastTime) / 1000;
       lastTime = currentTime;
       
-      // Update race time
       setRaceTime((currentTime - startTime) / 1000);
       
       const sentenceLength = sentenceLengthRef.current;
       if (sentenceLength === 0) return;
       
-      // Calculate new progress for each AI
       const newProgress = [];
       const newWPM = [];
       
@@ -294,15 +308,15 @@ const WordRacerGame = () => {
           return;
         }
         
-        // Update WPM variation every 1-3 seconds for realistic typing
+        // Vary speed within the racer's natural WPM band every 0.8–2.5 s
         if (currentTime >= ai.nextVariationTime) {
-          const variation = 0.8 + Math.random() * 0.4; // ±20% variation
-          ai.currentWPM = ai.baseWPM * multiplier * variation;
-          ai.nextVariationTime = currentTime + 1000 + Math.random() * 2000;
+          // Pick a random target WPM within this racer's band
+          ai.currentWPM = ai.minWPM + Math.random() * (ai.maxWPM - ai.minWPM);
+          ai.nextVariationTime = currentTime + 800 + Math.random() * 1700;
           
-          // Random "mistake" that slows down typing (5% chance)
+          // Random mistake (5% chance) that briefly cuts speed
           if (Math.random() < 0.05) {
-            ai.mistakeEndTime = currentTime + 500 + Math.random() * 1500;
+            ai.mistakeEndTime = currentTime + 400 + Math.random() * 1200;
           }
         }
         
@@ -312,30 +326,32 @@ const WordRacerGame = () => {
           effectiveWPM *= 0.3;
         }
         
-        // Convert WPM to progress per second
-        // WPM * 5 = chars per minute, / 60 = chars per second
-        // Then divide by sentence length and multiply by 100 for percentage
+        // Track average WPM for final leaderboard (exclude near-zero mistake frames)
+        if (effectiveWPM > ai.minWPM * 0.5) {
+          aiWpmSamples[index].push(effectiveWPM);
+        }
+
+        // Convert WPM to progress
         const charsPerSecond = (effectiveWPM * 5) / 60;
         const progressPerSecond = (charsPerSecond / sentenceLength) * 100;
-        const progressIncrement = progressPerSecond * delta;
+        ai.progress = Math.min(100, ai.progress + progressPerSecond * delta);
         
-        ai.progress = Math.min(100, ai.progress + progressIncrement);
         newProgress[index] = ai.progress;
         newWPM[index] = Math.round(effectiveWPM);
       });
       
-      // Update React state
       setAiProgress(newProgress);
       setAiCurrentWPM(newWPM);
       
-    }, 50); // Run every 50ms (20 FPS) - fast enough for smooth animation
+      // Update the ref synchronously — no render cycle needed, always current
+      aiFinalWpmRef.current = aiWpmSamples.map(samples =>
+        samples.length > 0 ? Math.round(samples.reduce((a, b) => a + b, 0) / samples.length) : 0
+      );
+      
+    }, 50);
     
-    return () => {
-      if (intervalId) {
-        clearInterval(intervalId);
-      }
-    };
-  }, [gameState, difficulty]); // Only restart when game state or difficulty changes
+    return () => { if (intervalId) clearInterval(intervalId); };
+  }, [gameState, difficulty]);
   
   // Separate effect for updating player WPM based on typing
   useEffect(() => {
@@ -456,12 +472,29 @@ const WordRacerGame = () => {
     }
   }, [gameState, difficulty, calculateWPM]);
   
-  // Cleanup
+  // Cleanup on unmount
   useEffect(() => {
     return () => {
       if (gameLoopRef.current) cancelAnimationFrame(gameLoopRef.current);
     };
   }, []);
+
+  // Ctrl+R restarts the current race instead of navigating away (issue #3)
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === 'r') {
+        // Only intercept if game is active (not idle) so the page can still be
+        // refreshed normally from the game-hub selection screen
+        if (gameState === 'playing' || gameState === 'finished' || gameState === 'countdown') {
+          e.preventDefault();
+          e.stopPropagation();
+          startCountdown();
+        }
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown, { capture: true });
+    return () => window.removeEventListener('keydown', handleKeyDown, { capture: true });
+  }, [gameState, startCountdown]);
   
   // Get current position
   const getCurrentPosition = () => {
@@ -789,7 +822,8 @@ const WordRacerGame = () => {
                   {(() => {
                     const allRacers = [
                       { id: 'player', name: playerName, wpm: playerWPM, bodyColor: '#06b6d4', windowColor: '#67e8f9', isPlayer: true, progress: playerProgress },
-                      ...aiRacers.map((ai, i) => ({ id: `ai_${i}`, name: ai.name, wpm: ai.baseWPM, bodyColor: ai.bodyColor, windowColor: ai.windowColor, isPlayer: false, progress: aiProgress[i] }))
+                      // Read from ref (not state) — always has the last committed average WPM
+                      ...aiRacers.map((ai, i) => ({ id: `ai_${i}`, name: ai.name, wpm: aiFinalWpmRef.current[i] || ai.baseWPM, bodyColor: ai.bodyColor, windowColor: ai.windowColor, isPlayer: false, progress: aiProgress[i] }))
                     ];
                     
                     allRacers.sort((a, b) => {

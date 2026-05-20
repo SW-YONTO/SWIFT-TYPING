@@ -29,7 +29,9 @@ const WORDS = {
   'Blood Moon': ['dark', 'bone', 'tomb', 'doom', 'fear', 'grim', 'claw', 'fang', 'howl', 'vein', 'gore', 'bat', 'hex', 'void', 'dusk'],
   'Oreo Jungle': ['vine', 'frog', 'palm', 'wild', 'lush', 'root', 'rain', 'mist', 'lair', 'fern', 'prey', 'roar', 'hunt', 'puma', 'moth'],
   'Crystal Fields': ['glow', 'star', 'orb', 'wand', 'gem', 'beam', 'mist', 'aura', 'rune', 'halo', 'moon', 'myth', 'soul', 'void', 'gaze'],
-  'Sunset Fall': ['fall', 'dusk', 'warm', 'gold', 'glow', 'haze', 'rust', 'leaf', 'wind', 'cozy', 'mist', 'pine', 'peak', 'dawn', 'blaze']
+  'Sunset Fall': ['fall', 'dusk', 'warm', 'gold', 'glow', 'haze', 'rust', 'leaf', 'wind', 'cozy', 'mist', 'pine', 'peak', 'dawn', 'blaze'],
+  'Ancient Ruins': ['ruin', 'moss', 'tomb', 'myth', 'idol', 'arch', 'gold', 'dust', 'time', 'past', 'king', 'wall', 'dark', 'lore', 'rock'],
+  'Space Ship': ['ship', 'star', 'mars', 'moon', 'void', 'warp', 'core', 'nova', 'dock', 'hull', 'fuel', 'gear', 'tech', 'beam', 'base']
 };
 
 const difficultySettings = {
@@ -154,10 +156,36 @@ const levelThemes = [
     particle: 'petal',
     folder: 'SPRING FALL',
     files: ['spring (1).png', 'spring (2).png', 'spring (3).png', 'spring (4).png'],
-    skyElement: '�',
+    skyElement: '🍁',
     cloudColor: 'rgba(255,140,100,0.6)',
     robotColor: { body: '#FF6B35', accent: '#FFD700', border: '#CC4400' },
     starGlow: 'rgba(255,165,0,0.8)'
+  },
+  { 
+    name: 'Ancient Ruins', 
+    sky: 'linear-gradient(180deg, #1C2826 0%, #294038 50%, #466353 100%)',
+    ground: '#18241F',
+    platform: { type: 'ancient_stone', color: '#5C7468' },
+    particle: 'firefly',
+    folder: 'ANCIENT RUINS',
+    files: ['ruins (1).png', 'ruins (2).png', 'ruins (3).png', 'ruins (4).png'],
+    skyElement: '🏛️',
+    cloudColor: 'rgba(100,140,120,0.5)',
+    robotColor: { body: '#4A5D23', accent: '#8F9779', border: '#2B3A14' },
+    starGlow: 'rgba(100,200,150,0.6)'
+  },
+  { 
+    name: 'Space Ship', 
+    sky: 'linear-gradient(180deg, #0F172A 0%, #1E1B4B 50%, #312E81 100%)',
+    ground: '#020617',
+    platform: { type: 'spaceship', color: '#64748B' },
+    particle: 'star',
+    folder: 'SPACE SHIP',
+    files: ['space (1).png', 'space (2).png', 'space (3).png', 'space (4).png'],
+    skyElement: '🚀',
+    cloudColor: 'rgba(50,50,100,0.3)',
+    robotColor: { body: '#E2E8F0', accent: '#38BDF8', border: '#475569' },
+    starGlow: 'rgba(56,189,248,0.8)'
   }
 ];
 
@@ -220,6 +248,7 @@ const KeyboardJumpGame = ({ currentUser }) => {
   const [isLoading, setIsLoading] = useState(true);
   const [loadProgress, setLoadProgress] = useState(0);
   const [gameState, setGameState] = useState('idle');
+  const [showExitConfirm, setShowExitConfirm] = useState(false);
   const [score, setScore] = useState(0);
   const [lives, setLives] = useState(8);
   const [maxLives, setMaxLives] = useState(8);
@@ -589,6 +618,30 @@ const KeyboardJumpGame = ({ currentUser }) => {
     setTimeout(() => { if (inputRef.current) inputRef.current.focus(); }, 100);
   };
 
+  const handleExitRequest = () => {
+    if (gameState === 'playing' || gameState === 'paused' || gameState === 'transitioning') {
+      setGameState('paused');
+      setShowExitConfirm(true);
+    } else {
+      setGameState('idle');
+    }
+  };
+
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'r') {
+        if (gameState === 'playing' || gameState === 'paused' || gameState === 'gameOver' || gameState === 'transitioning') {
+          e.preventDefault();
+          e.stopPropagation();
+          setShowExitConfirm(false);
+          startGame();
+        }
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown, { capture: true });
+    return () => window.removeEventListener('keydown', handleKeyDown, { capture: true });
+  }, [gameState]);
+
   useEffect(() => {
     if (gameState === 'gameOver' && currentUser) {
       const inh = saveHighScore(difficulty, score);
@@ -704,6 +757,28 @@ const KeyboardJumpGame = ({ currentUser }) => {
       platformContent = <div className="relative h-7 rounded-full shadow-lg" style={{ background: 'linear-gradient(180deg, #9F7AEA 0%, #667EEA 100%)', boxShadow: '0 4px 0 rgba(100,80,200,0.4)' }}><div className="absolute top-1 left-2 right-2 h-1 bg-white/30 rounded-full"></div></div>;
     } else if (pType === 'stone') {
       platformContent = <div className="relative h-7 rounded-full shadow-lg" style={{ background: 'linear-gradient(180deg, #6B7280 0%, #4B5563 100%)', boxShadow: '0 4px 0 rgba(0,0,0,0.3)' }}><div className="absolute top-1 left-2 right-2 h-1 bg-white/10 rounded-full"></div></div>;
+    } else if (pType === 'ancient_stone') {
+      platformContent = (
+        <div className="relative h-9 rounded-sm shadow-xl overflow-hidden" style={{ background: 'linear-gradient(180deg, #7A897A 0%, #5F6B5F 100%)', borderBottom: '5px solid #2F3B32' }}>
+          <div className="absolute top-0 left-0 right-0 h-[6px] bg-[#8DAE46] shadow-[inset_0_-2px_0_rgba(0,0,0,0.15)]"></div>
+          <div className="absolute top-[6px] left-[10%] w-[12px] h-[8px] bg-[#8DAE46] rounded-b-md"></div>
+          <div className="absolute top-[6px] left-[35%] w-[8px] h-[5px] bg-[#8DAE46] rounded-b-sm"></div>
+          <div className="absolute top-[6px] right-[25%] w-[15px] h-[10px] bg-[#8DAE46] rounded-b-md"></div>
+          <div className="absolute top-[6px] right-[5%] w-[6px] h-[6px] bg-[#8DAE46] rounded-b-sm"></div>
+          <div className="absolute top-4 left-[20%] w-[2px] h-[12px] bg-black/20 transform rotate-[10deg]"></div>
+          <div className="absolute top-3 right-[40%] w-[10px] h-[2px] bg-black/20 transform -rotate-[15deg]"></div>
+        </div>
+      );
+    } else if (pType === 'spaceship') {
+      platformContent = (
+        <div className="relative h-9 rounded-full shadow-[0_6px_0_rgba(15,23,42,0.8)] overflow-hidden" style={{ background: 'linear-gradient(180deg, #94A3B8 0%, #64748B 50%, #475569 100%)', border: '1px solid #CBD5E1' }}>
+          <div className="absolute top-0 left-4 right-4 h-[2px] bg-white/50"></div>
+          <div className="absolute top-1 left-1/2 -translate-x-1/2 w-16 h-2 bg-blue-500 rounded-full shadow-[0_0_8px_#3b82f6]"></div>
+          <div className="absolute top-4 left-1/4 w-4 h-1 bg-cyan-400 rounded-full shadow-[0_0_5px_#22d3ee]"></div>
+          <div className="absolute top-4 right-1/4 w-4 h-1 bg-cyan-400 rounded-full shadow-[0_0_5px_#22d3ee]"></div>
+          <div className="absolute bottom-1 left-2 right-2 h-[2px] bg-black/40"></div>
+        </div>
+      );
     } else if (pType === 'bone') {
       platformContent = (
         <div className="relative h-8 rounded-full overflow-hidden" style={{ background: 'linear-gradient(180deg, #E8DCC4 0%, #D4C4A8 50%, #BFB08C 100%)', boxShadow: '0 4px 0 rgba(0,0,0,0.5)' }}>
@@ -718,7 +793,7 @@ const KeyboardJumpGame = ({ currentUser }) => {
     }
     
     return (
-      <div key={platform.id} className="absolute" style={{ left: platform.x, top: platform.y, width: platform.width }}>
+      <div key={platform.id} className="absolute z-[10]" style={{ left: platform.x, top: platform.y, width: platform.width }}>
         {platformContent}
         {platform.word && (
           <div className={`absolute -top-14 left-1/2 -translate-x-1/2 flex items-center gap-1 transition-all duration-200 ${isTarget ? 'scale-100' : 'scale-90 opacity-80'}`}>
@@ -759,14 +834,48 @@ const KeyboardJumpGame = ({ currentUser }) => {
   }
 
   return (
-    <div className="rounded-xl shadow-2xl overflow-hidden border-4 border-white transform transition-all">
+    <div className="rounded-xl shadow-2xl overflow-hidden border-4 border-white transform transition-all relative">
+      {/* Exit Confirmation Modal */}
+      {showExitConfirm && (
+        <div className="absolute inset-0 flex items-center justify-center bg-black/70 backdrop-blur-sm z-50 pointer-events-auto">
+          <div className="bg-slate-800 rounded-2xl p-8 max-w-sm w-full mx-4 border border-slate-700 shadow-2xl text-center">
+            <div className="text-4xl mb-4">🤖</div>
+            <h3 className="text-xl font-bold text-white mb-2">Quit Game?</h3>
+            <p className="text-slate-300 text-sm mb-6">Your current score will be lost.</p>
+            <div className="flex gap-3 justify-center">
+              <button
+                onClick={() => { setShowExitConfirm(false); setGameState('idle'); }}
+                className="px-6 py-2 rounded-xl bg-red-500 hover:bg-red-600 text-white font-semibold transition-colors"
+              >Exit</button>
+              <button
+                onClick={() => { setShowExitConfirm(false); setGameState('playing'); }}
+                className="px-6 py-2 rounded-xl bg-blue-500 hover:bg-blue-600 text-white font-semibold transition-colors"
+              >Keep Playing</button>
+            </div>
+          </div>
+        </div>
+      )}
       {/* Game animations now in index.css */}
       <input ref={inputRef} type="text" onChange={handleInputChange} className="absolute opacity-0" autoComplete="off" autoFocus />
       <div ref={gameAreaRef} className="relative h-[500px] w-full overflow-hidden font-sans" onClick={() => inputRef.current?.focus()}>
          {/* Sky with gradient - smooth transition */}
-         <div className="absolute inset-0 transition-opacity duration-300" style={getSkyStyle(currentTheme, isTransitioning ? skyTransitionProgress : 1)}></div>
+         <div className="absolute inset-0 transition-opacity duration-300" style={getSkyStyle(currentTheme, isTransitioning ? skyTransitionProgress : 1)}>
+            {currentTheme.folder === 'ANCIENT RUINS' && (
+              <div className="absolute inset-0 bg-cover bg-center" style={{ backgroundImage: `url("${BASE_PATH}/assets/keyboard_jump/biomes/ANCIENT%20RUINS/background.png")`, opacity: 0.7, mixBlendMode: 'overlay' }}></div>
+            )}
+            {currentTheme.folder === 'SPACE SHIP' && (
+              <div className="absolute inset-0 bg-cover bg-center" style={{ backgroundImage: `url("${BASE_PATH}/assets/keyboard_jump/biomes/SPACE%20SHIP/background.png")`, opacity: 1, mixBlendMode: 'screen' }}></div>
+            )}
+         </div>
          {previousTheme && isTransitioning && (
-           <div className="absolute inset-0" style={getSkyStyle(previousTheme, 1 - skyTransitionProgress)}></div>
+           <div className="absolute inset-0" style={getSkyStyle(previousTheme, 1 - skyTransitionProgress)}>
+             {previousTheme.folder === 'ANCIENT RUINS' && (
+              <div className="absolute inset-0 bg-cover bg-center" style={{ backgroundImage: `url("${BASE_PATH}/assets/keyboard_jump/biomes/ANCIENT%20RUINS/background.png")`, opacity: 0.7, mixBlendMode: 'overlay' }}></div>
+             )}
+             {previousTheme.folder === 'SPACE SHIP' && (
+              <div className="absolute inset-0 bg-cover bg-center" style={{ backgroundImage: `url("${BASE_PATH}/assets/keyboard_jump/biomes/SPACE%20SHIP/background.png")`, opacity: 1, mixBlendMode: 'screen' }}></div>
+             )}
+           </div>
          )}
          
          {/* Sky element (sun/moon/etc) - LEFT side to avoid score panel */}
@@ -791,10 +900,22 @@ const KeyboardJumpGame = ({ currentUser }) => {
          
          {/* Background trees - BEHIND ground, positioned to rise from bottom */}
          <div className="absolute bottom-0 w-full flex items-end justify-around px-4 z-[1]" style={{ height: '180px' }}>
-           <img src={getBiomeAssetPath(currentTheme, 0)} alt="" className="h-40 w-auto object-contain drop-shadow-xl opacity-90" style={{ marginBottom: '40px' }} />
-           <img src={getBiomeAssetPath(currentTheme, 1)} alt="" className="h-36 w-auto object-contain drop-shadow-xl opacity-85" style={{ marginBottom: '40px' }} />
-           <img src={getBiomeAssetPath(currentTheme, 2)} alt="" className="h-32 w-auto object-contain drop-shadow-xl opacity-90" style={{ marginBottom: '40px' }} />
-           <img src={getBiomeAssetPath(currentTheme, 3)} alt="" className="h-40 w-auto object-contain drop-shadow-xl opacity-85" style={{ marginBottom: '40px' }} />
+           {currentTheme.folder === 'ANCIENT RUINS' ? (
+             <>
+               <img src={getBiomeAssetPath(currentTheme, 0)} alt="" className="h-48 w-auto object-contain drop-shadow-xl opacity-90" style={{ marginBottom: '40px' }} />
+               <img src={getBiomeAssetPath(currentTheme, 3)} alt="" className="h-32 w-auto object-contain drop-shadow-xl opacity-95" style={{ marginBottom: '40px' }} />
+               <img src={getBiomeAssetPath(currentTheme, 2)} alt="" className="h-56 w-auto object-contain drop-shadow-xl opacity-95" style={{ marginBottom: '40px' }} />
+               <img src={getBiomeAssetPath(currentTheme, 1)} alt="" className="h-40 w-auto object-contain drop-shadow-xl opacity-85" style={{ marginBottom: '40px', transform: 'scaleX(-1)' }} />
+               <img src={getBiomeAssetPath(currentTheme, 0)} alt="" className="h-48 w-auto object-contain drop-shadow-xl opacity-90" style={{ marginBottom: '40px', transform: 'scaleX(-1)' }} />
+             </>
+           ) : (
+             <>
+               <img src={getBiomeAssetPath(currentTheme, 0)} alt="" className="h-40 w-auto object-contain drop-shadow-xl opacity-90" style={{ marginBottom: '40px' }} />
+               <img src={getBiomeAssetPath(currentTheme, 1)} alt="" className="h-36 w-auto object-contain drop-shadow-xl opacity-85" style={{ marginBottom: '40px' }} />
+               <img src={getBiomeAssetPath(currentTheme, 2)} alt="" className="h-32 w-auto object-contain drop-shadow-xl opacity-90" style={{ marginBottom: '40px' }} />
+               <img src={getBiomeAssetPath(currentTheme, 3)} alt="" className="h-40 w-auto object-contain drop-shadow-xl opacity-85" style={{ marginBottom: '40px' }} />
+             </>
+           )}
          </div>
          
          {/* Ground - on top of trees */}
@@ -805,8 +926,14 @@ const KeyboardJumpGame = ({ currentUser }) => {
               <div className="flex gap-1">{[...Array(maxLives)].map((_, i) => <Heart key={i} className={`w-6 h-6 drop-shadow-sm ${i < lives ? 'fill-red-500 text-red-600' : 'fill-black/20 text-transparent'}`} />)}</div>
               {(gameState === 'playing' || gameState === 'transitioning') && <div className="w-6 h-48 bg-black/20 rounded-full border-2 border-white/30 backdrop-blur-sm overflow-hidden relative"><div className="absolute bottom-0 w-full bg-gradient-to-t from-orange-500 to-yellow-400 transition-all duration-300" style={{ height: `${levelProgress}%` }}></div></div>}
             </div>
-            <div className="flex flex-col gap-2 items-end">
+            <div className="flex flex-col gap-2 items-end pointer-events-auto">
               {(gameState === 'playing' || gameState === 'transitioning') && <div className="bg-white/20 backdrop-blur-md border border-white/30 rounded-xl px-4 py-2 text-white shadow-sm flex flex-col items-end"><span className="text-xs font-bold uppercase tracking-wider opacity-80">Score</span><span className="text-2xl font-black drop-shadow-sm">{score.toLocaleString()}</span></div>}
+              {(gameState === 'playing' || gameState === 'paused' || gameState === 'transitioning') && (
+                <button
+                  onClick={handleExitRequest}
+                  className="px-3 py-1.5 rounded-lg text-xs font-bold bg-red-500/80 hover:bg-red-600 text-white shadow-sm transition-colors border border-red-500/30"
+                >✕ Exit</button>
+              )}
             </div>
         </div>
         

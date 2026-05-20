@@ -29,18 +29,18 @@ const TypingCourses = ({ currentUser, settings }) => {
 
   if (showTyping && selectedCourse) {
     return (
-      <div className="p-6">
-        <div className="mb-4">
-          <button
-            onClick={() => {
-              setShowTyping(false);
-              setSelectedCourse(null);
-            }}
-            className={`${theme.accent} hover:${theme.accentHover} transition-colors`}
-          >
-            ← Back to Courses
-          </button>
-        </div>
+    <div className="p-6">
+      <div className="mb-4">
+        <button
+          onClick={() => {
+            setShowTyping(false);
+            setSelectedCourse(null);
+          }}
+          className={`flex items-center gap-2 ${theme.primary} text-white px-4 py-2 rounded-lg hover:opacity-90 transition-all font-medium`}
+        >
+          ← Back to Courses
+        </button>
+      </div>
         <TypingComponent
           content={selectedCourse.content}
           onComplete={handleCourseComplete}
@@ -109,7 +109,7 @@ const TypingCourses = ({ currentUser, settings }) => {
             </div>
             
             <div className="text-center">
-              <div className="bg-green-600 w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-3">
+              <div className={`${theme.primary} w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-3`}>
                 <ArrowRight className="w-6 h-6 text-white" />
               </div>
               <h3 className={`font-semibold ${theme.text} mb-2`}>Increase Speed</h3>
@@ -117,7 +117,7 @@ const TypingCourses = ({ currentUser, settings }) => {
             </div>
             
             <div className="text-center">
-              <div className="bg-purple-600 w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-3">
+              <div className={`${theme.primary} w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-3`}>
                 <Play className="w-6 h-6 text-white" />
               </div>
               <h3 className={`font-semibold ${theme.text} mb-2`}>Real-world Practice</h3>

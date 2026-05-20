@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { Line } from 'react-chartjs-2';
 import {
@@ -43,18 +43,46 @@ const Results = () => {
   const navigate = useNavigate();
   const { theme } = useTheme();
   const results = location.state?.results;
+  const [countdown, setCountdown] = useState(5);
+
+  // Auto-redirect countdown when there are no results to display
+  useEffect(() => {
+    if (results) return;
+    if (countdown <= 0) {
+      navigate('/lessons');
+      return;
+    }
+    const timer = setTimeout(() => setCountdown(c => c - 1), 1000);
+    return () => clearTimeout(timer);
+  }, [results, countdown, navigate]);
 
   if (!results) {
     return (
-      <div className={`min-h-screen ${theme.background} flex items-center justify-center`}>
-        <div className={`${theme.cardBg} p-8 rounded-lg shadow-lg text-center border ${theme.border} animate-fade-in`}>
-          <h2 className={`text-2xl font-bold ${theme.text} mb-4`}>No Results Found</h2>
-          <p className={`${theme.textSecondary} mb-6`}>Please complete a typing session to view results.</p>
+      <div className={`min-h-screen ${theme.background} flex items-center justify-center p-6`}>
+        <div className={`${theme.cardBg} p-10 rounded-2xl shadow-2xl text-center border ${theme.border} max-w-md w-full`}>
+          <div className={`w-20 h-20 mx-auto mb-6 rounded-full flex items-center justify-center ${theme.mode === 'dark' ? 'bg-gray-800' : 'bg-gray-100'}`}>
+            <Trophy className="w-10 h-10 text-yellow-500" />
+          </div>
+          <h2 className={`text-2xl font-bold ${theme.text} mb-3`}>No Results Yet</h2>
+          <p className={`${theme.textSecondary} mb-6 leading-relaxed`}>
+            Complete a typing session first to see your results here.
+          </p>
+          <div className={`${theme.mode === 'dark' ? 'bg-gray-800' : 'bg-gray-100'} rounded-xl p-4 mb-6`}>
+            <p className={`${theme.textSecondary} text-sm`}>
+              Redirecting to Lessons in <span className={`font-bold text-lg ${theme.accent}`}>{countdown}</span>s…
+            </p>
+            <div className={`mt-3 h-1.5 rounded-full overflow-hidden ${theme.mode === 'dark' ? 'bg-gray-700' : 'bg-gray-200'}`}>
+              <div
+                className={`h-full ${theme.primary} transition-all duration-1000 ease-linear rounded-full`}
+                style={{ width: `${((5 - countdown) / 5) * 100}%` }}
+              />
+            </div>
+          </div>
           <button
             onClick={() => navigate('/lessons')}
-            className={`${theme.primary} text-white px-6 py-3 rounded-lg ${theme.primaryHover} transition-colors hover-lift`}
+            className={`w-full ${theme.primary} text-white px-6 py-3 rounded-xl transition-all hover:opacity-90 font-semibold`}
           >
-            Go to Lessons
+            Go to Lessons Now
           </button>
         </div>
       </div>
@@ -204,8 +232,8 @@ const Results = () => {
           
           {/* Test Type with Subtle Animation */}
           <div className={`${theme.textSecondary} text-lg animate-fade-in`}>
-            <span className={`inline-block px-4 py-2 rounded-full ${theme.mode === 'dark' ? 'bg-gray-800 text-gray-300' : 'bg-gray-200 text-gray-800'}`}>
-              {results.content}
+            <span className={`inline-block px-4 py-2 rounded-full ${theme.mode === 'dark' ? 'bg-gray-800 text-gray-300' : 'bg-gray-200 text-gray-800'} max-w-xs truncate`} title={results.content}>
+              {results.content?.length > 40 ? `${results.content.slice(0, 40)}…` : results.content}
             </span>
           </div>
         </div>

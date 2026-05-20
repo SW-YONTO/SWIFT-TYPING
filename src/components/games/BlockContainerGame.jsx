@@ -72,6 +72,7 @@ const saveHighScore = (difficulty, score) => {
 const BlockContainerGame = ({ currentUser }) => {
   const { theme } = useTheme();
   const [gameState, setGameState] = useState('idle'); // idle, playing, paused, gameOver
+  const [showExitConfirm, setShowExitConfirm] = useState(false);
   const [score, setScore] = useState(0);
   const [level, setLevel] = useState(1);
   const [blocks, setBlocks] = useState([]);
@@ -396,6 +397,30 @@ const BlockContainerGame = ({ currentUser }) => {
     setGameState(prev => prev === 'playing' ? 'paused' : 'playing');
   };
 
+  const handleExitRequest = () => {
+    if (gameState === 'playing' || gameState === 'paused') {
+      setGameState('paused');
+      setShowExitConfirm(true);
+    } else {
+      setGameState('idle');
+    }
+  };
+
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'r') {
+        if (gameState === 'playing' || gameState === 'paused' || gameState === 'gameOver') {
+          e.preventDefault();
+          e.stopPropagation();
+          setShowExitConfirm(false);
+          startGame();
+        }
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown, { capture: true });
+    return () => window.removeEventListener('keydown', handleKeyDown, { capture: true });
+  }, [gameState]);
+
   // Save score when game ends
   useEffect(() => {
     if (gameState === 'gameOver' && currentUser) {
@@ -430,7 +455,28 @@ const BlockContainerGame = ({ currentUser }) => {
   };
 
   return (
-    <div className={`${theme.cardBg} rounded-2xl shadow-xl border ${theme.border} overflow-hidden`}>
+    <div className={`${theme.cardBg} rounded-2xl shadow-xl border ${theme.border} overflow-hidden relative`}>
+
+      {/* Exit Confirmation Modal */}
+      {showExitConfirm && (
+        <div className="absolute inset-0 flex items-center justify-center bg-black/70 backdrop-blur-sm z-50">
+          <div className={`${theme.cardBg} rounded-2xl p-8 max-w-sm w-full mx-4 border ${theme.border} shadow-2xl text-center`}>
+            <div className="text-4xl mb-4">📦</div>
+            <h3 className={`text-xl font-bold ${theme.text} mb-2`}>Quit Game?</h3>
+            <p className={`${theme.textSecondary} text-sm mb-6`}>Your current score will be lost.</p>
+            <div className="flex gap-3 justify-center">
+              <button
+                onClick={() => { setShowExitConfirm(false); setGameState('idle'); }}
+                className="px-6 py-2 rounded-xl bg-red-500 hover:bg-red-600 text-white font-semibold transition-colors"
+              >Exit</button>
+              <button
+                onClick={() => { setShowExitConfirm(false); setGameState('playing'); }}
+                className={`px-6 py-2 rounded-xl ${theme.primary} text-white font-semibold hover:opacity-90 transition-opacity`}
+              >Keep Playing</button>
+            </div>
+          </div>
+        </div>
+      )}
       {/* Breaking animation keyframes */}
       <style>{`
         @keyframes breakLeft {
@@ -489,6 +535,12 @@ const BlockContainerGame = ({ currentUser }) => {
                 <option value="medium">Medium</option>
                 <option value="hard">Hard</option>
               </select>
+            )}
+            {(gameState === 'playing' || gameState === 'paused') && (
+              <button
+                onClick={handleExitRequest}
+                className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-red-500/20 text-red-400 hover:bg-red-500/30 transition-colors border border-red-500/30"
+              >✕ Exit</button>
             )}
           </div>
         </div>

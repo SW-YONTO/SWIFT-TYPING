@@ -85,15 +85,15 @@ const UserManager = ({ onUserSelect, currentUser }) => {
   // Empty state - no users
   if (users.length === 0 && !showAddUser) {
     return (
-      <div className={`min-h-screen flex items-center justify-center ${isDarkMode ? 'bg-gray-900' : 'bg-gradient-to-br from-blue-50 via-white to-purple-50'}`}>
-        <div className={`max-w-md w-full ${isDarkMode ? 'bg-gray-800' : 'bg-white'} rounded-2xl shadow-2xl p-8 text-center border ${isDarkMode ? 'border-gray-700' : 'border-gray-100'}`}>
-          <div className={`w-20 h-20 mx-auto mb-6 rounded-full ${theme.primary}  text-white bg-opacity-10 flex items-center justify-center`}>
+      <div className={`min-h-screen flex items-center justify-center ${theme.background}`}>
+        <div className={`max-w-md w-full ${theme.cardBg} rounded-2xl shadow-2xl p-8 text-center border ${theme.border}`}>
+          <div className={`w-20 h-20 mx-auto mb-6 rounded-full ${theme.primary} flex items-center justify-center`}>
             <User className={`w-10 h-10 text-white`} />
           </div>
-          <h2 className={`text-3xl font-bold mb-3 ${isDarkMode ? 'text-white' : 'text-gray-800'}`}>
+          <h2 className={`text-3xl font-bold mb-3 ${theme.text}`}>
             Welcome to Swift Typing
           </h2>
-          <p className={`${isDarkMode ? 'text-gray-300' : 'text-gray-600'} mb-8 text-lg`}>
+          <p className={`${theme.textSecondary} mb-8 text-lg`}>
             Create your profile to start improving your typing skills
           </p>
           <button
@@ -109,8 +109,8 @@ const UserManager = ({ onUserSelect, currentUser }) => {
   }
 
   return (
-    <div className={`min-h-screen flex items-center justify-center p-6 ${isDarkMode ? 'bg-gray-900' : 'bg-gradient-to-br from-blue-50 via-white to-purple-50'}`}>
-      <div className={`max-w-5xl w-full ${isDarkMode ? 'bg-gray-800' : 'bg-white'} rounded-2xl shadow-2xl p-8 border ${isDarkMode ? 'border-gray-700' : 'border-gray-100'}`}>
+    <div className={`min-h-screen flex items-center justify-center p-6 ${theme.background}`}>
+      <div className={`max-w-5xl w-full ${theme.cardBg} rounded-2xl shadow-2xl p-8 border ${theme.border}`}>
         {/* Header */}
         <div className="text-center mb-8">
           <div className="flex items-center justify-center gap-3 mb-3">

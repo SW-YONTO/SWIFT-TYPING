@@ -41,7 +41,7 @@ import { achievementManager } from '../utils/achievements';
 // Available avatars (15 avatars)
 const AVATARS = Array.from({ length: 15 }, (_, i) => `avatar${i + 1}.png`);
 
-const Settings = ({ currentUser, settings, onSettingsChange }) => {
+const Settings = ({ currentUser, settings, onSettingsChange, onUserUpdate }) => {
   const [localSettings, setLocalSettings] = useState({
     ...settings,
     fontSize: settings.fontSize || 'medium',
@@ -110,9 +110,8 @@ const Settings = ({ currentUser, settings, onSettingsChange }) => {
     setCurrentAvatar(newAvatar);
     setShowAvatarModal(false);
     soundEffects.playSuccess();
-    
-    // Trigger re-render by updating through parent if available
-    window.location.reload(); // Simple solution to refresh user data
+    // Notify App to re-fetch user data from storage — no page reload needed
+    if (onUserUpdate) onUserUpdate();
   };
 
   // Get avatar path
@@ -492,7 +491,7 @@ const Settings = ({ currentUser, settings, onSettingsChange }) => {
               </div>
               
               <div className="grid md:grid-cols-2 gap-8">
-                {/* Font SizeHello amma khani me roti banai chawan. Laptop ID.  */}
+                {/* Font Size */}
                 <div>
                   <label className={`block text-sm font-medium ${theme.text} mb-3`}>
                     Font Size

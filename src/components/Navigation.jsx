@@ -268,6 +268,10 @@ const Navigation = ({ currentUser, onLogout, onThemeChange }) => {
                 <Link
                   key={item.id}
                   to={item.path}
+                  onClick={() => {
+                    setShowUserDropdown(false);
+                    setShowThemeDropdown(false);
+                  }}
                   className={`flex items-center space-x-1 px-3 py-2 rounded-lg whitespace-nowrap transition-colors text-sm ${
                     isActive
                       ? `${theme.primary} text-white`
