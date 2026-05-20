@@ -17,6 +17,9 @@
 <meta name="twitter:title" content="Swift Typing — Master Touch Typing">
 <meta name="twitter:description" content="Free offline typing tutor. 50+ lessons, speed tests, games.">
 <link rel="icon" type="image/x-icon" href="./favicon.ico">
+<!-- Preconnect to Google Fonts origins to eliminate RTT latency and reduce CLS -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="/landing.css">
 <script type="application/ld+json">
 {"@context":"https://schema.org","@type":"SoftwareApplication","name":"Swift Typing","applicationCategory":"EducationalApplication","operatingSystem":"Windows","offers":{"@type":"Offer","price":"0","priceCurrency":"USD"},"description":"A comprehensive offline typing tutor desktop application with lessons, practice modes, and performance tracking.","author":{"@type":"Person","name":"Suraj Maurya"}}
@@ -30,6 +33,8 @@
 </script>
 </head>
 <body>
+<!-- Skip to main content for keyboard & screen reader users -->
+<a href="#main-content" style="position:absolute;left:-9999px;top:auto;width:1px;height:1px;overflow:hidden" onfocus="this.style.cssText='position:fixed;top:12px;left:12px;padding:10px 20px;background:#6366f1;color:#fff;border-radius:8px;font-weight:700;z-index:9999;width:auto;height:auto;'" onblur="this.style.cssText='position:absolute;left:-9999px;top:auto;width:1px;height:1px;overflow:hidden'">Skip to main content</a>
 <!-- NAV -->
 <nav class="nav">
 <div class="container">
@@ -52,6 +57,7 @@
 </div>
 </nav>
 
+<main id="main-content">
 <!-- HERO -->
 <section class="hero">
 <div class="glow-orb glow-1"></div>
@@ -166,6 +172,8 @@ Download / Buy Now
 </div>
 </div>
 </section>
+
+</main><!-- /main -->
 
 <!-- FOOTER -->
 <footer class="footer">
