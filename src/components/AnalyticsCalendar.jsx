@@ -1,7 +1,31 @@
 import React, { useState, useMemo } from 'react';
 import { X, Zap, Target, Clock, TrendingUp, Calendar, BookOpen, FlaskConical, Gamepad2, CheckCircle2, BarChart2 } from 'lucide-react';
+import { Line } from 'react-chartjs-2';
+import {
+  Chart as ChartJS,
+  CategoryScale,
+  LinearScale,
+  PointElement,
+  LineElement,
+  Title,
+  Tooltip,
+  Legend,
+  Filler,
+} from 'chart.js';
 import { useTheme } from '../contexts/ThemeContext';
 import { formatTime } from '../utils/storage';
+
+// Register Chart.js components
+ChartJS.register(
+  CategoryScale,
+  LinearScale,
+  PointElement,
+  LineElement,
+  Title,
+  Tooltip,
+  Legend,
+  Filler
+);
 
 /* ─── helpers ──────────────────────────────────────────────────────────────── */
 
@@ -75,7 +99,7 @@ const DayDetailModal = ({ stats, onClose, theme }) => {
           </div>
           <button
             onClick={onClose}
-            className={`p-2 rounded-xl transition-all hover:scale-105 group ${
+            className={`p-2 rounded-xl transition-all hover:scale-105 group cursor-pointer ${
               mode === 'dark'
                 ? 'bg-gray-700 hover:bg-red-600 text-gray-300'
                 : 'bg-gray-100 hover:bg-red-500 text-gray-600'
@@ -115,28 +139,67 @@ const DayDetailModal = ({ stats, onClose, theme }) => {
               </div>
 
               {typingTests.length > 0 ? (
-                <div className="space-y-2.5">
-                  {typingTests.map((test, i) => {
-                    const pct = Math.round(((test.wpm || 0) / maxWpm) * 100);
-                    const sType = getSessionType(test);
-                    return (
-                      <div key={i} className="flex items-center gap-3">
-                        <span className={`text-xs w-5 text-right ${theme.textSecondary}`}>{i + 1}</span>
-                        <div className="flex-1 relative h-6 flex items-center">
-                          <div
-                            className={`h-full rounded-md transition-all duration-500 ${tc(sType.color, mode, 'bg')} border ${tc(sType.color, mode, 'border')}`}
-                            style={{ width: `${Math.max(pct, 4)}%` }}
-                          />
-                          <span className={`absolute left-2 text-xs font-bold ${tc(sType.color, mode, 'text')}`}>
-                            {test.wpm} WPM
-                          </span>
-                        </div>
-                        <span className={`text-xs w-14 text-right ${theme.textSecondary}`}>
-                          {new Date(test.completedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                        </span>
-                      </div>
-                    );
-                  })}
+                <div className="h-64 w-full mt-2">
+                  <Line
+                    data={{
+                      labels: typingTests.map((_, i) => `S${i + 1}`),
+                      datasets: [
+                        {
+                          label: 'WPM',
+                          data: typingTests.map(t => t.wpm || 0),
+                          borderColor: mode === 'dark' ? '#60a5fa' : '#3b82f6',
+                          backgroundColor: mode === 'dark' ? 'rgba(96, 165, 250, 0.1)' : 'rgba(59, 130, 246, 0.1)',
+                          fill: true,
+                          tension: 0.4,
+                          pointRadius: 4,
+                          pointHoverRadius: 6,
+                          pointBackgroundColor: mode === 'dark' ? '#60a5fa' : '#3b82f6',
+                          pointBorderColor: mode === 'dark' ? '#374151' : '#ffffff',
+                          pointBorderWidth: 2,
+                          borderWidth: 3,
+                        },
+                      ],
+                    }}
+                    options={{
+                      responsive: true,
+                      maintainAspectRatio: false,
+                      interaction: { intersect: false, mode: 'index' },
+                      plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                          backgroundColor: mode === 'dark' ? '#1f2937' : '#ffffff',
+                          titleColor: mode === 'dark' ? '#f9fafb' : '#111827',
+                          bodyColor: mode === 'dark' ? '#f9fafb' : '#111827',
+                          borderColor: mode === 'dark' ? '#374151' : '#e5e7eb',
+                          borderWidth: 1,
+                          cornerRadius: 8,
+                          displayColors: false,
+                          padding: 10,
+                          callbacks: {
+                            title: (items) => {
+                              const test = typingTests[items[0].dataIndex];
+                              return new Date(test.completedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                            },
+                            label: (context) => `${context.parsed.y} WPM`
+                          }
+                        },
+                      },
+                      scales: {
+                        x: {
+                          grid: { display: false, drawBorder: false },
+                          ticks: { color: mode === 'dark' ? '#9ca3af' : '#6b7280', font: { size: 11 } }
+                        },
+                        y: {
+                          beginAtZero: true,
+                          grid: {
+                            color: mode === 'dark' ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.05)',
+                            drawBorder: false,
+                          },
+                          ticks: { color: mode === 'dark' ? '#9ca3af' : '#6b7280', font: { size: 11 }, stepSize: 20 }
+                        }
+                      }
+                    }}
+                  />
                 </div>
               ) : (
                 <div className={`text-center py-8 ${theme.textSecondary} text-sm`}>
@@ -412,7 +475,7 @@ const AnalyticsCalendar = ({ testResults = [], onClose }) => {
                                 />
                                 {/* Custom tooltip */}
                                 {day.activity && (
-                                  <div className="cal-tooltip">
+                                  <div className={`cal-tooltip ${mode === 'light' ? 'cal-tooltip-light' : ''}`}>
                                     <span className="cal-tooltip-date">
                                       {new Date(day.date + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
                                     </span>
@@ -434,7 +497,7 @@ const AnalyticsCalendar = ({ testResults = [], onClose }) => {
                                   </div>
                                 )}
                                 {!day.activity && (
-                                  <div className="cal-tooltip">
+                                  <div className={`cal-tooltip ${mode === 'light' ? 'cal-tooltip-light' : ''}`}>
                                     <span className="cal-tooltip-date">
                                       {new Date(day.date + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
                                     </span>

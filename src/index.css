@@ -1222,4 +1222,32 @@ input[type="range"].hand-slider::-ms-thumb {
   letter-spacing: 0.03em;
 }
 
+/* Light Mode Overrides */
+.cal-tooltip-light {
+  background: #eeeeee;
+  border-color: rgba(0, 0, 0, 0.1);
+}
+
+.cal-tooltip-light::after {
+  border-top-color: #eeeeee;
+}
+
+.cal-tooltip-light .cal-tooltip-date {
+  color: #4338ca;
+  border-bottom-color: rgba(0, 0, 0, 0.1);
+}
+
+.cal-tooltip-light .cal-tooltip-label {
+  color: rgba(0, 0, 0, 0.6);
+}
+
+.cal-tooltip-light .cal-tooltip-val {
+  color: #111827;
+}
+
+.cal-tooltip-light .cal-tooltip-cta {
+  color: #4f46e5;
+  border-top-color: rgba(0, 0, 0, 0.1);
+}
+
 

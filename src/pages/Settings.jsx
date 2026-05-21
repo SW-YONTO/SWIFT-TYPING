@@ -957,8 +957,8 @@ const Settings = ({ currentUser, settings, onSettingsChange, onUserUpdate }) => 
             {/* User Stats */}
             <div className={`${theme.cardBg} rounded-2xl shadow-lg border ${theme.border} p-6`}>
               <div className="flex items-center gap-3 mb-6">
-                <div className={`p-2 ${theme.primary} rounded-lg`}>
-                  <BarChart3 className="w-5 h-5 text-white" />
+                <div className={`p-2 ${theme.mode === 'dark' ? 'bg-amber-900/40' : 'bg-amber-100'} rounded-lg`}>
+                  <Trophy className={`w-5 h-5 ${theme.mode === 'dark' ? 'text-amber-400' : 'text-amber-500'}`} />
                 </div>
                 <h2 className={`text-xl font-semibold ${theme.text}`}>Your Stats</h2>
               </div>
@@ -1049,8 +1049,8 @@ const Settings = ({ currentUser, settings, onSettingsChange, onUserUpdate }) => 
             {/* Achievements Card */}
             <div className={`${theme.cardBg} rounded-2xl shadow-lg border ${theme.border} p-6`}>
               <div className="flex items-center gap-3 mb-6">
-                <div className={`p-2 ${theme.mode === 'dark' ? 'bg-yellow-900/40' : 'bg-yellow-100'} rounded-lg`}>
-                  <Trophy className={`w-5 h-5 ${theme.mode === 'dark' ? 'text-yellow-400' : 'text-yellow-600'}`} />
+                <div className={`p-2 ${theme.mode === 'dark' ? 'bg-amber-900/40' : 'bg-amber-100'} rounded-lg`}>
+                  <Trophy className={`w-5 h-5 ${theme.mode === 'dark' ? 'text-amber-400' : 'text-amber-500'}`} />
                 </div>
                 <h2 className={`text-xl font-semibold ${theme.text}`}>Achievements</h2>
               </div>
@@ -1106,11 +1106,11 @@ const Settings = ({ currentUser, settings, onSettingsChange, onUserUpdate }) => 
               {/* View Achievements Button */}
               <button
                 onClick={() => setShowAchievements(true)}
-                className={`w-full mt-6 flex items-center justify-center gap-2 bg-linear-to-r from-amber-400 via-yellow-500 to-amber-400 hover:from-amber-300 hover:via-yellow-400 hover:to-amber-300 text-amber-900 font-semibold px-4 py-3 rounded-xl transition-all duration-200 hover:scale-[1.02] shadow-lg shadow-amber-400/40 hover:shadow-amber-400/60 border border-amber-300/50`}
+                className={`w-full mt-6 flex items-center justify-center gap-2 bg-amber-500 hover:bg-amber-400 text-white font-semibold px-4 py-3 rounded-xl transition-all duration-200 hover:scale-[1.02] shadow-lg shadow-amber-500/30`}
               >
-                <Trophy className={`w-5 h-5 ${theme.mode === 'dark' ? 'text-amber-800' : 'text-amber-600'}`} />
-                <span className="font-bold">View All Achievements</span>
-                <Star className={`w-4 h-4 ${theme.mode === 'dark' ? 'text-amber-800' : 'text-amber-600'}`} />
+                <Trophy className="w-5 h-5 text-white" />
+                <span className="font-bold">View Achievements</span>
+                <Star className="w-4 h-4 text-white" />
               </button>
             </div>
           </div>
