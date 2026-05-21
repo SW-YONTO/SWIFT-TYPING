@@ -1108,9 +1108,9 @@ const Settings = ({ currentUser, settings, onSettingsChange, onUserUpdate }) => 
                 onClick={() => setShowAchievements(true)}
                 className={`w-full mt-6 flex items-center justify-center gap-2 bg-linear-to-r from-amber-400 via-yellow-500 to-amber-400 hover:from-amber-300 hover:via-yellow-400 hover:to-amber-300 text-amber-900 font-semibold px-4 py-3 rounded-xl transition-all duration-200 hover:scale-[1.02] shadow-lg shadow-amber-400/40 hover:shadow-amber-400/60 border border-amber-300/50`}
               >
-                <Trophy className="w-5 h-5 text-amber-800" />
+                <Trophy className={`w-5 h-5 ${theme.mode === 'dark' ? 'text-amber-800' : 'text-amber-600'}`} />
                 <span className="font-bold">View All Achievements</span>
-                <Star className="w-4 h-4 text-amber-800" />
+                <Star className={`w-4 h-4 ${theme.mode === 'dark' ? 'text-amber-800' : 'text-amber-600'}`} />
               </button>
             </div>
           </div>

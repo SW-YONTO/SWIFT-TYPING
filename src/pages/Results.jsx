@@ -137,7 +137,7 @@ const Results = () => {
       <div className={`min-h-screen ${theme.background} flex items-center justify-center p-6`}>
         <div className={`${theme.cardBg} p-10 rounded-2xl shadow-2xl text-center border ${theme.border} max-w-md w-full`}>
           <div className={`w-20 h-20 mx-auto mb-6 rounded-full flex items-center justify-center ${theme.mode === 'dark' ? 'bg-gray-800' : 'bg-gray-100'}`}>
-            <Trophy className="w-10 h-10 text-yellow-500" />
+            <Trophy className={`w-10 h-10 ${theme.mode === 'dark' ? 'text-yellow-400' : 'text-amber-500'}`} />
           </div>
           <h2 className={`text-2xl font-bold ${theme.text} mb-3`}>No Results Yet</h2>
           <p className={`${theme.textSecondary} mb-6 leading-relaxed`}>
