@@ -43,7 +43,7 @@ ChartJS.register(
 
 // ── Tooltip wrapper ─────────────────────────────────────────────────────────
 const ShortcutTooltip = ({ label, keys, children }) => (
-  <div className="shortcut-tooltip-root" style={{ position: 'relative', display: 'inline-block' }}>
+  <div className="shortcut-tooltip-root" style={{ position: 'relative', display: 'inline-block', cursor: 'pointer' }}>
     {children}
     <div className="shortcut-tooltip-box">
       <span className="shortcut-tooltip-label">{label}</span>
