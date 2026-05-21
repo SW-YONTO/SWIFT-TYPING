@@ -1,5 +1,5 @@
-import React, { useState, Suspense } from 'react';
-import { Gamepad2, Wind, Box, ArrowLeft, Trophy, Star, Clock, Car, Loader2, Mountain, AlertTriangle, Swords, Shield } from 'lucide-react';
+import React, { useState, useEffect, Suspense } from 'react';
+import { Gamepad2, Wind, Box, ArrowLeft, Trophy, Star, Clock, Car, Loader2, Mountain, AlertTriangle, Swords, Shield, WifiOff } from 'lucide-react';
 import { useTheme } from '../contexts/ThemeContext';
 
 // Lazy load game components for better performance
@@ -30,7 +30,19 @@ import wordDefenderImg from '../assets/games/word-defender.png';
 const TypingGames = ({ currentUser }) => {
   const [selectedGame, setSelectedGame] = useState(null);
   const [showExitConfirm, setShowExitConfirm] = useState(false);
+  const [isOnline, setIsOnline] = useState(navigator.onLine);
   const { theme } = useTheme();
+
+  useEffect(() => {
+    const handleOnline = () => setIsOnline(true);
+    const handleOffline = () => setIsOnline(false);
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  }, []);
 
   const games = [
     {
@@ -257,15 +269,23 @@ const TypingGames = ({ currentUser }) => {
               return (
                 <div
                   key={game.id}
-                  onClick={() => handleGameSelect(game.id)}
-                  className={`${theme.cardBg} rounded-2xl shadow-lg border ${theme.border} overflow-hidden cursor-pointer transform transition-all duration-300 hover:-translate-y-2 hover:shadow-2xl ${game.shadowColor} group`}
+                  onClick={() => {
+                    if (isOnline) handleGameSelect(game.id);
+                  }}
+                  className={`${theme.cardBg} rounded-2xl shadow-lg border ${theme.border} overflow-hidden relative ${isOnline ? `cursor-pointer transform transition-all duration-300 hover:-translate-y-2 hover:shadow-2xl ${game.shadowColor} group` : 'opacity-80 grayscale cursor-not-allowed'}`}
                 >
-                  <div className={`h-48 relative overflow-hidden group`}>
-                    <div className={`absolute inset-0 bg-gradient-to-br ${game.color} opacity-0 group-hover:opacity-20 transition-opacity duration-300 z-10`} />
+                  {!isOnline && (
+                    <div className="absolute inset-0 z-30 flex flex-col items-center justify-center backdrop-blur-[2px] bg-black/30 dark:bg-black/50">
+                      <WifiOff className="w-12 h-12 text-white mb-3" />
+                      <span className="text-white font-bold bg-red-600 px-4 py-1.5 rounded-full shadow-lg text-sm tracking-wider uppercase">Offline - Internet Required</span>
+                    </div>
+                  )}
+                  <div className={`h-48 relative overflow-hidden ${isOnline ? 'group' : ''}`}>
+                    <div className={`absolute inset-0 bg-gradient-to-br ${game.color} opacity-0 ${isOnline ? 'group-hover:opacity-20' : ''} transition-opacity duration-300 z-10`} />
                     <img 
                         src={game.image} 
                         alt={game.title}
-                        className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
+                        className={`w-full h-full object-cover transition-transform duration-500 ${isOnline ? 'group-hover:scale-110' : ''}`}
                     />
                     <div className="absolute top-4 right-4 z-20 bg-white/90 backdrop-blur-sm p-2 rounded-lg shadow-lg">
                         <Icon className={`w-6 h-6 text-gray-800`} />
@@ -284,8 +304,11 @@ const TypingGames = ({ currentUser }) => {
                         <span className={`text-xs ${theme.textSecondary}`}>{game.avgTime}</span>
                       </div>
                     </div>
-                    <button className={`w-full py-3 rounded-lg bg-gradient-to-r ${game.color} text-white font-semibold transition-all duration-300 group-hover:shadow-lg`}>
-                      Play Now
+                    <button 
+                      disabled={!isOnline}
+                      className={`w-full py-3 rounded-lg font-semibold transition-all duration-300 ${isOnline ? `bg-gradient-to-r ${game.color} text-white group-hover:shadow-lg` : 'bg-gray-600/50 text-gray-400 dark:bg-gray-800 dark:text-gray-500'}`}
+                    >
+                      {isOnline ? 'Play Now' : 'Currently Offline'}
                     </button>
                   </div>
                 </div>
