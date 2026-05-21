@@ -1,5 +1,9 @@
+# Allow all crawlers to index all public pages
 User-agent: *
 Allow: /
-Disallow: /app/
+
+# Block private/auth routes from indexing
+Disallow: /api/
+Disallow: /*.json$
 
 Sitemap: https://swift-typing.me/sitemap.xml
