@@ -382,6 +382,7 @@ const TypingComponent = ({
   const [capsLockOn, setCapsLockOn] = useState(false); // Caps Lock indicator
   const [soundEnabled, setSoundEnabled] = useState(() => soundEffects.getConfig().enabled);
   const [newAchievement, setNewAchievement] = useState(null); // For achievement toast
+  const [isCalculating, setIsCalculating] = useState(false);
   // Safe localStorage operations with error handling
   const safeLocalStorage = useMemo(() => ({
     getItem: (key) => {
@@ -655,7 +656,6 @@ const TypingComponent = ({
         console.warn('Achievement check failed:', e);
       }
 
-      // Navigate to results page
       navigate('/results', { state: { results: result, newAchievements } });
 
       // Call onComplete callback
@@ -984,7 +984,7 @@ const TypingComponent = ({
               <div className="absolute inset-0 bg-linear-to-r from-transparent via-white/20 to-transparent animate-shine"></div>
               {/* Pulsing effect for high accuracy */}
               {currentAccuracy >= 95 && (
-                <div className="absolute inset-0 bg-linear-to-r from-green-400/30 to-emerald-400/30 animate-pulse"></div>
+                <div className="absolute inset-0 bg-white/25 animate-pulse"></div>
               )}
             </div>
           </div>

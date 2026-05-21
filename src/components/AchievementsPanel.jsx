@@ -56,8 +56,8 @@ const AchievementsPanel = ({ userId, isOpen, onClose }) => {
         <div className={`p-6 ${theme.background} border-b ${theme.border}`}>
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-3">
-              <div className={`p-3 rounded-full ${theme.mode === 'dark' ? 'bg-yellow-900/40' : 'bg-yellow-100'}`}>
-                <Trophy className={`w-8 h-8 ${theme.mode === 'dark' ? 'text-yellow-400' : 'text-yellow-600'}`} />
+              <div className={`p-3 rounded-full ${theme.mode === 'dark' ? 'bg-amber-900/40' : 'bg-amber-100'}`}>
+                <Trophy className={`w-8 h-8 ${theme.mode === 'dark' ? 'text-amber-400' : 'text-amber-500'}`} />
               </div>
               <div>
                 <h2 className={`text-2xl font-bold ${theme.text}`}>Achievements</h2>
@@ -68,9 +68,9 @@ const AchievementsPanel = ({ userId, isOpen, onClose }) => {
             </div>
             <button
               onClick={onClose}
-              className={`p-2 rounded-lg ${theme.mode === 'dark' ? 'hover:bg-gray-700' : 'hover:bg-gray-200'} transition-colors`}
+              className={`p-2 rounded-xl transition-all hover:scale-105 group cursor-pointer ${theme.mode === 'dark' ? 'hover:bg-red-600' : 'hover:bg-red-500'}`}
             >
-              <X className={`w-6 h-6 ${theme.textSecondary}`} />
+              <X className={`w-6 h-6 transition-colors group-hover:text-white ${theme.textSecondary}`} />
             </button>
           </div>
 

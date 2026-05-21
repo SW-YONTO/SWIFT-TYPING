@@ -52,6 +52,17 @@ const TypingLessons = ({ currentUser, settings }) => {
     return userProgress.completedLessons.find(lesson => lesson.lessonId === lessonId);
   };
 
+  const getNextLessonToPlay = () => {
+    for (const [unitId, unit] of Object.entries(typingLessons)) {
+      for (let i = 0; i < unit.lessons.length; i++) {
+        if (!isLessonCompleted(unit.lessons[i].id)) {
+          return { lesson: unit.lessons[i], unitId };
+        }
+      }
+    }
+    return null;
+  };
+
   const handleLessonComplete = (result) => {
     progressManager.completLesson(currentUser.id, selectedLesson.id, result);
     setShowTyping(false);
@@ -135,15 +146,33 @@ const TypingLessons = ({ currentUser, settings }) => {
                   {userProgress.completedLessons.length}/{Object.values(typingLessons).reduce((total, unit) => total + unit.lessons.length, 0)}
                 </div>
               </div>
-              <div className="flex items-center gap-3">
-                <span className={`text-sm ${theme.textSecondary}`}>
-                  {showProgress ? 'Hide Details' : 'Show Details'}
-                </span>
-                {showProgress ? (
-                  <ChevronUp className={`w-5 h-5 ${theme.textSecondary}`} />
-                ) : (
-                  <ChevronDown className={`w-5 h-5 ${theme.textSecondary}`} />
-                )}
+              <div className="flex items-center gap-4">
+                {(() => {
+                  const next = getNextLessonToPlay();
+                  if (!next) return null;
+                  return (
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleStartLesson(next.lesson, next.unitId);
+                      }}
+                      className={`flex items-center justify-center p-1.5 rounded-full ${theme.primary.replace('bg-', 'text-')} hover:bg-black/5 dark:hover:bg-white/5 transition-all hover:scale-110 active:scale-95`}
+                      title="Resume Learning"
+                    >
+                      <Play className="w-4 h-4" strokeWidth={2.5} />
+                    </button>
+                  );
+                })()}
+                <div className="flex items-center gap-2">
+                  <span className={`text-sm font-medium ${theme.textSecondary}`}>
+                    {showProgress ? 'Hide Details' : 'Show Details'}
+                  </span>
+                  {showProgress ? (
+                    <ChevronUp className={`w-5 h-5 ${theme.textSecondary}`} />
+                  ) : (
+                    <ChevronDown className={`w-5 h-5 ${theme.textSecondary}`} />
+                  )}
+                </div>
               </div>
             </div>
           </div>

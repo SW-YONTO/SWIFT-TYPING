@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { User, Plus, Trash2, LogIn, UserCheck, Zap, Trophy, Target, Star, Edit3, Check, X } from 'lucide-react';
+import { User, Plus, Trash2, LogIn, UserCheck, Zap, Trophy, Target, Star, Edit3, Check, X, Camera, Upload } from 'lucide-react';
 import { userManager } from '../utils/storage';
 import { useTheme } from '../contexts/ThemeContext';
+import { compressImageToBase64 } from '../utils/image';
 
-// Available avatars (15 avatars)
-const AVATARS = Array.from({ length: 15 }, (_, i) => `avatar${i + 1}.png`);
+const AVATARS = Array.from({ length: 14 }, (_, i) => `avatar${i + 1}.png`);
 
 const UserManager = ({ onUserSelect, currentUser }) => {
   const [users, setUsers] = useState([]);
@@ -13,6 +13,8 @@ const UserManager = ({ onUserSelect, currentUser }) => {
   const [selectedAvatar, setSelectedAvatar] = useState('avatar1.png');
   const [error, setError] = useState('');
   const [editingAvatar, setEditingAvatar] = useState(null);
+  const editAvatarInputRef = React.useRef(null);
+  const addAvatarInputRef = React.useRef(null);
   const { theme, isDarkMode } = useTheme();
 
   useEffect(() => {
@@ -74,7 +76,40 @@ const UserManager = ({ onUserSelect, currentUser }) => {
     setEditingAvatar(null);
   };
 
+  const handleEditAvatarUpload = async (e) => {
+    const file = e.target.files[0];
+    if (!file || !editingAvatar) return;
+
+    try {
+      const base64Avatar = await compressImageToBase64(file, 200, 0.8);
+      userManager.updateUserAvatar(editingAvatar, base64Avatar);
+      loadUsers();
+    } catch (err) {
+      console.error('Failed to update avatar:', err);
+      alert('Failed to update image.');
+    } finally {
+      if (editAvatarInputRef.current) editAvatarInputRef.current.value = '';
+      setEditingAvatar(null);
+    }
+  };
+
+  const handleAddAvatarUpload = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    try {
+      const base64Avatar = await compressImageToBase64(file, 200, 0.8);
+      setSelectedAvatar(base64Avatar);
+    } catch (err) {
+      console.error('Failed to process avatar:', err);
+      alert('Failed to process image.');
+    } finally {
+      if (addAvatarInputRef.current) addAvatarInputRef.current.value = '';
+    }
+  };
+
   const getAvatarPath = (avatar) => {
+    if (avatar && avatar.startsWith('data:image/')) return avatar;
     try {
       return new URL(`../assets/avatars/${avatar}`, import.meta.url).href;
     } catch {
@@ -229,7 +264,7 @@ const UserManager = ({ onUserSelect, currentUser }) => {
                     <h3 className={`text-xl font-bold mb-4 ${isDarkMode ? 'text-white' : 'text-gray-800'}`}>
                       Choose Avatar
                     </h3>
-                    <div className="grid grid-cols-4 gap-3">
+                    <div className="grid grid-cols-4 sm:grid-cols-5 gap-3">
                       {AVATARS.map((avatar) => (
                         <button
                           key={avatar}
@@ -242,7 +277,7 @@ const UserManager = ({ onUserSelect, currentUser }) => {
                         >
                           <div className={`rounded-full overflow-hidden ${
                             isDarkMode ? 'bg-gray-800' : 'bg-white'
-                          } p-1`}>
+                          } p-1 aspect-square`}>
                             <img
                               src={getAvatarPath(avatar)}
                               alt={`Avatar ${avatar}`}
@@ -256,6 +291,23 @@ const UserManager = ({ onUserSelect, currentUser }) => {
                           )}
                         </button>
                       ))}
+
+                      {/* Custom Upload Button */}
+                      <button
+                        onClick={() => editAvatarInputRef.current?.click()}
+                        className={`relative rounded-full overflow-hidden transition-all hover:scale-110 p-0.5 bg-gradient-to-br from-gray-300 via-gray-200 to-gray-300 hover:from-blue-300 hover:via-purple-300 hover:to-pink-300 group`}
+                      >
+                        <div className={`rounded-full overflow-hidden ${
+                          isDarkMode ? 'bg-gray-800' : 'bg-white'
+                        } p-1 w-full h-full aspect-square flex flex-col items-center justify-center`}>
+                          <div className="w-6 h-6 sm:w-8 sm:h-8 rounded-full bg-gray-100 dark:bg-gray-700 flex items-center justify-center mb-0.5 sm:mb-1 group-hover:bg-blue-100 dark:group-hover:bg-blue-900 transition-colors">
+                            <Plus className="w-3 h-3 sm:w-4 sm:h-4 text-gray-500 dark:text-gray-400 group-hover:text-blue-500" />
+                          </div>
+                          <span className="text-[8px] sm:text-[9px] font-semibold text-gray-500 dark:text-gray-400 group-hover:text-blue-500 text-center leading-tight">
+                            Custom
+                          </span>
+                        </div>
+                      </button>
                     </div>
                     <button
                       onClick={(e) => {
@@ -269,6 +321,7 @@ const UserManager = ({ onUserSelect, currentUser }) => {
                   </div>
                 </div>
               )}
+
             </div>
           ))}
         </div>
@@ -308,6 +361,31 @@ const UserManager = ({ onUserSelect, currentUser }) => {
                     </div>
                   </button>
                 ))}
+                
+                {/* Custom Upload Button */}
+                <button
+                  type="button"
+                  onClick={() => addAvatarInputRef.current?.click()}
+                  className={`relative rounded-full overflow-hidden transition-all hover:scale-110 p-0.5 bg-gradient-to-br from-gray-300 via-gray-200 to-gray-300 hover:from-blue-300 hover:via-purple-300 hover:to-pink-300 group`}
+                >
+                  <div className={`rounded-full overflow-hidden ${
+                    isDarkMode ? 'bg-gray-800' : 'bg-white'
+                  } p-1 w-full h-full flex flex-col items-center justify-center`}>
+                    <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-gray-100 dark:bg-gray-700 flex items-center justify-center mb-0.5 sm:mb-1 group-hover:bg-blue-100 dark:group-hover:bg-blue-900 transition-colors">
+                      <Plus className="w-4 h-4 sm:w-5 sm:h-5 text-gray-500 dark:text-gray-400 group-hover:text-blue-500" />
+                    </div>
+                    <span className="text-[8px] sm:text-[10px] font-semibold text-gray-500 dark:text-gray-400 group-hover:text-blue-500 text-center leading-tight">
+                      Custom
+                    </span>
+                  </div>
+                </button>
+                <input 
+                  type="file" 
+                  accept="image/*" 
+                  ref={addAvatarInputRef} 
+                  onChange={handleAddAvatarUpload} 
+                  className="hidden" 
+                />
               </div>
             </div>
 
@@ -395,6 +473,14 @@ const UserManager = ({ onUserSelect, currentUser }) => {
             </button>
           </div>
         )}
+        {/* Hidden Global Input for Editing Existing Avatars */}
+        <input 
+          type="file" 
+          accept="image/*" 
+          ref={editAvatarInputRef} 
+          onChange={handleEditAvatarUpload} 
+          className="hidden" 
+        />
       </div>
     </div>
   );

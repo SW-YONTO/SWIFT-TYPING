@@ -139,27 +139,43 @@ const DayDetailModal = ({ stats, onClose, theme }) => {
               </div>
 
               {typingTests.length > 0 ? (
-                <div className="h-64 w-full mt-2">
-                  <Line
-                    data={{
-                      labels: typingTests.map((_, i) => `S${i + 1}`),
-                      datasets: [
-                        {
-                          label: 'WPM',
-                          data: typingTests.map(t => t.wpm || 0),
-                          borderColor: mode === 'dark' ? '#60a5fa' : '#3b82f6',
-                          backgroundColor: mode === 'dark' ? 'rgba(96, 165, 250, 0.1)' : 'rgba(59, 130, 246, 0.1)',
-                          fill: true,
-                          tension: 0.4,
-                          pointRadius: 4,
-                          pointHoverRadius: 6,
-                          pointBackgroundColor: mode === 'dark' ? '#60a5fa' : '#3b82f6',
-                          pointBorderColor: mode === 'dark' ? '#374151' : '#ffffff',
-                          pointBorderWidth: 2,
-                          borderWidth: 3,
-                        },
-                      ],
-                    }}
+                (() => {
+                  const isDark = mode === 'dark';
+                  let chartBorder = isDark ? '#60a5fa' : '#3b82f6';
+                  let chartBg = isDark ? 'rgba(96, 165, 250, 0.1)' : 'rgba(59, 130, 246, 0.1)';
+                  if (theme.primary.includes('green')) {
+                    chartBorder = isDark ? '#4ade80' : '#22c55e';
+                    chartBg = isDark ? 'rgba(74, 222, 128, 0.1)' : 'rgba(34, 197, 94, 0.1)';
+                  } else if (theme.primary.includes('orange')) {
+                    chartBorder = isDark ? '#fb923c' : '#f97316';
+                    chartBg = isDark ? 'rgba(251, 146, 60, 0.1)' : 'rgba(249, 115, 22, 0.1)';
+                  } else if (theme.primary.includes('purple')) {
+                    chartBorder = isDark ? '#c084fc' : '#a855f7';
+                    chartBg = isDark ? 'rgba(192, 132, 252, 0.1)' : 'rgba(168, 85, 247, 0.1)';
+                  }
+
+                  return (
+                    <div className="h-64 w-full mt-2">
+                      <Line
+                        data={{
+                          labels: typingTests.map((_, i) => `S${i + 1}`),
+                          datasets: [
+                            {
+                              label: 'WPM',
+                              data: typingTests.map(t => t.wpm || 0),
+                              borderColor: chartBorder,
+                              backgroundColor: chartBg,
+                              fill: true,
+                              tension: 0.4,
+                              pointRadius: 4,
+                              pointHoverRadius: 6,
+                              pointBackgroundColor: chartBorder,
+                              pointBorderColor: isDark ? '#374151' : '#ffffff',
+                              pointBorderWidth: 2,
+                              borderWidth: 3,
+                            },
+                          ],
+                        }}
                     options={{
                       responsive: true,
                       maintainAspectRatio: false,
@@ -201,11 +217,13 @@ const DayDetailModal = ({ stats, onClose, theme }) => {
                     }}
                   />
                 </div>
-              ) : (
-                <div className={`text-center py-8 ${theme.textSecondary} text-sm`}>
-                  No typing sessions with WPM data
-                </div>
-              )}
+              );
+              })()
+            ) : (
+              <div className={`text-center py-8 ${theme.textSecondary} text-sm`}>
+                No typing sessions with WPM data
+              </div>
+            )}
             </div>
 
             {/* RIGHT: Type Breakdown */}
@@ -232,7 +250,12 @@ const DayDetailModal = ({ stats, onClose, theme }) => {
                       </div>
                       <div className={`h-2 rounded-full ${mode === 'dark' ? 'bg-gray-700' : 'bg-gray-200'} overflow-hidden`}>
                         <div
-                          className={`h-full rounded-full ${tc(colorKey, mode, 'bg').replace('/40','')}`}
+                          className={`h-full rounded-full ${
+                            colorKey === 'green' ? 'bg-green-500' :
+                            colorKey === 'purple' ? 'bg-purple-500' :
+                            colorKey === 'teal' ? 'bg-teal-500' :
+                            'bg-blue-500'
+                          }`}
                           style={{ width: `${pct}%` }}
                         />
                       </div>

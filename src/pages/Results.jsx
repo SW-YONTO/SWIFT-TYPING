@@ -174,10 +174,10 @@ const Results = () => {
 
   // Calculate performance level
   const getPerformanceLevel = (wpm, accuracy) => {
-    if (wpm >= 60 && accuracy >= 95) return { level: 'Expert', color: 'text-purple-600', icon: Award };
-    if (wpm >= 40 && accuracy >= 90) return { level: 'Advanced', color: 'text-blue-600', icon: Star };
-    if (wpm >= 25 && accuracy >= 85) return { level: 'Intermediate', color: 'text-green-600', icon: TrendingUp };
-    return { level: 'Beginner', color: 'text-orange-600', icon: Target };
+    if (wpm >= 60 && accuracy >= 95) return { level: 'Expert', icon: Award };
+    if (wpm >= 40 && accuracy >= 90) return { level: 'Advanced', icon: Star };
+    if (wpm >= 25 && accuracy >= 85) return { level: 'Intermediate', icon: TrendingUp };
+    return { level: 'Beginner', icon: Target };
   };
 
   const performance = getPerformanceLevel(results.wpm, results.accuracy);
@@ -191,6 +191,22 @@ const Results = () => {
     return "Great job! Keep practicing to maintain your skills";
   };
 
+  // Determine chart colors based on theme
+  const isDark = theme.mode === 'dark';
+  let chartBorder = isDark ? '#60a5fa' : '#3b82f6'; // default blue
+  let chartBg = isDark ? 'rgba(96, 165, 250, 0.1)' : 'rgba(59, 130, 246, 0.1)';
+  
+  if (theme.primary.includes('green')) {
+    chartBorder = isDark ? '#4ade80' : '#22c55e';
+    chartBg = isDark ? 'rgba(74, 222, 128, 0.1)' : 'rgba(34, 197, 94, 0.1)';
+  } else if (theme.primary.includes('orange')) {
+    chartBorder = isDark ? '#fb923c' : '#ea580c'; // using darker orange for light theme
+    chartBg = isDark ? 'rgba(251, 146, 60, 0.1)' : 'rgba(234, 88, 12, 0.1)';
+  } else if (theme.primary.includes('purple')) {
+    chartBorder = isDark ? '#c084fc' : '#a855f7';
+    chartBg = isDark ? 'rgba(192, 132, 252, 0.1)' : 'rgba(168, 85, 247, 0.1)';
+  }
+
   // Prepare chart data with proper background
   const chartData = {
     labels: results.wpmHistory?.length > 0 
@@ -202,14 +218,14 @@ const Results = () => {
         data: results.wpmHistory?.length > 0 
           ? results.wpmHistory.map(point => point.wpm)
           : [results.wpm],
-        borderColor: theme.mode === 'dark' ? '#60a5fa' : '#3b82f6',
-        backgroundColor: theme.mode === 'dark' ? 'rgba(96, 165, 250, 0.1)' : 'rgba(59, 130, 246, 0.1)',
+        borderColor: chartBorder,
+        backgroundColor: chartBg,
         fill: true,
         tension: 0.4,
         pointRadius: 5,
         pointHoverRadius: 8,
-        pointBackgroundColor: theme.mode === 'dark' ? '#60a5fa' : '#3b82f6',
-        pointBorderColor: theme.mode === 'dark' ? '#374151' : '#ffffff',
+        pointBackgroundColor: chartBorder,
+        pointBorderColor: isDark ? '#374151' : '#ffffff',
         pointBorderWidth: 2,
         borderWidth: 3,
       },
@@ -293,11 +309,11 @@ const Results = () => {
           
           {/* Performance Level Badge with Enhanced Animation */}
           <div className="flex items-center justify-center gap-3 mb-4 animate-fade-in">
-            <div className={`p-3 rounded-full ${performance.level === 'Expert' ? (theme.mode === 'dark' ? 'bg-purple-900/30' : 'bg-purple-100') : performance.level === 'Advanced' ? (theme.mode === 'dark' ? 'bg-blue-900/30' : 'bg-blue-100') : (theme.mode === 'dark' ? 'bg-green-900/30' : 'bg-green-100')} animate-float`}>
-              <PerformanceIcon className={`w-6 h-6 ${performance.color}`} />
+            <div className={`p-3 rounded-full ${theme.primary} text-white animate-float shadow-lg`}>
+              <PerformanceIcon className="w-6 h-6" />
             </div>
             <div className="text-center">
-              <div className={`text-2xl font-bold ${performance.color}`}>
+              <div className={`text-2xl font-bold ${theme.accent.replace('bg-', 'text-')}`}>
                 {performance.level} Level
               </div>
               <div className={`text-sm ${theme.textSecondary} mt-1`}>
@@ -307,9 +323,9 @@ const Results = () => {
           </div>
           
           {/* Test Type with Subtle Animation */}
-          <div className={`${theme.textSecondary} text-lg animate-fade-in`}>
-            <span className={`inline-block px-4 py-2 rounded-full ${theme.mode === 'dark' ? 'bg-gray-800 text-gray-300' : 'bg-gray-200 text-gray-800'} max-w-xs truncate`} title={results.content}>
-              {results.content?.length > 40 ? `${results.content.slice(0, 40)}…` : results.content}
+          <div className={`${theme.textSecondary} animate-fade-in`}>
+            <span className={`inline-block px-5 py-1.5 rounded-full border-2 ${theme.primary.replace('bg-', 'border-')} backdrop-blur-md ${theme.primary.replace('bg-', 'bg-')}/10 text-sm font-bold shadow-sm tracking-wide ${theme.accent.replace('bg-', 'text-')}`}>
+              {results.accuracy < 80 ? 'Very Bad!' : 'Good Job!'}
             </span>
           </div>
         </div>

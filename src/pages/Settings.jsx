@@ -38,8 +38,10 @@ import AchievementsPanel from '../components/AchievementsPanel';
 import { soundEffects } from '../utils/soundEffects';
 import { achievementManager } from '../utils/achievements';
 
-// Available avatars (15 avatars)
-const AVATARS = Array.from({ length: 15 }, (_, i) => `avatar${i + 1}.png`);
+import { compressImageToBase64 } from '../utils/image';
+
+// Available avatars (14 default avatars)
+const AVATARS = Array.from({ length: 14 }, (_, i) => `avatar${i + 1}.png`);
 
 const Settings = ({ currentUser, settings, onSettingsChange, onUserUpdate }) => {
   const [localSettings, setLocalSettings] = useState({
@@ -65,6 +67,7 @@ const Settings = ({ currentUser, settings, onSettingsChange, onUserUpdate }) => 
   const [streakData, setStreakData] = useState(() => streakManager.checkStreak(currentUser?.id));
   const [importStatus, setImportStatus] = useState(null);
   const fileInputRef = useRef(null);
+  const avatarInputRef = useRef(null);
   const [showAvatarModal, setShowAvatarModal] = useState(false);
   const [currentAvatar, setCurrentAvatar] = useState(() => currentUser?.avatar || 'avatar1.png');
 
@@ -104,18 +107,42 @@ const Settings = ({ currentUser, settings, onSettingsChange, onUserUpdate }) => 
     event.target.value = ''; // Reset input
   };
 
-  // Handle avatar change
+  // Handle avatar upload
+  const handleAvatarUpload = async (event) => {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    try {
+      // Compress and resize image
+      const base64Avatar = await compressImageToBase64(file, 200, 0.8);
+      userManager.updateUserAvatar(currentUser.id, base64Avatar);
+      setCurrentAvatar(base64Avatar);
+      setShowAvatarModal(false);
+      soundEffects.playSuccess();
+      if (onUserUpdate) onUserUpdate();
+    } catch (error) {
+      console.error('Failed to process avatar image:', error);
+      soundEffects.playError();
+      alert('Failed to process image. Please try a different image.');
+    } finally {
+      if (avatarInputRef.current) {
+        avatarInputRef.current.value = ''; // Reset input
+      }
+    }
+  };
+
+  // Handle avatar change (for predefined avatars)
   const handleAvatarChange = (newAvatar) => {
     userManager.updateUserAvatar(currentUser.id, newAvatar);
     setCurrentAvatar(newAvatar);
     setShowAvatarModal(false);
     soundEffects.playSuccess();
-    // Notify App to re-fetch user data from storage — no page reload needed
     if (onUserUpdate) onUserUpdate();
   };
 
   // Get avatar path
   const getAvatarPath = (avatar) => {
+    if (avatar && avatar.startsWith('data:image/')) return avatar;
     try {
       return new URL(`../assets/avatars/${avatar}`, import.meta.url).href;
     } catch {
@@ -279,7 +306,7 @@ const Settings = ({ currentUser, settings, onSettingsChange, onUserUpdate }) => 
                         />
                       </div>
                       <button
-                        onClick={() => setShowAvatarModal(true)}
+                        onClick={() => avatarInputRef.current?.click()}
                         className={`absolute -bottom-1 -right-1 p-2 ${theme.primary} text-white rounded-full shadow-lg hover:opacity-90 transition-all transform hover:scale-110`}
                       >
                         <Camera className="w-4 h-4" />
@@ -287,13 +314,13 @@ const Settings = ({ currentUser, settings, onSettingsChange, onUserUpdate }) => 
                     </div>
                     <div>
                       <p className={`${theme.text} font-medium mb-1`}>Change your avatar</p>
-                      <p className={`${theme.textSecondary} text-sm mb-3`}>Click the camera icon to choose from 15 available avatars</p>
+                      <p className={`${theme.textSecondary} text-sm mb-3`}>Select a preset avatar or upload your own</p>
                       <button
                         onClick={() => setShowAvatarModal(true)}
                         className={`px-4 py-2 ${theme.secondary} ${theme.accent} rounded-lg hover:opacity-90 transition-all text-sm font-medium flex items-center gap-2`}
                       >
                         <Camera className="w-4 h-4" />
-                        Choose Avatar
+                        Select Avatar
                       </button>
                     </div>
                   </div>
@@ -324,13 +351,13 @@ const Settings = ({ currentUser, settings, onSettingsChange, onUserUpdate }) => 
                         />
                         <button
                           onClick={handleUsernameSave}
-                          className="p-3 bg-green-600 text-white rounded-xl hover:bg-green-700 transition-colors"
+                          className={`p-3 rounded-xl transition-colors ${isDarkMode ? 'bg-green-600 hover:bg-green-500 text-white' : 'bg-green-500 hover:bg-green-400 text-white shadow-sm'}`}
                         >
                           <Check className="w-4 h-4" />
                         </button>
                         <button
                           onClick={handleUsernameCancel}
-                          className="p-3 bg-red-600 text-white rounded-xl hover:bg-red-700 transition-colors"
+                          className={`p-3 rounded-xl transition-colors ${isDarkMode ? 'bg-red-600 hover:bg-red-500 text-white' : 'bg-red-500 hover:bg-red-400 text-white shadow-sm'}`}
                         >
                           <X className="w-4 h-4" />
                         </button>
@@ -400,6 +427,30 @@ const Settings = ({ currentUser, settings, onSettingsChange, onUserUpdate }) => 
                         )}
                       </button>
                     ))}
+
+                    {/* Upload Custom Avatar Button */}
+                    <button
+                      onClick={() => avatarInputRef.current?.click()}
+                      className={`relative rounded-full overflow-hidden transition-all hover:scale-110 aspect-square p-0.5 bg-gradient-to-br from-gray-300 via-gray-200 to-gray-300 hover:from-blue-300 hover:via-purple-300 hover:to-pink-300 group`}
+                    >
+                      <div className={`rounded-full overflow-hidden ${
+                        isDarkMode ? 'bg-gray-800' : 'bg-white'
+                      } p-1 w-full h-full flex flex-col items-center justify-center`}>
+                        <div className="w-10 h-10 rounded-full bg-gray-100 dark:bg-gray-700 flex items-center justify-center mb-1 group-hover:bg-blue-100 dark:group-hover:bg-blue-900 transition-colors">
+                          <Plus className="w-5 h-5 text-gray-500 dark:text-gray-400 group-hover:text-blue-500" />
+                        </div>
+                        <span className="text-[10px] font-semibold text-gray-500 dark:text-gray-400 group-hover:text-blue-500 text-center leading-tight">
+                          Custom
+                        </span>
+                      </div>
+                    </button>
+                    <input 
+                      type="file" 
+                      accept="image/*" 
+                      ref={avatarInputRef} 
+                      onChange={handleAvatarUpload} 
+                      className="hidden" 
+                    />
                   </div>
                   
                   <button
@@ -957,8 +1008,8 @@ const Settings = ({ currentUser, settings, onSettingsChange, onUserUpdate }) => 
             {/* User Stats */}
             <div className={`${theme.cardBg} rounded-2xl shadow-lg border ${theme.border} p-6`}>
               <div className="flex items-center gap-3 mb-6">
-                <div className={`p-2 ${theme.mode === 'dark' ? 'bg-amber-900/40' : 'bg-amber-100'} rounded-lg`}>
-                  <Trophy className={`w-5 h-5 ${theme.mode === 'dark' ? 'text-amber-400' : 'text-amber-500'}`} />
+                <div className={`p-2 ${theme.primary} rounded-lg`}>
+                  <BarChart3 className="w-5 h-5 text-white" />
                 </div>
                 <h2 className={`text-xl font-semibold ${theme.text}`}>Your Stats</h2>
               </div>
