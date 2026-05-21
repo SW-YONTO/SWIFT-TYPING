@@ -593,6 +593,7 @@ export const dataManager = {
     const users = userManager.getUsers();
     const user = users.find(u => u.id === userId);
     const achievements = localStorage.getItem(`typing_achievements_${userId}`);
+    const keyStats = keyStatsManager.getKeyStats(userId);
     
     const exportData = {
       version: '2.0.0',
@@ -600,7 +601,8 @@ export const dataManager = {
       user: user,
       progress: progress,
       streak: streakData,
-      achievements: achievements ? JSON.parse(achievements) : null
+      achievements: achievements ? JSON.parse(achievements) : null,
+      keyStats: keyStats
     };
     
     return JSON.stringify(exportData, null, 2);
@@ -628,6 +630,16 @@ export const dataManager = {
         throw new Error('Invalid backup file format');
       }
       
+      // Import user data (avatar, username, global stats)
+      if (data.user) {
+        const users = userManager.getUsers();
+        const userIndex = users.findIndex(u => u.id === userId);
+        if (userIndex !== -1) {
+          users[userIndex] = { ...users[userIndex], ...data.user, id: userId }; // ensure ID stays the same
+          localStorage.setItem(STORAGE_KEYS.USERS, JSON.stringify(users));
+        }
+      }
+
       // Import progress
       if (data.progress) {
         progressManager.saveUserProgress(userId, data.progress);
@@ -641,6 +653,11 @@ export const dataManager = {
       // Import achievements
       if (data.achievements) {
         localStorage.setItem(`typing_achievements_${userId}`, JSON.stringify(data.achievements));
+      }
+      
+      // Import key stats
+      if (data.keyStats) {
+        keyStatsManager.saveKeyStats(userId, data.keyStats);
       }
       
       return { success: true, message: 'Data imported successfully!' };
