@@ -1,17 +1,38 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Book, Play, CheckCircle, Lock, ArrowRight, Star, ChevronDown, ChevronUp, BarChart3 } from 'lucide-react';
 import { typingLessons } from '../data/lessons';
 import { progressManager } from '../utils/storage';
 import TypingComponent from '../components/TypingComponent';
 import { useTheme } from '../contexts/ThemeContext';
+import { useLocation } from 'react-router-dom';
 
 const TypingLessons = ({ currentUser, settings }) => {
   const [selectedLesson, setSelectedLesson] = useState(null);
+  const [selectedUnitId, setSelectedUnitId] = useState(null);
   const [showTyping, setShowTyping] = useState(false);
   const [showProgress, setShowProgress] = useState(false);
   const { theme } = useTheme();
+  const location = useLocation();
 
   const userProgress = progressManager.getUserProgress(currentUser.id);
+
+  // Auto-start lesson when coming back from Results page (Try Again / Next Lesson)
+  useEffect(() => {
+    const state = location.state;
+    if (state?.retryLessonId && state?.retryLessonContent) {
+      // Build a minimal lesson object from the navigation state
+      const lessonToStart = {
+        id: state.retryLessonId,
+        content: state.retryLessonContent,
+        title: state.retryLessonTitle || 'Lesson',
+      };
+      setSelectedLesson(lessonToStart);
+      setShowTyping(true);
+      // Clear the state so refreshing doesn't re-trigger
+      window.history.replaceState({}, '');
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const isLessonCompleted = (lessonId) => {
     return userProgress.completedLessons.some(lesson => lesson.lessonId === lessonId);
@@ -37,12 +58,32 @@ const TypingLessons = ({ currentUser, settings }) => {
     setSelectedLesson(null);
   };
 
-  const handleStartLesson = (lesson) => {
+  const handleStartLesson = (lesson, unitId) => {
     setSelectedLesson(lesson);
+    setSelectedUnitId(unitId);
     setShowTyping(true);
   };
 
   if (showTyping && selectedLesson) {
+    // Find the next lesson across all units
+    const allUnits = Object.entries(typingLessons);
+    let nextLessonId = null;
+    outer: for (let u = 0; u < allUnits.length; u++) {
+      const [uid, unit] = allUnits[u];
+      for (let i = 0; i < unit.lessons.length; i++) {
+        if (unit.lessons[i].id === selectedLesson.id) {
+          // Check next lesson in same unit
+          if (i + 1 < unit.lessons.length) {
+            nextLessonId = unit.lessons[i + 1].id;
+          } else if (u + 1 < allUnits.length) {
+            // First lesson of next unit
+            nextLessonId = allUnits[u + 1][1].lessons[0]?.id || null;
+          }
+          break outer;
+        }
+      }
+    }
+
     return (
       <div className="p-6">
         <div className="mb-4">
@@ -62,6 +103,9 @@ const TypingLessons = ({ currentUser, settings }) => {
           settings={settings}
           title={selectedLesson.title}
           isLesson={true}
+          lessonId={selectedLesson.id}
+          lessonContent={selectedLesson.content}
+          lessonNextId={nextLessonId}
         />
       </div>
     );
@@ -257,7 +301,7 @@ const TypingLessons = ({ currentUser, settings }) => {
                             : `${theme.border} ${theme.cardBg} hover:shadow-md cursor-pointer hover:${theme.border}`
                           : `${theme.border} ${theme.cardBg} opacity-60`
                       }`}
-                      onClick={() => unlocked && handleStartLesson(lesson)}
+                      onClick={() => unlocked && handleStartLesson(lesson, unitId)}
                     >
                       <div className="flex items-start justify-between mb-3">
                         <h3 className={`font-semibold ${theme.text}`}>{lesson.title}</h3>

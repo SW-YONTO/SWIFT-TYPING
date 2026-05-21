@@ -22,8 +22,11 @@ import {
   AlertCircle,
   TrendingUp,
   Award,
-  Star
+  Star,
+  Home,
+  ChevronRight
 } from 'lucide-react';
+import { typingLessons } from '../data/lessons';
 import { useTheme } from '../contexts/ThemeContext';
 
 // Register Chart.js components
@@ -44,6 +47,17 @@ const Results = () => {
   const { theme } = useTheme();
   const results = location.state?.results;
   const [countdown, setCountdown] = useState(5);
+
+  // Find next lesson data from lessons list (if we have a nextLessonId)
+  const getNextLesson = () => {
+    if (!results?.lessonNextId) return null;
+    for (const unit of Object.values(typingLessons)) {
+      const found = unit.lessons.find(l => l.id === results.lessonNextId);
+      if (found) return found;
+    }
+    return null;
+  };
+  const nextLesson = getNextLesson();
 
   // Auto-redirect countdown when there are no results to display
   useEffect(() => {
@@ -363,18 +377,53 @@ const Results = () => {
 
         {/* Action Buttons */}
         <div className="flex flex-col sm:flex-row gap-4 justify-center animate-fade-in">
+          {/* Try Again - re-run the exact same lesson */}
           <button
-            onClick={() => navigate('/lessons')}
+            onClick={() => {
+              if (results?.lessonId && results?.lessonContent) {
+                // Navigate back to lessons with state to auto-start this lesson
+                navigate('/lessons', {
+                  state: {
+                    retryLessonId: results.lessonId,
+                    retryLessonContent: results.lessonContent,
+                    retryLessonTitle: results.lessonTitle || results.content,
+                  }
+                });
+              } else {
+                navigate('/lessons');
+              }
+            }}
             className={`flex items-center gap-2 ${theme.primary} text-white px-8 py-3 rounded-xl ${theme.primaryHover} transition-all hover-lift font-semibold`}
           >
             <RotateCcw className="w-5 h-5" />
             Try Again
           </button>
+
+          {/* Next Lesson button - only show when there is a next lesson */}
+          {nextLesson && (
+            <button
+              onClick={() =>
+                navigate('/lessons', {
+                  state: {
+                    retryLessonId: nextLesson.id,
+                    retryLessonContent: nextLesson.content,
+                    retryLessonTitle: nextLesson.title,
+                  }
+                })
+              }
+              className={`flex items-center gap-2 ${theme.primary} text-white px-8 py-3 rounded-xl ${theme.primaryHover} transition-all hover-lift font-semibold`}
+            >
+              <ChevronRight className="w-5 h-5" />
+              Next Lesson
+            </button>
+          )}
+
+          {/* Back to Home - uses Home icon, full opacity */}
           <button
             onClick={() => navigate('/')}
-            className={`flex items-center gap-2 ${theme.secondary} ${theme.accent} px-8 py-3 rounded-xl ${theme.secondaryHover} transition-all hover-lift font-semibold border ${theme.border}`}
+            className={`flex items-center gap-2 ${theme.cardBg} ${theme.text} px-8 py-3 rounded-xl transition-all hover-lift font-semibold border-2 ${theme.border} hover:border-opacity-100`}
           >
-            <Trophy className="w-5 h-5" />
+            <Home className="w-5 h-5" />
             Back to Home
           </button>
         </div>

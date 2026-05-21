@@ -358,7 +358,10 @@ const TypingComponent = ({
   onComplete, 
   settings = { timeLimit: 60, wordLimit: 50, theme: 'blue' },
   title = "Typing Practice",
-  isLesson = false // New prop to identify lesson mode
+  isLesson = false, // New prop to identify lesson mode
+  lessonId = null,      // ID of current lesson (for Try Again)
+  lessonContent = null, // Raw content of current lesson (for Try Again)
+  lessonNextId = null,  // ID of next lesson (for Next Lesson button)
 }) => {
   const { theme, fontSize, fontFamily, changeFontSize } = useTheme();
   const navigate = useNavigate();
@@ -616,7 +619,12 @@ const TypingComponent = ({
         wordsTyped: wordsTyped,
         content: title,
         wpmHistory: finalWpmHistory,
-        completedAt: new Date().toISOString()
+        completedAt: new Date().toISOString(),
+        // Lesson navigation info for Results page
+        lessonId: lessonId,
+        lessonContent: lessonContent || content,
+        lessonTitle: title,
+        lessonNextId: lessonNextId,
       };
 
       // Record practice streak
