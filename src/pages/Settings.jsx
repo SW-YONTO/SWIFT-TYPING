@@ -28,7 +28,8 @@ import {
   Upload,
   Flame,
   AlertCircle,
-  Camera
+  Camera,
+  Plus
 } from 'lucide-react';
 import { progressManager, themes, userManager, streakManager, dataManager } from '../utils/storage';
 import { useTheme } from '../contexts/ThemeContext';
@@ -230,6 +231,9 @@ const Settings = ({ currentUser, settings, onSettingsChange, onUserUpdate }) => 
         
         // Update local settings
         handleSettingChange('userName', newUsername.trim());
+        
+        // Notify parent to refresh current user state
+        if (onUserUpdate) onUserUpdate();
       }
     }
     setEditingUsername(false);
@@ -298,16 +302,16 @@ const Settings = ({ currentUser, settings, onSettingsChange, onUserUpdate }) => 
                   </label>
                   <div className="flex items-center gap-6">
                     <div className="relative">
-                      <div className="w-24 h-24 rounded-full bg-gradient-to-br from-blue-400 via-purple-400 to-pink-400 p-1">
+                      <div className={`w-24 h-24 rounded-full ${theme.primary} p-1 shadow-md`}>
                         <img
                           src={getAvatarPath(currentAvatar)}
                           alt="Profile Avatar"
-                          className={`w-full h-full rounded-full object-cover border-4 ${isDarkMode ? 'border-gray-700' : 'border-white'} shadow-lg`}
+                          className={`w-full h-full rounded-full object-cover border-4 ${isDarkMode ? 'border-gray-800' : 'border-white'}`}
                         />
                       </div>
                       <button
-                        onClick={() => avatarInputRef.current?.click()}
-                        className={`absolute -bottom-1 -right-1 p-2 ${theme.primary} text-white rounded-full shadow-lg hover:opacity-90 transition-all transform hover:scale-110`}
+                        onClick={() => setShowAvatarModal(true)}
+                        className={`absolute -bottom-1 -right-1 p-2 ${theme.primary} text-white rounded-full shadow-lg hover:opacity-90 transition-all transform hover:scale-110 border-2 ${isDarkMode ? 'border-gray-800' : 'border-white'}`}
                       >
                         <Camera className="w-4 h-4" />
                       </button>
