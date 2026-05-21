@@ -52,6 +52,8 @@ coverage/
 # Temporary folders
 tmp/
 temp/
+agents/
+.agents/
 
 # Large files and archives
 *.zip

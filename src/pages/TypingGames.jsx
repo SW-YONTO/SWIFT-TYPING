@@ -1,5 +1,5 @@
 import React, { useState, Suspense } from 'react';
-import { Gamepad2, Wind, Box, ArrowLeft, Trophy, Star, Clock, Car, Loader2, Mountain, AlertTriangle } from 'lucide-react';
+import { Gamepad2, Wind, Box, ArrowLeft, Trophy, Star, Clock, Car, Loader2, Mountain, AlertTriangle, Swords } from 'lucide-react';
 import { useTheme } from '../contexts/ThemeContext';
 
 // Lazy load game components for better performance
@@ -7,6 +7,7 @@ const BalloonGame = React.lazy(() => import('../components/games/BalloonGame'));
 const BlockContainerGame = React.lazy(() => import('../components/games/BlockContainerGame'));
 const WordRacerGame = React.lazy(() => import('../components/games/WordRacerGame'));
 const KeyboardJumpGame = React.lazy(() => import('../components/games/KeyboardJumpGame'));
+const SwiftArenaGame = React.lazy(() => import('../components/games/SwiftArenaGame'));
 
 // Loading fallback component
 const GameLoadingFallback = ({ theme }) => (
@@ -22,6 +23,7 @@ import balloonPopImg from '../assets/games/balloon-pop.png';
 import wordCrusherImg from '../assets/games/word-crusher.png';
 import wordRacerImg from '../assets/games/word-racer.png';
 import keyboardJumpImg from '../assets/games/keyboard-jump.png';
+import swiftArenaImg from '../assets/games/swift-arena.png';
 
 const TypingGames = ({ currentUser }) => {
   const [selectedGame, setSelectedGame] = useState(null);
@@ -39,7 +41,8 @@ const TypingGames = ({ currentUser }) => {
       bgColor: 'bg-pink-100 dark:bg-pink-900/30',
       shadowColor: 'hover:shadow-pink-500/25 dark:hover:shadow-pink-500/15 hover:border-pink-500/40',
       difficulty: 'Easy',
-      avgTime: '2-5 min'
+      avgTime: '2-5 min',
+      type: 'single'
     },
     {
       id: 'container',
@@ -51,7 +54,8 @@ const TypingGames = ({ currentUser }) => {
       bgColor: 'bg-cyan-100 dark:bg-cyan-900/30',
       shadowColor: 'hover:shadow-cyan-500/25 dark:hover:shadow-cyan-500/15 hover:border-cyan-500/40',
       difficulty: 'Medium',
-      avgTime: '3-7 min'
+      avgTime: '3-7 min',
+      type: 'single'
     },
     {
       id: 'racer',
@@ -63,7 +67,8 @@ const TypingGames = ({ currentUser }) => {
       bgColor: 'bg-orange-100 dark:bg-orange-900/30',
       shadowColor: 'hover:shadow-orange-500/25 dark:hover:shadow-orange-500/15 hover:border-orange-500/40',
       difficulty: 'Hard',
-      avgTime: '1-3 min'
+      avgTime: '1-3 min',
+      type: 'single'
     },
     {
       id: 'keyboard-jump',
@@ -75,7 +80,21 @@ const TypingGames = ({ currentUser }) => {
       bgColor: 'bg-green-100 dark:bg-green-900/30',
       shadowColor: 'hover:shadow-green-500/25 dark:hover:shadow-green-500/15 hover:border-green-500/40',
       difficulty: 'Medium',
-      avgTime: '3-5 min'
+      avgTime: '3-5 min',
+      type: 'single'
+    },
+    {
+      id: 'arena',
+      title: 'Swift Arena',
+      description: 'Compete against other players in real-time typing battles! First to type the sentence correctly wins!',
+      icon: Swords,
+      image: swiftArenaImg,
+      color: 'from-indigo-500 to-purple-600',
+      bgColor: 'bg-indigo-100 dark:bg-indigo-900/30',
+      shadowColor: 'hover:shadow-indigo-500/25 dark:hover:shadow-indigo-500/15 hover:border-indigo-500/40',
+      difficulty: 'Hard',
+      avgTime: '1-3 min',
+      type: 'multi'
     }
   ];
 
@@ -107,6 +126,7 @@ const TypingGames = ({ currentUser }) => {
             {selectedGame === 'container' && <BlockContainerGame currentUser={currentUser} />}
             {selectedGame === 'racer' && <WordRacerGame currentUser={currentUser} />}
             {selectedGame === 'keyboard-jump' && <KeyboardJumpGame currentUser={currentUser} />}
+            {selectedGame === 'arena' && <SwiftArenaGame currentUser={currentUser} />}
           </Suspense>
         </div>
 
@@ -160,56 +180,102 @@ const TypingGames = ({ currentUser }) => {
           </p>
         </div>
 
-        {/* Games Grid */}
-        <div className="grid md:grid-cols-2 gap-6">
-          {games.map((game) => {
-            const Icon = game.icon;
-            return (
-              <div
-                key={game.id}
-                onClick={() => handleGameSelect(game.id)}
-                className={`${theme.cardBg} rounded-2xl shadow-lg border ${theme.border} overflow-hidden cursor-pointer transform transition-all duration-300 hover:-translate-y-2 hover:shadow-2xl ${game.shadowColor} group`}
-              >
-                {/* Game Preview Area */}
-                <div className={`h-48 relative overflow-hidden group`}>
-                   <div className={`absolute inset-0 bg-gradient-to-br ${game.color} opacity-0 group-hover:opacity-20 transition-opacity duration-300 z-10`} />
-                   <img 
-                      src={game.image} 
-                      alt={game.title}
-                      className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
-                   />
-                   <div className="absolute top-4 right-4 z-20 bg-white/90 backdrop-blur-sm p-2 rounded-lg shadow-lg">
-                      <Icon className={`w-6 h-6 text-gray-800`} />
-                   </div>
-                </div>
-
-                {/* Game Info */}
-                <div className="p-6">
-                  <h2 className={`text-xl font-bold ${theme.text} mb-2`}>{game.title}</h2>
-                  <p className={`${theme.textSecondary} text-sm mb-4`}>{game.description}</p>
-                  
-                  {/* Game Stats */}
-                  <div className="flex items-center gap-4 mb-4">
-                    <div className="flex items-center gap-1">
-                      <Star className={`w-4 h-4 ${theme.accent}`} />
-                      <span className={`text-xs ${theme.textSecondary}`}>{game.difficulty}</span>
-                    </div>
-                    <div className="flex items-center gap-1">
-                      <Clock className={`w-4 h-4 ${theme.accent}`} />
-                      <span className={`text-xs ${theme.textSecondary}`}>{game.avgTime}</span>
+        {/* Single Player Games */}
+        <div className="mb-12">
+          <h2 className={`text-2xl font-bold ${theme.text} mb-6 flex items-center gap-2`}>
+            <Gamepad2 className={`w-6 h-6 ${theme.accent}`} />
+            Single Player Games
+          </h2>
+          <div className="grid md:grid-cols-2 gap-6">
+            {games.filter(g => g.type === 'single').map((game) => {
+              const Icon = game.icon;
+              return (
+                <div
+                  key={game.id}
+                  onClick={() => handleGameSelect(game.id)}
+                  className={`${theme.cardBg} rounded-2xl shadow-lg border ${theme.border} overflow-hidden cursor-pointer transform transition-all duration-300 hover:-translate-y-2 hover:shadow-2xl ${game.shadowColor} group`}
+                >
+                  <div className={`h-48 relative overflow-hidden group`}>
+                    <div className={`absolute inset-0 bg-gradient-to-br ${game.color} opacity-0 group-hover:opacity-20 transition-opacity duration-300 z-10`} />
+                    <img 
+                        src={game.image} 
+                        alt={game.title}
+                        className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
+                    />
+                    <div className="absolute top-4 right-4 z-20 bg-white/90 backdrop-blur-sm p-2 rounded-lg shadow-lg">
+                        <Icon className={`w-6 h-6 text-gray-800`} />
                     </div>
                   </div>
-
-                  {/* Play Button */}
-                  <button
-                    className={`w-full py-3 rounded-lg bg-gradient-to-r ${game.color} text-white font-semibold transition-all duration-300 group-hover:shadow-lg`}
-                  >
-                    Play Now
-                  </button>
+                  <div className="p-6">
+                    <h2 className={`text-xl font-bold ${theme.text} mb-2`}>{game.title}</h2>
+                    <p className={`${theme.textSecondary} text-sm mb-4`}>{game.description}</p>
+                    <div className="flex items-center gap-4 mb-4">
+                      <div className="flex items-center gap-1">
+                        <Star className={`w-4 h-4 ${theme.accent}`} />
+                        <span className={`text-xs ${theme.textSecondary}`}>{game.difficulty}</span>
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <Clock className={`w-4 h-4 ${theme.accent}`} />
+                        <span className={`text-xs ${theme.textSecondary}`}>{game.avgTime}</span>
+                      </div>
+                    </div>
+                    <button className={`w-full py-3 rounded-lg bg-gradient-to-r ${game.color} text-white font-semibold transition-all duration-300 group-hover:shadow-lg`}>
+                      Play Now
+                    </button>
+                  </div>
                 </div>
-              </div>
-            );
-          })}
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Multiplayer Games */}
+        <div>
+          <h2 className={`text-2xl font-bold ${theme.text} mb-6 flex items-center gap-2`}>
+            <Swords className={`w-6 h-6 text-indigo-500`} />
+            Online Multiplayer
+          </h2>
+          <div className="grid md:grid-cols-2 gap-6">
+            {games.filter(g => g.type === 'multi').map((game) => {
+              const Icon = game.icon;
+              return (
+                <div
+                  key={game.id}
+                  onClick={() => handleGameSelect(game.id)}
+                  className={`${theme.cardBg} rounded-2xl shadow-lg border ${theme.border} overflow-hidden cursor-pointer transform transition-all duration-300 hover:-translate-y-2 hover:shadow-2xl ${game.shadowColor} group`}
+                >
+                  <div className={`h-48 relative overflow-hidden group`}>
+                    <div className={`absolute inset-0 bg-gradient-to-br ${game.color} opacity-0 group-hover:opacity-20 transition-opacity duration-300 z-10`} />
+                    <img 
+                        src={game.image} 
+                        alt={game.title}
+                        className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
+                    />
+                    <div className="absolute top-4 right-4 z-20 bg-white/90 backdrop-blur-sm p-2 rounded-lg shadow-lg">
+                        <Icon className={`w-6 h-6 text-gray-800`} />
+                    </div>
+                  </div>
+                  <div className="p-6">
+                    <h2 className={`text-xl font-bold ${theme.text} mb-2`}>{game.title}</h2>
+                    <p className={`${theme.textSecondary} text-sm mb-4`}>{game.description}</p>
+                    <div className="flex items-center gap-4 mb-4">
+                      <div className="flex items-center gap-1">
+                        <Star className={`w-4 h-4 ${theme.accent}`} />
+                        <span className={`text-xs ${theme.textSecondary}`}>{game.difficulty}</span>
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <Clock className={`w-4 h-4 ${theme.accent}`} />
+                        <span className={`text-xs ${theme.textSecondary}`}>{game.avgTime}</span>
+                      </div>
+                    </div>
+                    <button className={`w-full py-3 rounded-lg bg-gradient-to-r ${game.color} text-white font-semibold transition-all duration-300 group-hover:shadow-lg`}>
+                      Play Now
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
         </div>
 
         {/* Tips Section */}

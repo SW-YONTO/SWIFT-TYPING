@@ -17,6 +17,7 @@
   },
   "dependencies": {
     "@clerk/clerk-react": "^5.61.6",
+    "@supabase/supabase-js": "^2.106.1",
     "@tailwindcss/vite": "^4.1.11",
     "chart.js": "^4.5.0",
     "esbuild": "^0.28.0",
