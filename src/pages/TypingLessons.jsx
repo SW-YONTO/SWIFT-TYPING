@@ -183,7 +183,15 @@ const TypingLessons = ({ currentUser, settings }) => {
                   return (
                     <div
                       key={unitId}
-                      className={`p-4 rounded-xl border-2 transition-all hover:shadow-md ${
+                      onClick={() => {
+                        setShowProgress(false);
+                        setTimeout(() => {
+                          const el = document.getElementById(`unit-section-${unitId}`);
+                          if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                        }, 150);
+                      }}
+                      title="Click to jump to this unit"
+                      className={`p-4 rounded-xl border-2 transition-all hover:shadow-lg cursor-pointer hover:-translate-y-0.5 ${
                         isUnitCompleted
                           ? `border-green-500 ${theme.cardBg} ring-1 ring-green-200 dark:ring-green-800`
                           : isUnitStarted
@@ -279,7 +287,7 @@ const TypingLessons = ({ currentUser, settings }) => {
         {/* Lessons Grid */}
         <div className="space-y-8">
           {Object.entries(typingLessons).map(([unitId, unit]) => (
-            <div key={unitId} className={`${theme.cardBg} rounded-lg shadow-lg p-6 border ${theme.border}`}>
+            <div key={unitId} id={`unit-section-${unitId}`} className={`${theme.cardBg} rounded-lg shadow-lg p-6 border ${theme.border} scroll-mt-6`}>
               <div className="flex items-center gap-3 mb-6">
                 <Book className={`w-6 h-6 ${theme.accent}`} />
                 <h2 className={`text-2xl font-semibold ${theme.text}`}>{unit.title}</h2>
