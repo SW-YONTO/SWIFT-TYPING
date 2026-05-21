@@ -4,10 +4,33 @@ import { useTheme } from '../../contexts/ThemeContext';
 import { soundEffects } from '../../utils/soundEffects';
 
 const WORD_BANK = [
+  // Original
   "system", "matrix", "cyber", "laser", "shield", "orbit", "planet", "galaxy", 
   "asteroid", "meteor", "quantum", "gravity", "nebula", "plasma", "reactor", 
   "velocity", "cosmic", "stellar", "fusion", "photon", "eclipse", "satellite",
-  "module", "station", "thrust", "vector", "horizon", "zenith", "aurora", "nova"
+  "module", "station", "thrust", "vector", "horizon", "zenith", "aurora", "nova",
+  // Sci-Fi Tech
+  "android", "cyborg", "drone", "engine", "network", "portal", "sensor", "server",
+  "signal", "warp", "hyper", "circuit", "data", "firewall", "hacker", "mainframe",
+  "memory", "packet", "router", "terminal", "virus", "armor", "blaster", "cannon",
+  // Space & Astronomy
+  "comet", "cosmos", "crater", "equinox", "lunar", "quasar", "solar", "void",
+  "pulsar", "vacuum", "abyss", "celestial", "cluster", "infinity", "lightyear", 
+  "supernova", "universe", "wormhole", "zodiac", "apogee", "perigee", "solstice",
+  // Cyberpunk & Grid
+  "neon", "chrome", "glitch", "synth", "virtual", "reality", "hologram", "proxy",
+  "cipher", "crypto", "uplink", "download", "override", "protocol", "syntax",
+  "grid", "nexus", "pulse", "static", "bandwidth", "node", "gateway", "firewire",
+  // Action & Defense
+  "attack", "defend", "breach", "combat", "danger", "evade", "impact", "target",
+  "threat", "alert", "barrier", "blast", "damage", "strike", "turret", "weapon",
+  "intercept", "destroy", "critical", "tactical", "secure", "lockdown", "engage",
+  // Elements & Energy
+  "spark", "volt", "charge", "kinetic", "thermal", "flux", "ion", "magnetic",
+  "radiation", "spectrum", "current", "power", "energy", "force", "core",
+  // Cool Call-signs
+  "phantom", "shadow", "apex", "vortex", "omega", "alpha", "delta", "echo",
+  "stratos", "aether", "chronos", "prism", "helix", "vertex", "axiom", "cipher"
 ];
 
 const WordDefenderGame = ({ currentUser }) => {
