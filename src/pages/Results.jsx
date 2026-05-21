@@ -41,6 +41,24 @@ ChartJS.register(
   Filler
 );
 
+// ── Tooltip wrapper ─────────────────────────────────────────────────────────
+const ShortcutTooltip = ({ label, keys, children }) => (
+  <div className="shortcut-tooltip-root" style={{ position: 'relative', display: 'inline-block' }}>
+    {children}
+    <div className="shortcut-tooltip-box">
+      <span className="shortcut-tooltip-label">{label}</span>
+      <div className="shortcut-tooltip-keys">
+        {keys.map((k, i) => (
+          <React.Fragment key={k}>
+            <kbd className="shortcut-kbd">{k}</kbd>
+            {i < keys.length - 1 && <span className="shortcut-plus">+</span>}
+          </React.Fragment>
+        ))}
+      </div>
+    </div>
+  </div>
+);
+
 const Results = () => {
   const location = useLocation();
   const navigate = useNavigate();
@@ -58,6 +76,50 @@ const Results = () => {
     return null;
   };
   const nextLesson = getNextLesson();
+
+  // Handlers extracted so keyboard shortcuts can reuse them
+  const handleTryAgain = () => {
+    if (results?.lessonId && results?.lessonContent) {
+      navigate('/lessons', {
+        state: {
+          retryLessonId: results.lessonId,
+          retryLessonContent: results.lessonContent,
+          retryLessonTitle: results.lessonTitle || results.content,
+        }
+      });
+    } else {
+      navigate('/lessons');
+    }
+  };
+
+  const handleNextLesson = () => {
+    if (!nextLesson) return;
+    navigate('/lessons', {
+      state: {
+        retryLessonId: nextLesson.id,
+        retryLessonContent: nextLesson.content,
+        retryLessonTitle: nextLesson.title,
+      }
+    });
+  };
+
+  // Keyboard shortcuts: Ctrl+R → Try Again, Ctrl+Enter → Next Lesson
+  useEffect(() => {
+    const onKey = (e) => {
+      if (!e.ctrlKey && !e.metaKey) return;
+      if (e.key === 'r' || e.key === 'R') {
+        e.preventDefault();
+        handleTryAgain();
+      }
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        handleNextLesson();
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [results, nextLesson]);
 
   // Auto-redirect countdown when there are no results to display
   useEffect(() => {
@@ -377,48 +439,32 @@ const Results = () => {
 
         {/* Action Buttons */}
         <div className="flex flex-col sm:flex-row gap-4 justify-center animate-fade-in">
-          {/* Try Again - re-run the exact same lesson */}
-          <button
-            onClick={() => {
-              if (results?.lessonId && results?.lessonContent) {
-                // Navigate back to lessons with state to auto-start this lesson
-                navigate('/lessons', {
-                  state: {
-                    retryLessonId: results.lessonId,
-                    retryLessonContent: results.lessonContent,
-                    retryLessonTitle: results.lessonTitle || results.content,
-                  }
-                });
-              } else {
-                navigate('/lessons');
-              }
-            }}
-            className={`flex items-center gap-2 ${theme.primary} text-white px-8 py-3 rounded-xl ${theme.primaryHover} transition-all hover-lift font-semibold`}
-          >
-            <RotateCcw className="w-5 h-5" />
-            Try Again
-          </button>
 
-          {/* Next Lesson button - only show when there is a next lesson */}
-          {nextLesson && (
+          {/* Try Again — Ctrl+R */}
+          <ShortcutTooltip label="Try Again" keys={['Ctrl', 'R']}>
             <button
-              onClick={() =>
-                navigate('/lessons', {
-                  state: {
-                    retryLessonId: nextLesson.id,
-                    retryLessonContent: nextLesson.content,
-                    retryLessonTitle: nextLesson.title,
-                  }
-                })
-              }
+              onClick={handleTryAgain}
               className={`flex items-center gap-2 ${theme.primary} text-white px-8 py-3 rounded-xl ${theme.primaryHover} transition-all hover-lift font-semibold`}
             >
-              <ChevronRight className="w-5 h-5" />
-              Next Lesson
+              <RotateCcw className="w-5 h-5" />
+              Try Again
             </button>
+          </ShortcutTooltip>
+
+          {/* Next Lesson — Ctrl+Enter (only when next lesson exists) */}
+          {nextLesson && (
+            <ShortcutTooltip label="Next Lesson" keys={['Ctrl', 'Enter']}>
+              <button
+                onClick={handleNextLesson}
+                className={`flex items-center gap-2 ${theme.primary} text-white px-8 py-3 rounded-xl ${theme.primaryHover} transition-all hover-lift font-semibold`}
+              >
+                <ChevronRight className="w-5 h-5" />
+                Next Lesson
+              </button>
+            </ShortcutTooltip>
           )}
 
-          {/* Back to Home - uses Home icon, full opacity */}
+          {/* Back to Home */}
           <button
             onClick={() => navigate('/')}
             className={`flex items-center gap-2 ${theme.cardBg} ${theme.text} px-8 py-3 rounded-xl transition-all hover-lift font-semibold border-2 ${theme.border} hover:border-opacity-100`}

@@ -1052,3 +1052,91 @@ input[type="range"].hand-slider::-ms-thumb {
 .clerk-portal-root {
   z-index: 999999999 !important;
 }
+
+/* ── Keyboard Shortcut Tooltip ───────────────────────────────────────────── */
+
+/* Tooltip popover box — hidden by default, shown on parent hover */
+.shortcut-tooltip-box {
+  position: absolute;
+  bottom: calc(100% + 10px);
+  left: 50%;
+  transform: translateX(-50%) translateY(4px);
+  white-space: nowrap;
+  background: rgba(15, 15, 20, 0.93);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 10px;
+  padding: 7px 12px 8px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+  pointer-events: none;
+  opacity: 0;
+  transition:
+    opacity 0.18s ease,
+    transform 0.18s ease;
+  z-index: 9999;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+}
+
+/* Arrow pointing down */
+.shortcut-tooltip-box::after {
+  content: '';
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  border: 6px solid transparent;
+  border-top-color: rgba(15, 15, 20, 0.93);
+}
+
+/* Show on hover of the root wrapper */
+.shortcut-tooltip-root:hover .shortcut-tooltip-box {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
+
+/* Label text inside the tooltip */
+.shortcut-tooltip-label {
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(200, 210, 230, 0.7);
+  line-height: 1;
+}
+
+/* Key badges row */
+.shortcut-tooltip-keys {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+/* Individual key chip */
+.shortcut-kbd {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-family: ui-monospace, 'JetBrains Mono', Consolas, monospace;
+  font-size: 0.72rem;
+  font-weight: 700;
+  line-height: 1;
+  padding: 3px 7px;
+  border-radius: 5px;
+  background: rgba(255, 255, 255, 0.10);
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  color: #e0e8ff;
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.08);
+  letter-spacing: 0.03em;
+}
+
+/* Plus sign between keys */
+.shortcut-plus {
+  font-size: 0.7rem;
+  color: rgba(200, 210, 230, 0.55);
+  font-weight: 600;
+}
+
