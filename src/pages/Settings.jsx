@@ -1291,7 +1291,7 @@ const Settings = ({ currentUser, settings, onSettingsChange, onUserUpdate }) => 
                 onClick={handleExport}
                 className={`w-full flex items-center justify-center gap-2 ${theme.primary} text-white px-4 py-3 rounded-xl ${theme.primaryHover} transition-all duration-200 hover:scale-[1.02]`}
               >
-                <Download className="w-5 h-5" />
+                <Upload className="w-5 h-5" />
                 <span className="font-medium">Export Progress</span>
               </button>
               
@@ -1307,7 +1307,7 @@ const Settings = ({ currentUser, settings, onSettingsChange, onUserUpdate }) => 
                 onClick={() => fileInputRef.current?.click()}
                 className={`w-full flex items-center justify-center gap-2 ${theme.secondary} ${theme.text} px-4 py-3 rounded-xl ${theme.secondaryHover} transition-all duration-200 hover:scale-[1.02] border ${theme.border}`}
               >
-                <Upload className="w-5 h-5" />
+                <Download className="w-5 h-5" />
                 <span className="font-medium">Import Backup</span>
               </button>
             </div>
