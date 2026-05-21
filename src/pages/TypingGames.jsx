@@ -1,5 +1,5 @@
 import React, { useState, Suspense } from 'react';
-import { Gamepad2, Wind, Box, ArrowLeft, Trophy, Star, Clock, Car, Loader2, Mountain, AlertTriangle, Swords } from 'lucide-react';
+import { Gamepad2, Wind, Box, ArrowLeft, Trophy, Star, Clock, Car, Loader2, Mountain, AlertTriangle, Swords, Shield } from 'lucide-react';
 import { useTheme } from '../contexts/ThemeContext';
 
 // Lazy load game components for better performance
@@ -8,6 +8,7 @@ const BlockContainerGame = React.lazy(() => import('../components/games/BlockCon
 const WordRacerGame = React.lazy(() => import('../components/games/WordRacerGame'));
 const KeyboardJumpGame = React.lazy(() => import('../components/games/KeyboardJumpGame'));
 const SwiftArenaGame = React.lazy(() => import('../components/games/SwiftArenaGame'));
+const WordDefenderGame = React.lazy(() => import('../components/games/WordDefenderGame'));
 
 // Loading fallback component
 const GameLoadingFallback = ({ theme }) => (
@@ -24,6 +25,7 @@ import wordCrusherImg from '../assets/games/word-crusher.png';
 import wordRacerImg from '../assets/games/word-racer.png';
 import keyboardJumpImg from '../assets/games/keyboard-jump.png';
 import swiftArenaImg from '../assets/games/swift-arena.png';
+import wordDefenderImg from '../assets/games/word-defender.png';
 
 const TypingGames = ({ currentUser }) => {
   const [selectedGame, setSelectedGame] = useState(null);
@@ -95,6 +97,19 @@ const TypingGames = ({ currentUser }) => {
       difficulty: 'Hard',
       avgTime: '1-3 min',
       type: 'multi'
+    },
+    {
+      id: 'defender',
+      title: 'Word Defender',
+      description: 'Defend your base from falling data fragments! Lock onto words by typing their first letter and destroy them with your lasers before they breach your shields.',
+      icon: Shield,
+      image: wordDefenderImg,
+      color: 'from-cyan-500 to-blue-600',
+      bgColor: 'bg-cyan-100 dark:bg-cyan-900/30',
+      shadowColor: 'hover:shadow-cyan-500/25 dark:hover:shadow-cyan-500/15 hover:border-cyan-500/40',
+      difficulty: 'Medium',
+      avgTime: '2-5 min',
+      type: 'single'
     }
   ];
 
@@ -127,6 +142,7 @@ const TypingGames = ({ currentUser }) => {
             {selectedGame === 'racer' && <WordRacerGame currentUser={currentUser} />}
             {selectedGame === 'keyboard-jump' && <KeyboardJumpGame currentUser={currentUser} />}
             {selectedGame === 'arena' && <SwiftArenaGame currentUser={currentUser} />}
+            {selectedGame === 'defender' && <WordDefenderGame currentUser={currentUser} />}
           </Suspense>
         </div>
 
