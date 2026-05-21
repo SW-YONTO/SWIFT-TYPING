@@ -156,7 +156,7 @@ const TypingLessons = ({ currentUser, settings }) => {
                         e.stopPropagation();
                         handleStartLesson(next.lesson, next.unitId);
                       }}
-                      className={`flex items-center justify-center p-1.5 rounded-full ${theme.primary.replace('bg-', 'text-')} hover:bg-black/5 dark:hover:bg-white/5 transition-all hover:scale-110 active:scale-95`}
+                      className={`flex items-center justify-center p-1.5 rounded-full ${theme.primary.replace('bg-', 'text-')} hover:bg-black/5 dark:hover:bg-white/5 transition-all hover:scale-110 active:scale-95 cursor-pointer`}
                       title="Resume Learning"
                     >
                       <Play className="w-4 h-4" strokeWidth={2.5} />
