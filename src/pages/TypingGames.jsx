@@ -9,6 +9,7 @@ const WordRacerGame = React.lazy(() => import('../components/games/WordRacerGame
 const KeyboardJumpGame = React.lazy(() => import('../components/games/KeyboardJumpGame'));
 const SwiftArenaGame = React.lazy(() => import('../components/games/SwiftArenaGame'));
 const WordDefenderGame = React.lazy(() => import('../components/games/WordDefenderGame'));
+const SliceTypeGame = React.lazy(() => import('../components/games/SliceTypeGame'));
 
 // Loading fallback component
 const GameLoadingFallback = ({ theme }) => (
@@ -26,6 +27,7 @@ import wordRacerImg from '../assets/games/word-racer.png';
 import keyboardJumpImg from '../assets/games/keyboard-jump.png';
 import swiftArenaImg from '../assets/games/swift-arena.png';
 import wordDefenderImg from '../assets/games/word-defender.png';
+import sliceTypeImg from '../assets/games/slice-type.png';
 
 const TypingGames = ({ currentUser }) => {
   const [selectedGame, setSelectedGame] = useState(null);
@@ -122,6 +124,19 @@ const TypingGames = ({ currentUser }) => {
       difficulty: 'Medium',
       avgTime: '2-5 min',
       type: 'single'
+    },
+    {
+      id: 'slice-type',
+      title: 'SliceType',
+      description: 'Type words to slash them out of the air! Watch words get cut in half, spin, and fall apart in a gorgeous physics-based typing ninja arcade.',
+      icon: Swords,
+      image: sliceTypeImg,
+      color: 'from-rose-500 via-pink-600 to-fuchsia-700',
+      bgColor: 'bg-rose-100 dark:bg-rose-900/30',
+      shadowColor: 'hover:shadow-rose-500/25 dark:hover:shadow-rose-500/15 hover:border-rose-500/40',
+      difficulty: 'Medium',
+      avgTime: '2-4 min',
+      type: 'single'
     }
   ];
 
@@ -155,6 +170,7 @@ const TypingGames = ({ currentUser }) => {
             {selectedGame === 'keyboard-jump' && <KeyboardJumpGame currentUser={currentUser} />}
             {selectedGame === 'arena' && <SwiftArenaGame currentUser={currentUser} />}
             {selectedGame === 'defender' && <WordDefenderGame currentUser={currentUser} />}
+            {selectedGame === 'slice-type' && <SliceTypeGame currentUser={currentUser} />}
           </Suspense>
         </div>
 

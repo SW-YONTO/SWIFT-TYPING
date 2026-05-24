@@ -117,6 +117,24 @@ const WordDefenderGame = ({ currentUser }) => {
   useEffect(() => { levelRef.current = level; }, [level]);
   useEffect(() => { healthRef.current = health; }, [health]);
 
+  // ─── Ctrl+R restart hotkey ───────────────────────────────────────────────
+  const appStateRef = useRef(appState);
+  useEffect(() => { appStateRef.current = appState; }, [appState]);
+
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'r') {
+        if (appStateRef.current !== 'start') {
+          e.preventDefault();
+          e.stopPropagation();
+          startGame();
+        }
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown, { capture: true });
+    return () => window.removeEventListener('keydown', handleKeyDown, { capture: true });
+  }, []);
+
   // Helper to spawn a word
   const spawnWord = useCallback((timestamp) => {
     const wordText = WORD_BANK[Math.floor(Math.random() * WORD_BANK.length)];
