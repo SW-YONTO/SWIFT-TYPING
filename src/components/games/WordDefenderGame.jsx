@@ -33,6 +33,28 @@ const WORD_BANK = [
   "stratos", "aether", "chronos", "prism", "helix", "vertex", "axiom", "cipher"
 ];
 
+// Boss-exclusive 8-10 letter words
+const BOSS_WORD_BANK = [
+  "destroyer", "overlords", "dominance", "annihilate", "blackhole",
+  "obliterate", "singularity", "cataclysm", "dreadnought", "devastator",
+  "behemoth", "warlords", "commander", "onslaught", "colossus",
+  "juggernaut", "celestial", "judgement", "armageddon", "extinction"
+];
+
+// Tank/Station boss — 10-14 letter words (heavy, no shooting)
+const TANK_WORD_BANK = [
+  "intergalactic", "battlecruiser", "gravitational", "invulnerable",
+  "indestructible", "annihilator", "deathbringer", "thunderstrike",
+  "mothership", "devastation", "supermassive", "constellation",
+  "starfortress", "darkmatter", "supercharged", "spacewalker",
+  "impenetrable", "unstoppable", "obliteration", "dreadfortress"
+];
+
+// Bolt buff — short punchy words (easier to type for a reward)
+const BOLT_WORDS = [
+  "surge", "zap", "volt", "flash", "spark", "shock", "burst", "pulse"
+];
+
 const WordDefenderGame = ({ currentUser }) => {
   const { theme, isDarkMode } = useTheme();
   
@@ -47,7 +69,11 @@ const WordDefenderGame = ({ currentUser }) => {
   const [words, setWords] = useState([]);
   const [explosions, setExplosions] = useState([]);
   const [lasers, setLasers] = useState([]);
+  const [sweepLasers, setSweepLasers] = useState([]); // Electric bolt sweep beams
   
+  // Boss
+  const [bossWarning, setBossWarning] = useState(false);
+
   // Input
   const [targetId, setTargetId] = useState(null);
   
@@ -61,11 +87,35 @@ const WordDefenderGame = ({ currentUser }) => {
   const gameAreaRef = useRef(null);
   const explosionsRef = useRef([]);
 
+  // Health drop throttle refs
+  const lastHealthDropTimeRef = useRef(-Infinity); // timestamp of last health drop spawn
+  const healthDropCountRef = useRef(0);            // how many health drops spawned this level
+  const levelRef = useRef(1);                      // mirrors `level` for use inside game loop
+
+  // Boss throttle refs
+  const nextBossTimeRef = useRef(0);        // earliest timestamp a boss can spawn
+  const bossActiveRef = useRef(false);      // true while a boss word is on screen
+  const bossHealthDropTimeRef = useRef(0);  // timestamp to auto-spawn a health drop after boss arrives
+  const bossBoltDropTimeRef = useRef(0);    // timestamp to auto-spawn a bolt drop after boss arrives
+
+  // Tank boss refs
+  const nextTankTimeRef = useRef(0);        // earliest timestamp a tank boss can spawn
+  const tankActiveRef = useRef(false);      // true while a tank is on screen
+
+  // Bolt buff refs
+  const lastBoltDropTimeRef = useRef(-Infinity); // timestamp of last bolt drop
+  const boltDropCountRef = useRef(0);            // bolt drops spawned this level
+
+  // Health mirror ref (for use inside game-loop callbacks)
+  const healthRef = useRef(100);
+
   // Sync refs with state
   useEffect(() => { wordsRef.current = words; }, [words]);
   useEffect(() => { lasersRef.current = lasers; }, [lasers]);
   useEffect(() => { targetIdRef.current = targetId; }, [targetId]);
   useEffect(() => { explosionsRef.current = explosions; }, [explosions]);
+  useEffect(() => { levelRef.current = level; }, [level]);
+  useEffect(() => { healthRef.current = health; }, [health]);
 
   // Helper to spawn a word
   const spawnWord = useCallback((timestamp) => {
@@ -75,27 +125,68 @@ const WordDefenderGame = ({ currentUser }) => {
     // We want words to take about 10-15 seconds to reach the bottom (100%)
     // Speed is % per millisecond. 100% / 12000ms = ~0.008% per ms
     const baseSpeed = 0.006;
-    const speed = baseSpeed + (level * 0.0005) + (Math.random() * 0.003); 
+    const speed = baseSpeed + (levelRef.current * 0.0005) + (Math.random() * 0.003); 
     
+    // ── Health-drop throttle (dynamic: shorter cooldown + higher chance at low HP/high level) ──
+    const curHP = healthRef.current;
+    const isLowHP = curHP < 40 && levelRef.current >= 2;
+    const isMidHP = curHP < 65 && levelRef.current >= 3;
+    const isHighLevel = levelRef.current >= 9; // Late game is brutal, need more health
+    
+    const HEALTH_COOLDOWN_MS = isHighLevel ? 8_000 : (isLowHP ? 12_000 : isMidHP ? 20_000 : 30_000);
+    const healthChanceThreshold = isHighLevel ? 0.60 : (isLowHP ? 0.78 : isMidHP ? 0.84 : 0.90); 
+    const maxHealthDropsThisLevel = isHighLevel ? 15 : 1 + levelRef.current;
+    
+    const timeSinceLast = timestamp - lastHealthDropTimeRef.current;
+    const canSpawnHealth =
+      timeSinceLast >= HEALTH_COOLDOWN_MS &&
+      healthDropCountRef.current < maxHealthDropsThisLevel;
+    // ────────────────────────────────────────────────────────────────────────
+
+    // ── Bolt-drop throttle (level 5+, 30s gap, resets each level) ──
+    const BOLT_COOLDOWN_MS = 30_000;
+    const maxBoltsThisLevel = levelRef.current >= 8 ? 4 : 2; // Drop even more at 8+
+    const boltTimeSinceLast = timestamp - lastBoltDropTimeRef.current;
+    const canSpawnBolt =
+      levelRef.current >= 5 &&
+      boltTimeSinceLast >= BOLT_COOLDOWN_MS &&
+      boltDropCountRef.current < maxBoltsThisLevel;
+    // ─────────────────────────────────────────────────────────────────────────
+
     let type = 'bomb';
     const rand = Math.random();
-    if (rand > 0.9) {
-      type = 'health'; // 10% chance for health drop
-    } else if (rand > 0.6) {
-      type = 'ship'; // 30% chance for ship
+    // 30% chance to drop at level 5, 60% chance to drop at level 8+ once cooldown is met
+    const boltChance = levelRef.current >= 8 ? 0.4 : 0.7; 
+    const shipChance = levelRef.current >= 9 ? 0.4 : 0.6; // More ships, fewer bombs at level 9+
+
+    if (rand > boltChance && canSpawnBolt) {
+      type = 'bolt';
+      lastBoltDropTimeRef.current = timestamp;
+      boltDropCountRef.current += 1;
+    } else if (rand > healthChanceThreshold && canSpawnHealth) {
+      type = 'health';
+      lastHealthDropTimeRef.current = timestamp;
+      healthDropCountRef.current += 1;
+    } else if (rand > shipChance) {
+      type = 'ship'; // Ships instead of bombs
     }
+
+    // Override text for bolt drops
+    const finalText = type === 'bolt'
+      ? BOLT_WORDS[Math.floor(Math.random() * BOLT_WORDS.length)]
+      : wordText;
 
     return {
       id: `word_${timestamp}_${Math.random()}`,
-      text: wordText,
+      text: finalText,
       progress: 0,
       x: xPos,
-      y: -5, // Start just above screen
-      speed: type === 'health' ? speed * 1.2 : speed, // Health drops slightly faster
+      y: -5,
+      speed: type === 'health' ? speed * 1.2 : type === 'bolt' ? speed * 0.9 : speed,
       type: type,
-      lastShootTime: timestamp + 1500 + Math.random() * 1000 // Initial shoot delay
+      lastShootTime: timestamp + 1500 + Math.random() * 1000
     };
-  }, [level]);
+  }, []);
 
   const startGame = () => {
     setScore(0);
@@ -109,9 +200,28 @@ const WordDefenderGame = ({ currentUser }) => {
     setExplosions([]);
     setTargetId(null);
     targetIdRef.current = null;
+    // Reset health-drop throttle
+    lastHealthDropTimeRef.current = -Infinity;
+    healthDropCountRef.current = 0;
+    levelRef.current = 1;
+    // Reset boss throttle
+    nextBossTimeRef.current = 0;
+    bossActiveRef.current = false;
+    bossHealthDropTimeRef.current = 0;
+    bossBoltDropTimeRef.current = 0;
+    setBossWarning(false);
+    // Reset tank throttle
+    nextTankTimeRef.current = 0;
+    tankActiveRef.current = false;
+    // Reset bolt throttle
+    lastBoltDropTimeRef.current = -Infinity;
+    boltDropCountRef.current = 0;
+    // Reset health mirror
+    healthRef.current = 100;
+    setSweepLasers([]);
     setAppState('playing');
     lastTimeRef.current = null;
-    nextSpawnTimeRef.current = 0; // Spawn immediately on first frame
+    nextSpawnTimeRef.current = 0;
   };
 
   const createExplosion = (x, y, scale = 1, color = 'cyan') => {
@@ -143,15 +253,113 @@ const WordDefenderGame = ({ currentUser }) => {
     let stateChanged = false;
     let lasersChanged = false;
 
+    // ── Pre-Boss Spawn Pause (Level 9+) ─────────────────────────────────────
+    // Give the player 5 seconds of no new spawns to clear the board before a boss
+    const timeUntilBoss = nextBossTimeRef.current > 0 ? nextBossTimeRef.current - timestamp : Infinity;
+    const timeUntilTank = nextTankTimeRef.current > 0 ? nextTankTimeRef.current - timestamp : Infinity;
+    const bossImminent = levelRef.current >= 9 && ((timeUntilBoss > 0 && timeUntilBoss < 5000) || (timeUntilTank > 0 && timeUntilTank < 5000));
+
     // Spawn words
-    if (timestamp > nextSpawnTimeRef.current) {
+    if (timestamp > nextSpawnTimeRef.current && !bossImminent) {
       const newWord = spawnWord(timestamp);
       currentWords.push(newWord);
       stateChanged = true;
-      // Decrease spawn interval as level increases (start at 2.5s, drop to 1s)
-      const spawnInterval = Math.max(1000, 3000 - (level * 200));
+      // Decrease spawn interval as level increases (cap at 1.5s max speed so it doesn't get crazy)
+      const spawnInterval = Math.max(1500, 3000 - (level * 150));
       nextSpawnTimeRef.current = timestamp + spawnInterval + (Math.random() * 500);
     }
+
+    // ── Boss spawn ───────────────────────────────────────────────────────────
+    // First boss available after 60 s; subsequent bosses every 60 s after kill.
+    // Boss only appears from level 2 onwards and only one at a time.
+    if (
+      levelRef.current >= 2 &&
+      !bossActiveRef.current &&
+      nextBossTimeRef.current > 0 &&        // 0 means "not yet initialised"
+      timestamp >= nextBossTimeRef.current
+    ) {
+      // Pick an 8-10 letter boss word
+      const bossText = BOSS_WORD_BANK[Math.floor(Math.random() * BOSS_WORD_BANK.length)];
+      const bossSpeed = 0.003 + (levelRef.current * 0.0002); // very slow
+      const bossWord = {
+        id: `boss_${timestamp}_${Math.random()}`,
+        text: bossText,
+        progress: 0,
+        x: 20 + Math.random() * 60, // center-ish
+        y: -8,
+        speed: bossSpeed,
+        type: 'boss',
+        lastShootTime: timestamp + 800,
+        shootCooldown: Math.max(800, 1000 - (levelRef.current - 2) * 25),
+      };
+      currentWords.push(bossWord);
+      bossActiveRef.current = true;
+      stateChanged = true;
+      // Queue guaranteed drops to help the player
+      bossHealthDropTimeRef.current = timestamp + 10_000;
+      bossBoltDropTimeRef.current = timestamp + 7_000;
+      // Show warning banner for 3 s then hide
+      setBossWarning(true);
+      setTimeout(() => setBossWarning(false), 3000);
+    }
+
+    // ── Boss-triggered health drop ─────────────────────────────────────────
+    if (bossHealthDropTimeRef.current > 0 && timestamp >= bossHealthDropTimeRef.current) {
+      bossHealthDropTimeRef.current = 0;
+      const spd = 0.006 + (levelRef.current * 0.0005);
+      currentWords.push({
+        id: `healthbonus_${timestamp}_${Math.random()}`,
+        text: WORD_BANK[Math.floor(Math.random() * WORD_BANK.length)],
+        progress: 0, x: 15 + Math.random() * 70, y: -5,
+        speed: spd * 1.2, type: 'health', lastShootTime: Infinity
+      });
+      stateChanged = true;
+    }
+
+    // ── Boss-triggered bolt drop ───────────────────────────────────────────
+    if (bossBoltDropTimeRef.current > 0 && timestamp >= bossBoltDropTimeRef.current) {
+      bossBoltDropTimeRef.current = 0;
+      const spd = 0.006 + (levelRef.current * 0.0005);
+      currentWords.push({
+        id: `boltbonus_${timestamp}_${Math.random()}`,
+        text: BOLT_WORDS[Math.floor(Math.random() * BOLT_WORDS.length)],
+        progress: 0, x: 15 + Math.random() * 70, y: -5,
+        speed: spd * 0.9, type: 'bolt', lastShootTime: Infinity
+      });
+      stateChanged = true;
+    }
+
+    // ── Tank boss spawn (level 3+, every 90s, one at a time) ──────────────
+    if (
+      levelRef.current >= 3 &&
+      !tankActiveRef.current &&
+      nextTankTimeRef.current > 0 &&
+      timestamp >= nextTankTimeRef.current
+    ) {
+      const tankText = TANK_WORD_BANK[Math.floor(Math.random() * TANK_WORD_BANK.length)];
+      const tankSpeed = 0.0018 + (levelRef.current * 0.0001); // very slow
+      currentWords.push({
+        id: `tank_${timestamp}_${Math.random()}`,
+        text: tankText, progress: 0,
+        x: 15 + Math.random() * 70, y: -10,
+        speed: tankSpeed, type: 'tank',
+        lastShootTime: Infinity // tanks never shoot
+      });
+      tankActiveRef.current = true;
+      stateChanged = true;
+      // Queue guaranteed drops for Tank as well
+      bossHealthDropTimeRef.current = timestamp + 10_000;
+      bossBoltDropTimeRef.current = timestamp + 7_000;
+    }
+
+    // Initialise timers once after game starts
+    if (nextBossTimeRef.current === 0 && timestamp > 0) {
+      nextBossTimeRef.current = timestamp + 60_000;
+    }
+    if (nextTankTimeRef.current === 0 && timestamp > 0) {
+      nextTankTimeRef.current = timestamp + 90_000;
+    }
+    // ─────────────────────────────────────────────────────────────────────────
 
     // Move words and shoot lasers
     let healthLost = 0;
@@ -168,28 +376,57 @@ const WordDefenderGame = ({ currentUser }) => {
           id: `laser_${Math.random()}`,
           x: word.x,
           y: word.y,
-          speed: 0.04 // Fast laser
+          speed: 0.04,
+          isBoss: false
         });
-        word.lastShootTime = timestamp + 2500; // Next shot in 2.5s
+        // Ships fire faster at higher levels
+        const shipFireRate = Math.max(1200, 2500 - (levelRef.current * 150));
+        word.lastShootTime = timestamp + shipFireRate;
+        lasersChanged = true;
+      }
+
+      // Boss triple-laser salvo
+      if (word.type === 'boss' && timestamp > word.lastShootTime) {
+        [-4, 0, 4].forEach(offset => {
+          currentLasers.push({
+            id: `bosslaser_${Math.random()}`,
+            x: word.x + offset,
+            y: word.y,
+            speed: 0.055,
+            isBoss: true
+          });
+        });
+        word.lastShootTime = timestamp + word.shootCooldown;
         lasersChanged = true;
       }
 
       // Check if word hit the bottom (base)
       if (word.y >= 90) {
-        if (word.type !== 'health') {
-          // Hit base
-          healthLost += 20; // Bomb/Ship crash deals 20 HP
+        if (word.type === 'health' || word.type === 'bolt') {
+          // Pickups just disappear harmlessly
+          createExplosion(word.x, 90, 0.5, word.type === 'bolt' ? 'yellow' : 'green');
+        } else if (word.type === 'boss') {
+          healthLost += 35;
+          createExplosion(word.x, 90, 3, 'orange');
+          soundEffects.playError();
+          bossActiveRef.current = false;
+          nextBossTimeRef.current = timestamp + 60_000;
+        } else if (word.type === 'tank') {
+          healthLost += 40; // Tank ram — brutal
+          createExplosion(word.x, 90, 3.5, 'gray');
+          createExplosion(word.x - 6, 88, 2, 'red');
+          createExplosion(word.x + 6, 88, 2, 'red');
+          soundEffects.playError();
+          tankActiveRef.current = false;
+          nextTankTimeRef.current = timestamp + 90_000;
+        } else {
+          healthLost += 20;
           createExplosion(word.x, 90, 1.5, 'red');
           soundEffects.playError();
-        } else {
-          // Health drops just disappear harmlessly with a small effect
-          createExplosion(word.x, 90, 0.5, 'green');
         }
         
-        // Remove word
         currentWords.splice(i, 1);
         
-        // Reset target if we were typing this word
         if (targetIdRef.current === word.id) {
           setTargetId(null);
           targetIdRef.current = null;
@@ -205,8 +442,9 @@ const WordDefenderGame = ({ currentUser }) => {
       lasersChanged = true;
 
       if (laser.y >= 90) { // Laser hits shield
-        healthLost += 5; // Laser deals 5 HP
-        createExplosion(laser.x, 90, 0.5, 'purple');
+        // Boss lasers deal 5 HP each (3/salvo = 15 HP = ~15-19 HP/s); ship lasers deal 5 HP
+        healthLost += laser.isBoss ? 5 : 5;
+        createExplosion(laser.x, 90, 0.5, laser.isBoss ? 'orange' : 'purple');
         currentLasers.splice(i, 1);
       }
     }
@@ -266,23 +504,80 @@ const WordDefenderGame = ({ currentUser }) => {
             if (word.progress === word.text.length) {
               // Word destroyed!
               soundEffects.playSuccess();
-              createExplosion(word.x, word.y);
-              setScore(s => s + word.text.length * 10 * (1 + Math.floor(combo / 10) * 0.5));
+
+              if (word.type === 'boss') {
+                createExplosion(word.x, word.y, 3, 'orange');
+                createExplosion(word.x - 5, word.y + 5, 2, 'red');
+                createExplosion(word.x + 5, word.y - 5, 2, 'yellow');
+                setScore(s => s + word.text.length * 50 * (1 + Math.floor(combo / 10) * 0.5));
+                bossActiveRef.current = false;
+                nextBossTimeRef.current = performance.now() + 60_000;
+              } else if (word.type === 'tank') {
+                // Tank death — massive multi-explosion
+                [0, -8, 8, -4, 4].forEach((ox, i) => {
+                  setTimeout(() => createExplosion(word.x + ox, word.y + (i % 2 === 0 ? 0 : 5), 2.5, i % 2 === 0 ? 'gray' : 'red'), i * 80);
+                });
+                setScore(s => s + word.text.length * 80 * (1 + Math.floor(combo / 10) * 0.5));
+                tankActiveRef.current = false;
+                nextTankTimeRef.current = performance.now() + 90_000;
+              } else if (word.type === 'bolt') {
+                // ⚡ ELECTRIC BOLT — sweep all enemies!
+                createExplosion(word.x, word.y, 2, 'blue');
+                setScore(s => s + 500); // flat bonus
+                // Collect all destructible enemy positions
+                const targets = currentWords
+                  .filter(w => w.id !== word.id && !['health','bolt'].includes(w.type));
+                // Draw sweep laser lines from turret to each target
+                const beams = targets.map(t => ({ id: `beam_${Math.random()}`, x2: t.x, y2: t.y }));
+                setSweepLasers(beams);
+                setTimeout(() => setSweepLasers([]), 600);
+                // Destroy all enemies with staggered explosions
+                targets.forEach((t, idx) => {
+                  setTimeout(() => {
+                    createExplosion(t.x, t.y, 2, 'blue');
+                    createExplosion(t.x, t.y, 1.5, 'cyan');
+                    if (t.type === 'boss') { bossActiveRef.current = false; nextBossTimeRef.current = performance.now() + 60_000; }
+                    if (t.type === 'tank') { tankActiveRef.current = false; nextTankTimeRef.current = performance.now() + 90_000; }
+                  }, idx * 60);
+                });
+                // Remove all those enemies from currentWords array immediately so they aren't processed further
+                const targetIds = new Set(targets.map(t => t.id));
+                const remaining = currentWords.filter(w => !targetIds.has(w.id));
+                currentWords.length = 0; // clear
+                currentWords.push(...remaining); // refill with only alive words
+                // Score bonus per enemy cleared
+                setScore(s => s + targets.length * 30);
+              } else {
+                createExplosion(word.x, word.y);
+                setScore(s => s + word.text.length * 10 * (1 + Math.floor(combo / 10) * 0.5));
+              }
+
               setCombo(c => c + 1);
               
               if (word.type === 'health') {
-                 setHealth(prev => Math.min(100, prev + 30));
-                 createExplosion(word.x, word.y, 2, 'green'); // Big green explosion
+                 setHealth(prev => { const n = Math.min(100, prev + 30); healthRef.current = n; return n; });
+                 createExplosion(word.x, word.y, 2, 'green');
               }
 
               setTargetId(null);
               targetIdRef.current = null;
-              currentWords.splice(wordIndex, 1);
+              
+              // Safe splice by re-finding index in case currentWords array changed (e.g. from bolt clear)
+              const newIndex = currentWords.findIndex(w => w.id === word.id);
+              if (newIndex !== -1) {
+                currentWords.splice(newIndex, 1);
+              }
               
               // Level up logic
               setScore(currentScore => {
                 const newLevel = Math.floor(currentScore / 500) + 1;
-                if (newLevel > level) setLevel(newLevel);
+                if (newLevel > levelRef.current) {
+                  setLevel(newLevel);
+                  levelRef.current = newLevel;
+                  // Reset drop counts so each level gets its own fresh allowance
+                  healthDropCountRef.current = 0;
+                  boltDropCountRef.current = 0;
+                }
                 return currentScore;
               });
             }
@@ -449,15 +744,33 @@ const WordDefenderGame = ({ currentUser }) => {
         {targetId && words.find(w => w.id === targetId) && (
           <svg className="absolute inset-0 w-full h-full pointer-events-none z-10" preserveAspectRatio="none">
             <line 
-              x1="50%" 
-              y1="100%" 
+              x1="50%" y1="100%" 
               x2={`${words.find(w => w.id === targetId).x}%`} 
               y2={`${words.find(w => w.id === targetId).y}%`} 
-              stroke="cyan" 
-              strokeWidth="2" 
+              stroke="cyan" strokeWidth="2" 
               className="animate-pulse opacity-50"
               style={{ filter: 'drop-shadow(0 0 5px cyan)' }}
             />
+          </svg>
+        )}
+
+        {/* ⚡ Electric Bolt Sweep Lasers */}
+        {sweepLasers.length > 0 && (
+          <svg className="absolute inset-0 w-full h-full pointer-events-none z-40" preserveAspectRatio="none">
+            {sweepLasers.map(sl => (
+              <line
+                key={sl.id}
+                x1="50%" y1="100%"
+                x2={`${sl.x2}%`} y2={`${sl.y2}%`}
+                stroke="#3b82f6"
+                strokeWidth="3"
+                style={{
+                  opacity: 0.95,
+                  filter: 'drop-shadow(0 0 10px #3b82f6) drop-shadow(0 0 20px #60a5fa)',
+                  animation: 'sweepFade 0.6s ease-out forwards'
+                }}
+              />
+            ))}
           </svg>
         )}
 
@@ -483,7 +796,11 @@ const WordDefenderGame = ({ currentUser }) => {
         {lasers.map(laser => (
           <div 
             key={laser.id}
-            className="absolute w-1 h-6 bg-purple-500 shadow-[0_0_10px_purple] z-10 rounded-full"
+            className={`absolute z-10 rounded-full ${
+              laser.isBoss
+                ? 'w-1.5 h-8 bg-orange-400 shadow-[0_0_12px_4px_rgba(251,146,60,0.8)]'
+                : 'w-1 h-6 bg-purple-500 shadow-[0_0_10px_purple]'
+            }`}
             style={{
               left: `${laser.x}%`,
               top: `${laser.y}%`,
@@ -493,13 +810,25 @@ const WordDefenderGame = ({ currentUser }) => {
           />
         ))}
 
+        {/* Boss Warning Banner */}
+        {bossWarning && (
+          <div className="absolute top-4 left-1/2 -translate-x-1/2 z-50 px-6 py-2 rounded-xl font-black text-sm uppercase tracking-widest text-orange-300 bg-orange-900/80 border border-orange-500 shadow-[0_0_20px_rgba(251,146,60,0.6)] animate-pulse pointer-events-none">
+            ⚠ BOSS INCOMING ⚠
+          </div>
+        )}
+
         {/* Falling Words */}
         {words.map(word => {
           const isTarget = word.id === targetId;
+          const isBoss = word.type === 'boss';
+          const isTank = word.type === 'tank';
+          const isBolt = word.type === 'bolt';
           return (
             <div
               key={word.id}
-              className={`absolute transform -translate-x-1/2 flex flex-col items-center justify-center z-20`}
+              className={`absolute transform -translate-x-1/2 flex flex-col items-center justify-center ${
+                isBoss ? 'z-25' : 'z-20'
+              }`}
               style={{
                 left: `${word.x}%`,
                 top: `${word.y}%`,
@@ -507,7 +836,18 @@ const WordDefenderGame = ({ currentUser }) => {
               }}
             >
               {/* Graphic based on type */}
-              {word.type === 'health' ? (
+              {word.type === 'bolt' ? (
+                /* ⚡ ELECTRIC BOLT BUFF */
+                <div className="mb-2 relative flex items-center justify-center" style={{ width: 44, height: 44 }}>
+                  <div className="absolute inset-0 rounded-full animate-ping" style={{ backgroundColor: 'rgba(59,130,246,0.25)' }} />
+                  <div className={`w-11 h-11 rounded-full flex items-center justify-center ${
+                    isTarget ? 'bg-blue-400 shadow-[0_0_30px_15px_rgba(59,130,246,0.8)]' : 'bg-blue-600 shadow-[0_0_20px_10px_rgba(59,130,246,0.5)]'
+                  } transition-all duration-300`}>
+                    <Zap className="w-6 h-6 text-white" style={{ filter: 'drop-shadow(0 0 4px white)' }} />
+                  </div>
+                  <div className="absolute -top-7 left-1/2 -translate-x-1/2 text-[8px] font-black uppercase tracking-widest text-blue-300 whitespace-nowrap">⚡ BOLT ⚡</div>
+                </div>
+              ) : word.type === 'health' ? (
                 <div className={`w-8 h-8 mb-2 rounded-lg flex items-center justify-center relative ${isTarget ? 'bg-green-400 shadow-[0_0_20px_green]' : 'bg-green-600 shadow-[0_0_15px_green]'} transition-colors duration-300`}>
                   <Zap className="w-5 h-5 text-white animate-pulse" />
                 </div>
@@ -521,7 +861,126 @@ const WordDefenderGame = ({ currentUser }) => {
                      <div className="absolute -top-2 left-1 w-1 h-2 bg-orange-500 rounded-full animate-pulse shadow-[0_0_5px_orange]"></div>
                   </div>
                 </div>
+              ) : word.type === 'boss' ? (
+                /* ── MINI BOSS SHIP ────────────────────────────────────── */
+                <div className="mb-2 relative flex flex-col items-center" style={{ width: 72, height: 80 }}>
+                  {/* Outer glow ring */}
+                  <div
+                    className="absolute inset-0 rounded-full animate-pulse pointer-events-none"
+                    style={{
+                      boxShadow: isTarget
+                        ? '0 0 40px 15px rgba(251,146,60,0.6), 0 0 80px 30px rgba(239,68,68,0.3)'
+                        : '0 0 30px 10px rgba(239,68,68,0.5), 0 0 60px 20px rgba(251,146,60,0.2)'
+                    }}
+                  />
+                  {/* Command Bridge */}
+                  <div
+                    className={`w-10 h-8 rounded-t-full relative z-20 flex items-end justify-center pb-1 ${
+                      isTarget ? 'bg-orange-400' : 'bg-red-700'
+                    } transition-colors duration-300`}
+                    style={{ boxShadow: isTarget ? '0 0 20px rgba(251,146,60,0.9)' : '0 0 15px rgba(239,68,68,0.7)' }}
+                  >
+                    {/* Viewport slit */}
+                    <div className="w-7 h-2 bg-red-200/30 rounded-full border border-red-300/50" />
+                    {/* Side guns on bridge */}
+                    <div className="absolute -left-3 top-3 w-3 h-1.5 bg-gray-600 rounded-l-full" />
+                    <div className="absolute -right-3 top-3 w-3 h-1.5 bg-gray-600 rounded-r-full" />
+                  </div>
+                  {/* Main hull */}
+                  <div
+                    className={`w-16 h-10 relative z-10 flex items-center justify-center ${
+                      isTarget ? 'bg-orange-600' : 'bg-red-900'
+                    } transition-colors duration-300`}
+                    style={{ clipPath: 'polygon(10% 0%, 90% 0%, 100% 100%, 0% 100%)' }}
+                  >
+                    {/* Engine vents */}
+                    <div className="flex gap-2">
+                      <div className="w-2 h-4 bg-orange-300/60 rounded-sm animate-pulse" />
+                      <div className="w-2 h-4 bg-orange-300/60 rounded-sm animate-pulse delay-75" />
+                      <div className="w-2 h-4 bg-orange-300/60 rounded-sm animate-pulse delay-150" />
+                    </div>
+                  </div>
+                  {/* Swept wings */}
+                  <div
+                    className={`absolute top-6 z-0 ${
+                      isTarget ? 'bg-orange-700' : 'bg-red-800'
+                    } transition-colors duration-300`}
+                    style={{ width: 72, height: 20, clipPath: 'polygon(0% 100%, 15% 0%, 85% 0%, 100% 100%)' }}
+                  >
+                    {/* Wing cannons */}
+                    <div className="absolute bottom-0 left-2 w-1.5 h-3 bg-gray-400 rounded-b-sm" />
+                    <div className="absolute bottom-0 right-2 w-1.5 h-3 bg-gray-400 rounded-b-sm" />
+                  </div>
+                  {/* Triple cannon array */}
+                  <div className="flex gap-1.5 mt-1 z-20 relative">
+                    <div className={`w-1.5 h-5 rounded-b-sm ${ isTarget ? 'bg-orange-300' : 'bg-red-400'} shadow-[0_4px_8px_rgba(251,146,60,0.8)]`} />
+                    <div className={`w-2 h-6 rounded-b-sm ${ isTarget ? 'bg-orange-200' : 'bg-red-300'} shadow-[0_4px_12px_rgba(251,146,60,1)]`} />
+                    <div className={`w-1.5 h-5 rounded-b-sm ${ isTarget ? 'bg-orange-300' : 'bg-red-400'} shadow-[0_4px_8px_rgba(251,146,60,0.8)]`} />
+                  </div>
+                  {/* Boss HP bar (remaining letters) */}
+                  <div className="absolute -top-5 left-1/2 -translate-x-1/2 w-16 h-2 bg-gray-800 rounded-full overflow-hidden border border-red-700">
+                    <div
+                      className="h-full bg-gradient-to-r from-orange-500 to-red-500 transition-all duration-150"
+                      style={{ width: `${((word.text.length - word.progress) / word.text.length) * 100}%` }}
+                    />
+                  </div>
+                  {/* BOSS label */}
+                  <div className="absolute -top-9 left-1/2 -translate-x-1/2 text-[9px] font-black uppercase tracking-widest text-orange-400 whitespace-nowrap">
+                    ★ MINI BOSS ★
+                  </div>
+                </div>
+              ) : word.type === 'tank' ? (
+                /* ⬛ HEAVY TANK / BATTLE STATION */
+                <div className="mb-2 relative flex flex-col items-center" style={{ width: 96, height: 70 }}>
+                  {/* Outer threat glow */}
+                  <div className="absolute inset-0 pointer-events-none animate-pulse" style={{
+                    boxShadow: isTarget
+                      ? '0 0 50px 20px rgba(156,163,175,0.5), 0 0 100px 40px rgba(239,68,68,0.2)'
+                      : '0 0 30px 12px rgba(107,114,128,0.4)'
+                  }} />
+                  {/* Top command turret */}
+                  <div className={`w-8 h-5 rounded-t-md relative z-20 flex items-center justify-center ${
+                    isTarget ? 'bg-gray-300' : 'bg-gray-500'
+                  } transition-colors duration-300`}>
+                    <div className="w-6 h-1.5 bg-gray-700/60 rounded-full" />
+                    {/* Side sensor pods */}
+                    <div className="absolute -left-2 top-1 w-2 h-1 bg-gray-600 rounded-l-sm" />
+                    <div className="absolute -right-2 top-1 w-2 h-1 bg-gray-600 rounded-r-sm" />
+                  </div>
+                  {/* Main body — wide flat hull */}
+                  <div className={`w-24 h-8 relative z-10 flex items-center justify-around px-2 ${
+                    isTarget ? 'bg-gray-400' : 'bg-gray-700'
+                  } transition-colors duration-300`}>
+                    {/* Armour plating lines */}
+                    <div className="absolute inset-0 flex flex-col justify-around pointer-events-none">
+                      <div className="w-full h-[1px] bg-gray-500/40" />
+                      <div className="w-full h-[1px] bg-gray-500/40" />
+                    </div>
+                    {/* Viewport slots */}
+                    {[0,1,2].map(i => (
+                      <div key={i} className={`w-3 h-2 rounded-sm ${
+                        isTarget ? 'bg-red-400/70' : 'bg-red-800/60'
+                      } animate-pulse`} style={{ animationDelay: `${i*150}ms` }} />
+                    ))}
+                  </div>
+                  {/* Bottom thruster bank */}
+                  <div className={`w-20 h-4 relative z-0 flex items-center justify-around px-2 ${
+                    isTarget ? 'bg-gray-500' : 'bg-gray-800'
+                  } transition-colors duration-300`} style={{ clipPath: 'polygon(5% 0%,95% 0%,100% 100%,0% 100%)' }}>
+                    {[0,1,2,3].map(i => (
+                      <div key={i} className="w-2 h-2 rounded-full bg-orange-500/70 animate-pulse" style={{ animationDelay: `${i*100}ms` }} />
+                    ))}
+                  </div>
+                  {/* HP bar */}
+                  <div className="absolute -top-5 left-1/2 -translate-x-1/2 w-20 h-2 bg-gray-900 rounded-full overflow-hidden border border-gray-500">
+                    <div className="h-full bg-gradient-to-r from-gray-400 to-gray-300 transition-all duration-150"
+                      style={{ width: `${((word.text.length - word.progress) / word.text.length) * 100}%` }} />
+                  </div>
+                  {/* Label */}
+                  <div className="absolute -top-9 left-1/2 -translate-x-1/2 text-[8px] font-black uppercase tracking-widest text-gray-300 whitespace-nowrap">⬛ HEAVY TANK ⬛</div>
+                </div>
               ) : (
+                /* Regular ship */
                 <div className="w-10 h-10 mb-2 relative flex flex-col items-center justify-start mt-1">
                   {/* Cockpit */}
                   <div className={`w-5 h-5 rounded-t-full relative z-20 ${isTarget ? 'bg-cyan-400 shadow-[0_0_15px_cyan]' : 'bg-purple-400 shadow-[0_0_15px_purple]'} transition-colors duration-300`}>
@@ -540,23 +999,26 @@ const WordDefenderGame = ({ currentUser }) => {
               )}
 
               {/* Text */}
-              <div className={`px-2 py-1 rounded-md backdrop-blur-sm ${isDarkMode ? 'bg-gray-900/80' : 'bg-white/80'} border ${isTarget ? 'border-cyan-500/50' : 'border-gray-500/30'} flex shadow-lg`}>
+              <div className={`px-2 py-1 rounded-md backdrop-blur-sm border flex shadow-lg ${
+                isBoss
+                  ? `${isDarkMode ? 'bg-red-950/90' : 'bg-red-100/90'} ${isTarget ? 'border-orange-400/70' : 'border-red-600/50'}`
+                  : isTank
+                  ? `${isDarkMode ? 'bg-gray-900/90' : 'bg-gray-200/90'} ${isTarget ? 'border-gray-300/80' : 'border-gray-600/50'}`
+                  : isBolt
+                  ? `bg-blue-950/90 ${isTarget ? 'border-blue-300/80' : 'border-blue-600/50'}`
+                  : `${isDarkMode ? 'bg-gray-900/80' : 'bg-white/80'} ${isTarget ? 'border-cyan-500/50' : 'border-gray-500/30'}`
+              }`}>
                 {word.text.split('').map((char, i) => {
                   const isTyped = i < word.progress;
                   const isNext = i === word.progress && isTarget;
-                  
                   return (
-                    <span 
-                      key={i} 
-                      className={`
-                        font-mono font-bold text-lg transition-colors
-                        ${isTyped ? 'text-cyan-500' : ''}
-                        ${isNext ? 'text-white bg-cyan-500 rounded px-[1px]' : ''}
-                        ${!isTyped && !isNext ? (isDarkMode ? 'text-gray-400' : 'text-gray-600') : ''}
-                      `}
-                    >
-                      {char}
-                    </span>
+                    <span key={i} className={`
+                      font-mono font-bold transition-colors
+                      ${isBoss || isTank ? 'text-xl' : isBolt ? 'text-lg' : 'text-lg'}
+                      ${isTyped ? (isBoss ? 'text-orange-400' : isTank ? 'text-gray-300' : isBolt ? 'text-blue-300' : 'text-cyan-500') : ''}
+                      ${isNext ? (isBoss ? 'text-white bg-orange-500 rounded px-[1px]' : isTank ? 'text-black bg-gray-300 rounded px-[1px]' : isBolt ? 'text-white bg-blue-500 rounded px-[1px]' : 'text-white bg-cyan-500 rounded px-[1px]') : ''}
+                      ${!isTyped && !isNext ? (isBoss ? 'text-red-300' : isTank ? (isDarkMode ? 'text-gray-400' : 'text-gray-500') : isBolt ? 'text-blue-400' : (isDarkMode ? 'text-gray-400' : 'text-gray-600')) : ''}
+                    `}>{char}</span>
                   );
                 })}
               </div>
@@ -588,6 +1050,16 @@ const WordDefenderGame = ({ currentUser }) => {
           @keyframes explode {
             0% { transform: translate(-50%, -50%) scale(0.1); opacity: 1; }
             100% { transform: translate(-50%, -50%) scale(1.5); opacity: 0; }
+          }
+          @keyframes bossShake {
+            0%, 100% { transform: translate(-50%, 0) rotate(0deg); }
+            25% { transform: translate(-48%, 0) rotate(-1deg); }
+            75% { transform: translate(-52%, 0) rotate(1deg); }
+          }
+          @keyframes sweepFade {
+            0% { opacity: 1; stroke-width: 4; }
+            60% { opacity: 0.8; stroke-width: 6; }
+            100% { opacity: 0; stroke-width: 1; }
           }
         `}</style>
       </div>
