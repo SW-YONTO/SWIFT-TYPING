@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useTheme } from '../../contexts/ThemeContext';
 import { arenaManager } from '../../utils/arenaManager';
 import ArenaTypingRace from '../ArenaTypingRace';
-import { Trophy, Users, Loader2, User, Swords, ArrowRight } from 'lucide-react';
+import { Trophy, Users, Loader2, User, Swords, ArrowRight, Zap, Clock } from 'lucide-react';
 import { soundEffects } from '../../utils/soundEffects';
 
 const getAvatarPath = (avatar) => {
@@ -63,6 +63,10 @@ const SwiftArenaGame = ({ currentUser }) => {
   
   // Match results
   const [matchResult, setMatchResult] = useState(null); // 'win', 'loss'
+  
+  // Player status
+  const [playerWpm, setPlayerWpm] = useState(0);
+  const [playerTime, setPlayerTime] = useState(0);
 
   useEffect(() => {
     // Initialize arena manager with current user
@@ -80,6 +84,8 @@ const SwiftArenaGame = ({ currentUser }) => {
   const handleJoinMatchmaking = async () => {
     setAppState('matchmaking');
     soundEffects.playKeypress();
+    setPlayerWpm(0);
+    setPlayerTime(0);
     
     await arenaManager.joinMatchmaking(
       // onMatchFound
@@ -160,12 +166,20 @@ const SwiftArenaGame = ({ currentUser }) => {
     soundEffects.playKeypress();
   };
 
-  const handlePlayerProgress = (progress, currentWpm) => {
+  const handlePlayerProgress = (progress, currentWpm, elapsedSeconds) => {
     arenaManager.broadcastProgress(progress, currentWpm);
+    setPlayerWpm(currentWpm);
+    if (elapsedSeconds !== undefined) {
+      setPlayerTime(elapsedSeconds);
+    }
   };
 
-  const handlePlayerFinish = (finalWpm) => {
+  const handlePlayerFinish = (finalWpm, finalTime) => {
     arenaManager.broadcastMatchEvent('finish', { wpm: finalWpm });
+    setPlayerWpm(finalWpm);
+    if (finalTime !== undefined) {
+      setPlayerTime(finalTime);
+    }
     
     // Check if we haven't already lost
     setAppState((prev) => {
@@ -183,6 +197,8 @@ const SwiftArenaGame = ({ currentUser }) => {
     setMatchData(null);
     setOpponentProgress(0);
     setOpponentWpm(0);
+    setPlayerWpm(0);
+    setPlayerTime(0);
     setMatchResult(null);
     setAppState('lobby');
     soundEffects.playKeypress();
@@ -372,9 +388,26 @@ const SwiftArenaGame = ({ currentUser }) => {
                 You were defeated by {opponentName}.
               </p>
             )}
-            <p className={`${theme.textSecondary} text-sm mt-1 animate-fade-in-up`} style={{ animationDelay: '0.1s' }}>
-              {isWin ? 'You reached the finish line first.' : 'They typed faster this time.'}
-            </p>
+          </div>
+
+          {/* Typing Stats Grid */}
+          <div className="grid grid-cols-2 gap-4 mb-8 relative z-10 animate-fade-in-up" style={{ animationDelay: '0.2s' }}>
+            <div className={`p-4 rounded-xl ${theme.mode === 'dark' ? 'bg-gray-800/80 border-gray-700' : 'bg-gray-50 border-gray-200'} border shadow-sm`}>
+              <div className="flex justify-center mb-1">
+                <Zap className={`w-5 h-5 ${theme.mode === 'dark' ? 'text-blue-400' : 'text-blue-500'}`} />
+              </div>
+              <div className={`text-xs uppercase tracking-wider ${theme.textSecondary} font-medium mb-1`}>Your Speed</div>
+              <div className={`text-2xl font-black ${theme.text}`}>{playerWpm} <span className="text-xs font-normal">WPM</span></div>
+            </div>
+            <div className={`p-4 rounded-xl ${theme.mode === 'dark' ? 'bg-gray-800/80 border-gray-700' : 'bg-gray-50 border-gray-200'} border shadow-sm`}>
+              <div className="flex justify-center mb-1">
+                <Clock className={`w-5 h-5 ${theme.mode === 'dark' ? 'text-orange-400' : 'text-orange-500'}`} />
+              </div>
+              <div className={`text-xs uppercase tracking-wider ${theme.textSecondary} font-medium mb-1`}>Time Taken</div>
+              <div className={`text-2xl font-black ${theme.text}`}>
+                {playerTime > 0 ? `${playerTime}s` : '--'}
+              </div>
+            </div>
           </div>
 
           <div className="flex flex-col gap-3">
