@@ -3,6 +3,7 @@ import { Book, Play, CheckCircle, Lock, ArrowRight, Star, ChevronDown, ChevronUp
 import { typingLessons } from '../data/lessons';
 import { progressManager } from '../utils/storage';
 import TypingComponent from '../components/TypingComponent';
+import AdBanner from '../components/AdBanner';
 import { useTheme } from '../contexts/ThemeContext';
 import { useLocation } from 'react-router-dom';
 
@@ -130,6 +131,10 @@ const TypingLessons = ({ currentUser, settings }) => {
           <h1 className={`text-3xl font-bold ${theme.text} mb-2`}>Typing Lessons</h1>
           <p className={theme.textSecondary}>Learn typing step by step from basics to advanced</p>
         </div>
+
+        {/* Ad Banner — top of lessons page (home) */}
+        {/* TODO: Replace 'YOUR_AD_SLOT_ID' with your slot ID from AdSense → Ads → By ad unit */}
+        <AdBanner slot="YOUR_AD_SLOT_ID" format="horizontal" />
 
         {/* Collapsible Progress Overview */}
         <div className={`${theme.cardBg} rounded-lg shadow-lg border ${theme.border} mb-8 overflow-hidden`}>
