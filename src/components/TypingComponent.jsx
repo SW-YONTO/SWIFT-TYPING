@@ -10,7 +10,7 @@ import { soundEffects } from '../utils/soundEffects';
 import { achievementManager, ACHIEVEMENTS } from '../utils/achievements';
 import { AchievementToast } from './AchievementsPanel';
 
-// MONKEYTYPE-INSPIRED: High-performance continuous word rendering
+// High-performance continuous word rendering
 // Performance strategy:
 //  - Individual words are memoized and only re-render when their state changes
 //  - Uses refs for hot-path values (currentIndex, errors) to avoid unnecessary re-renders

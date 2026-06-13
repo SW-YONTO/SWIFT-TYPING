@@ -1,6 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useTheme } from '../../contexts/ThemeContext';
 import { arenaManager } from '../../utils/arenaManager';
+import { supabase } from '../../utils/supabaseClient';
 import ArenaTypingRace from '../ArenaTypingRace';
 import { Trophy, Users, Loader2, User, Swords, ArrowRight, Zap, Clock } from 'lucide-react';
 import { soundEffects } from '../../utils/soundEffects';
@@ -15,32 +16,81 @@ const getAvatarPath = (avatar) => {
   }
 };
 
-// Temporary local sentences fallback since we might not have the DB set up
+// Arena typing sentences — all lowercase, no capitals, longer for challenge
 const ARENA_SENTENCES = [
-  "The quick brown fox jumps over the lazy dog near the river bank.",
-  "Practice makes perfect when you type every single day without fail.",
-  "Speed and accuracy are both important skills for fast typing.",
-  "Learning to type without looking at the keyboard takes time.",
-  "The best way to improve is to practice regularly and stay focused.",
-  "A journey of a thousand miles begins with a single step forward.",
-  "Technology has changed the way we communicate with each other.",
-  "Reading books is a great way to expand your vocabulary skills.",
-  "The sun rises in the east and sets in the west every day.",
-  "Music can help you relax and focus while you are working hard.",
-  "Good things come to those who wait and work with patience.",
-  "Every expert was once a beginner who never gave up trying.",
-  "Success is not final and failure is not fatal keep going.",
-  "The only way to do great work is to love what you do daily.",
-  "Time flies when you are having fun with friends and family.",
-  "Hard work beats talent when talent does not work hard enough.",
-  "Dreams do not work unless you take action and make them real.",
-  "The future belongs to those who believe in the beauty of dreams.",
-  "Life is what happens when you are busy making other plans.",
-  "Actions speak louder than words so show what you can do."
+  "the quick brown fox jumps over the lazy dog resting near the old river bank on a warm sunny afternoon.",
+  "practice makes perfect when you commit to typing every single day without skipping even one session.",
+  "speed and accuracy are both equally important skills that every fast typist needs to develop over time.",
+  "learning to type without ever looking down at the keyboard is a habit that takes weeks of daily practice.",
+  "the best way to improve your typing speed is to practice regularly and stay completely focused on every word.",
+  "a journey of a thousand miles always begins with a single step taken in the right direction with courage.",
+  "technology has completely changed the way we communicate share ideas and connect with people around the world.",
+  "reading books every day is one of the greatest ways to expand your vocabulary and sharpen your mind.",
+  "music can help you stay relaxed and deeply focused while you are working hard on something important.",
+  "good things always come to those who wait patiently and work consistently toward their goals every day.",
+  "every expert in any field was once a complete beginner who refused to stop trying despite early failures.",
+  "success is never final and failure is never fatal what truly matters is the courage to keep moving forward.",
+  "the only way to do truly great work in life is to genuinely love what you do and do it with passion.",
+  "hard work will always beat raw talent when the talented person decides not to put in the necessary effort.",
+  "dreams do not work on their own unless you wake up every morning and take real consistent action toward them.",
+  "the future always belongs to those who dare to believe deeply in the beauty and power of their own dreams.",
+  "your attitude toward challenges determines how far you will go and how much you will ultimately achieve.",
+  "consistency is far more important than occasional bursts of motivation when building any long term skill.",
+  "every small improvement you make each day adds up over time and eventually leads to remarkable results.",
+  "the difference between those who succeed and those who give up is simply the willingness to keep going.",
+  "typing faster is not just about moving your fingers quickly but about building muscle memory through repetition.",
+  "a calm and focused mind will always outperform a rushed and scattered one when it comes to precision tasks.",
+  "the words you type on a screen can inspire someone thousands of miles away whom you have never even met.",
+  "building good habits early in life creates a strong foundation for everything you want to accomplish later.",
+  "when you stop comparing yourself to others and focus on your own progress everything begins to feel easier.",
+  "patience and persistence are two qualities that separate people who achieve greatness from those who almost did.",
+  "your fingers should glide across the keyboard with purpose and rhythm just like a musician playing a melody.",
+  "the more you practice typing under pressure the more comfortable and confident you will feel during real challenges.",
+  "every character you type correctly in a race brings you one step closer to crossing the finish line first.",
+  "focus on hitting each key cleanly and accurately and your speed will naturally follow without forcing it.",
+  "the arena is a place where only the fastest and most accurate typists earn the right to call themselves champions.",
+  "do not rush through words just to go faster slow down slightly and let accuracy guide your fingers forward.",
+  "great typing speed comes from trusting your hands to know where each key is without any conscious thought.",
+  "the keyboard is your instrument and every race is a performance where precision and speed must work together.",
+  "in competitive typing even a single mistyped character can cost you precious seconds and change the entire outcome.",
+  "developing a smooth typing flow feels effortless once your fingers have memorized the position of every single key.",
+  "each match you complete in the arena makes you sharper faster and better prepared for the next challenger.",
+  "the thrill of a close typing race is unmatched as both players push their limits to finish just one word faster.",
+  "speed without accuracy is just noise but accuracy with growing speed is the mark of a truly skilled typist.",
+  "keep your wrists relaxed your posture straight and your eyes on the text and your fingers will do the rest.",
 ];
 
 const SwiftArenaGame = ({ currentUser }) => {
   const { theme } = useTheme();
+  const matchSavedRef = useRef(false); // Prevent double-saving per match
+
+  // Save match result to DB — this keeps Supabase active and logs history
+  const saveMatchResult = async ({ matchData, isWin, myWpm, myTime, opponentFinalWpm }) => {
+    if (matchSavedRef.current || !matchData) return;
+    matchSavedRef.current = true;
+
+    const myId = currentUser?.id || arenaManager.userId || 'anon';
+    const myUsername = arenaManager.username || currentUser?.username || 'Player';
+    const opponentId = matchData.opponent?.userId || 'unknown';
+    const opponentUsername = matchData.opponent?.username || 'Opponent';
+
+    try {
+      await supabase.from('arena_matches').insert({
+        player1_id: myId,
+        player1_username: myUsername,
+        player2_id: opponentId,
+        player2_username: opponentUsername,
+        winner_id: isWin ? myId : opponentId,
+        player1_wpm: myWpm || 0,
+        player2_wpm: opponentFinalWpm || 0,
+        player1_time_seconds: myTime || 0,
+        match_id: matchData.matchId || null,
+      });
+    } catch (err) {
+      // Non-critical — silently ignore save errors
+      console.warn('Arena match save failed:', err.message);
+    }
+  };
   
   // App states: 'lobby' | 'matchmaking' | 'countdown' | 'match' | 'result'
   const [appState, setAppState] = useState('lobby');
@@ -80,6 +130,13 @@ const SwiftArenaGame = ({ currentUser }) => {
       arenaManager.leaveMatch();
     };
   }, [currentUser]);
+
+  // Reset the save guard whenever a new match starts
+  useEffect(() => {
+    if (appState === 'match') {
+      matchSavedRef.current = false;
+    }
+  }, [appState]);
 
   const handleJoinMatchmaking = async () => {
     setAppState('matchmaking');
@@ -127,12 +184,29 @@ const SwiftArenaGame = ({ currentUser }) => {
                 if (payload.type === 'finish') {
                   // Opponent finished!
                   setOpponentProgress(100);
-                  
+
                   // Fix "Both Wins" bug by checking state functionally
                   setAppState((prev) => {
                     if (prev === 'match') {
                       setMatchResult('loss');
                       soundEffects.playError();
+                      // Save loss to DB (opponent wpm comes from broadcast payload)
+                      setMatchData((md) => {
+                        setPlayerWpm((myWpm) => {
+                          setPlayerTime((myTime) => {
+                            saveMatchResult({
+                              matchData: md,
+                              isWin: false,
+                              myWpm,
+                              myTime,
+                              opponentFinalWpm: payload.wpm || 0,
+                            });
+                            return myTime;
+                          });
+                          return myWpm;
+                        });
+                        return md;
+                      });
                       return 'result';
                     }
                     return prev;
@@ -180,12 +254,26 @@ const SwiftArenaGame = ({ currentUser }) => {
     if (finalTime !== undefined) {
       setPlayerTime(finalTime);
     }
-    
+
     // Check if we haven't already lost
     setAppState((prev) => {
       if (prev === 'match') {
         setMatchResult('win');
         soundEffects.playAchievement();
+        // Save win to DB
+        setMatchData((md) => {
+          setOpponentWpm((oppWpm) => {
+            saveMatchResult({
+              matchData: md,
+              isWin: true,
+              myWpm: finalWpm,
+              myTime: finalTime,
+              opponentFinalWpm: oppWpm,
+            });
+            return oppWpm;
+          });
+          return md;
+        });
         return 'result';
       }
       return prev;
