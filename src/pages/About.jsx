@@ -59,8 +59,8 @@ const About = () => {
       bio: "Full-stack developer passionate about creating educational tools and competitive gaming.",
       social: {
         github: "https://github.com/SW-YONTO/SWIFT-TYPING",
-        instagram: "https://instagram.com/red_eye0.0",
-        email: "surajmoriya200@gmail.com"
+        instagram: "https://www.instagram.com/red_eye_0.0",
+        email: "surajmoriya2007@gmail.com"
       }
     }
   ];

@@ -13,14 +13,14 @@ const Footer = () => {
       <div className="max-w-7xl mx-auto px-4 py-12">
         {/* Main Footer Content */}
         <div className="grid lg:grid-cols-3 gap-8 mb-8">
-          
+
           {/* Developer Profile Section */}
           <div className="text-center lg:text-left">
             <div className="flex items-center justify-center lg:justify-start gap-4 mb-6">
               <div className="relative">
-                <img 
-                  src={surajAvatar} 
-                  alt="Suraj Maurya" 
+                <img
+                  src={surajAvatar}
+                  alt="Suraj Maurya"
                   className="w-16 h-16 rounded-full border-4 border-gradient-to-r from-blue-500 to-purple-600 shadow-lg"
                 />
                 <div className="absolute -top-1 -right-1 w-6 h-6 bg-green-500 rounded-full border-2 border-white animate-pulse"></div>
@@ -33,7 +33,7 @@ const Footer = () => {
                 </p>
               </div>
             </div>
-            
+
             <div className={`${theme.cardBg} rounded-xl p-4 border ${theme.border} mb-6`}>
               <div className="flex items-center justify-center lg:justify-start gap-2 mb-2">
                 <Gamepad2 className="w-5 h-5 text-purple-600" />
@@ -99,29 +99,29 @@ const Footer = () => {
           {/* Contact & Social */}
           <div className="text-center lg:text-left">
             <h3 className={`text-lg font-semibold ${theme.text} mb-6`}>Connect With Me</h3>
-            
+
             <div className="space-y-4 mb-6">
-              <a 
-                href="mailto:surajmoriya200@gmail.com" 
+              <a
+                href="mailto:surajmoriya200@gmail.com"
                 className={`flex items-center justify-center lg:justify-start gap-3 p-3 rounded-lg ${theme.secondary} hover:${theme.primary} hover:text-white transition-all duration-200 transform hover:scale-105`}
               >
                 <Mail className="w-5 h-5" />
-                <span className="text-sm">surajmoriya200@gmail.com</span>
+                <span className="text-sm">surajmoriya2007@gmail.com</span>
               </a>
-              
-              <a 
-                href="https://instagram.com/red_eye0.0" 
-                target="_blank" 
+
+              <a
+                href="https://instagram.com/red_eye_0.0"
+                target="_blank"
                 rel="noopener noreferrer"
                 className={`flex items-center justify-center lg:justify-start gap-3 p-3 rounded-lg ${theme.secondary} hover:bg-pink-600 hover:text-white transition-all duration-200 transform hover:scale-105`}
               >
                 <Instagram className="w-5 h-5" />
-                <span className="text-sm">@red_eye0.0</span>
+                <span className="text-sm">@red_eye_0.0</span>
               </a>
-              
-              <a 
-                href="https://github.com/SW-YONTO" 
-                target="_blank" 
+
+              <a
+                href="https://github.com/SW-YONTO"
+                target="_blank"
                 rel="noopener noreferrer"
                 className={`flex items-center justify-center lg:justify-start gap-3 p-3 rounded-lg ${theme.secondary} hover:bg-gray-800 hover:text-white transition-all duration-200 transform hover:scale-105`}
               >
@@ -148,12 +148,12 @@ const Footer = () => {
           <div className="flex flex-col md:flex-row justify-between items-center gap-4">
             <div className={`text-sm ${theme.textSecondary} text-center md:text-left`}>
               <p className="flex items-center gap-2 justify-center md:justify-start">
-                Made with 
-                <Heart className="w-4 h-4 text-red-500 animate-pulse" /> 
+                Made with
+                <Heart className="w-4 h-4 text-red-500 animate-pulse" />
                 by Suraj Maurya • Swift Typing © 2025
               </p>
             </div>
-            
+
             <div className="flex items-center gap-4">
               <span className={`text-xs ${theme.textSecondary}`}>Version {packageJson.version}</span>
               <div className={`h-4 w-px ${theme.border}`}></div>
