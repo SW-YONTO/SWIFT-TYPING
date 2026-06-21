@@ -333,10 +333,19 @@ const DayDetailModal = ({ stats, onClose, theme }) => {
 
 /* ─── Main Calendar Component ───────────────────────────────────────────────── */
 
+const TREND_RANGES = [
+  { id: '1W', label: '1 Week',   days: 7   },
+  { id: '1M', label: '1 Month',  days: 30  },
+  { id: '3M', label: '3 Months', days: 90  },
+  { id: '6M', label: '6 Months', days: 180 },
+  { id: '1Y', label: '1 Year',   days: 365 },
+];
+
 const AnalyticsCalendar = ({ testResults = [], onClose }) => {
   const { theme } = useTheme();
   const mode = theme.mode;
   const [selectedDate, setSelectedDate] = useState(null);
+  const [trendRange, setTrendRange] = useState('1W');
 
   const activityMap = useMemo(() => {
     const map = {};
@@ -411,6 +420,38 @@ const AnalyticsCalendar = ({ testResults = [], onClose }) => {
     while (activityMap[d.toISOString().split('T')[0]]) { streak++; d.setDate(d.getDate() - 1); }
     return { activeDays, totalTests: testResults.length, totalTime, avgWpm, avgAcc, streak };
   }, [testResults, activityMap]);
+
+  /* ── Daily trend data for the progress graph ─────────────────────────── */
+  const dailyTrend = useMemo(() => {
+    const rangeDays = TREND_RANGES.find(r => r.id === trendRange)?.days || 30;
+    const cutoff = new Date();
+    cutoff.setDate(cutoff.getDate() - rangeDays);
+    cutoff.setHours(0, 0, 0, 0);
+
+    // Collect all dates with non-game results in range
+    const dateMap = {};
+    testResults.forEach(r => {
+      if (!r.completedAt || r.type === 'game') return;
+      const d = new Date(r.completedAt);
+      if (d < cutoff) return;
+      const key = d.toISOString().split('T')[0];
+      if (!dateMap[key]) dateMap[key] = { wpmSum: 0, accSum: 0, count: 0 };
+      dateMap[key].wpmSum += r.wpm || 0;
+      dateMap[key].accSum += r.accuracy || 0;
+      dateMap[key].count += 1;
+    });
+
+    const sorted = Object.entries(dateMap)
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([date, v]) => ({
+        date,
+        label: new Date(date + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+        avgWpm: Math.round(v.wpmSum / v.count),
+        avgAcc: Math.round(v.accSum / v.count),
+      }));
+
+    return sorted;
+  }, [testResults, trendRange]);
 
   const selectedDateStats = useMemo(() => {
     if (!selectedDate) return null;
@@ -542,6 +583,161 @@ const AnalyticsCalendar = ({ testResults = [], onClose }) => {
               <p className={`text-xs ${theme.textSecondary} mt-3 text-center`}>
                 Click on any highlighted day to see detailed session stats
               </p>
+            </div>
+
+            {/* ── Progress Trend Graph ──────────────────────────────── */}
+            <div className={`rounded-xl p-5 ${mode === 'dark' ? 'bg-gray-900/50' : 'bg-gray-50'} border ${theme.border}`}>
+              <div className="flex items-center justify-between mb-4 flex-wrap gap-3">
+                <div className="flex items-center gap-2">
+                  <TrendingUp className={`w-5 h-5 ${tc('blue', mode, 'text')}`} />
+                  <h3 className={`font-semibold ${theme.text}`}>Progress Trend</h3>
+                </div>
+                <div className="flex gap-1">
+                  {TREND_RANGES.map(r => (
+                    <button
+                      key={r.id}
+                      onClick={() => setTrendRange(r.id)}
+                      className={`px-3 py-1 rounded-lg text-xs font-semibold transition-all ${
+                        trendRange === r.id
+                          ? `${theme.primary} text-white shadow`
+                          : `${mode === 'dark' ? 'bg-gray-700 text-gray-300 hover:bg-gray-600' : 'bg-gray-200 text-gray-600 hover:bg-gray-300'}`
+                      }`}
+                    >
+                      {r.id}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {dailyTrend.length > 1 ? (
+                (() => {
+                  const isDark = mode === 'dark';
+                  let wpmColor = isDark ? '#60a5fa' : '#3b82f6';
+                  let wpmBg = isDark ? 'rgba(96,165,250,0.1)' : 'rgba(59,130,246,0.1)';
+                  if (theme.primary.includes('green')) {
+                    wpmColor = isDark ? '#4ade80' : '#22c55e';
+                    wpmBg = isDark ? 'rgba(74,222,128,0.1)' : 'rgba(34,197,94,0.1)';
+                  } else if (theme.primary.includes('orange')) {
+                    wpmColor = isDark ? '#fb923c' : '#f97316';
+                    wpmBg = isDark ? 'rgba(251,146,60,0.1)' : 'rgba(249,115,22,0.1)';
+                  } else if (theme.primary.includes('purple')) {
+                    wpmColor = isDark ? '#c084fc' : '#a855f7';
+                    wpmBg = isDark ? 'rgba(192,132,252,0.1)' : 'rgba(168,85,247,0.1)';
+                  }
+                  const accColor = isDark ? '#4ade80' : '#22c55e';
+                  const accBg = isDark ? 'rgba(74,222,128,0.08)' : 'rgba(34,197,94,0.08)';
+
+                  return (
+                    <div className="h-72 w-full">
+                      <Line
+                        data={{
+                          labels: dailyTrend.map(d => d.label),
+                          datasets: [
+                            {
+                              label: 'Avg WPM',
+                              data: dailyTrend.map(d => d.avgWpm),
+                              borderColor: wpmColor,
+                              backgroundColor: wpmBg,
+                              fill: true,
+                              tension: 0.35,
+                              pointRadius: dailyTrend.length > 60 ? 0 : 3,
+                              pointHoverRadius: 5,
+                              pointBackgroundColor: wpmColor,
+                              pointBorderColor: isDark ? '#374151' : '#ffffff',
+                              pointBorderWidth: 2,
+                              borderWidth: 2.5,
+                              yAxisID: 'y',
+                            },
+                            {
+                              label: 'Avg Accuracy %',
+                              data: dailyTrend.map(d => d.avgAcc),
+                              borderColor: accColor,
+                              backgroundColor: accBg,
+                              fill: true,
+                              tension: 0.35,
+                              pointRadius: dailyTrend.length > 60 ? 0 : 3,
+                              pointHoverRadius: 5,
+                              pointBackgroundColor: accColor,
+                              pointBorderColor: isDark ? '#374151' : '#ffffff',
+                              pointBorderWidth: 2,
+                              borderWidth: 2.5,
+                              borderDash: [6, 3],
+                              yAxisID: 'y1',
+                            },
+                          ],
+                        }}
+                        options={{
+                          responsive: true,
+                          maintainAspectRatio: false,
+                          interaction: { intersect: false, mode: 'index' },
+                          plugins: {
+                            legend: {
+                              display: true,
+                              position: 'top',
+                              labels: {
+                                color: isDark ? '#d1d5db' : '#374151',
+                                usePointStyle: true,
+                                pointStyle: 'circle',
+                                padding: 16,
+                                font: { size: 12 },
+                              },
+                            },
+                            tooltip: {
+                              backgroundColor: isDark ? '#1f2937' : '#ffffff',
+                              titleColor: isDark ? '#f9fafb' : '#111827',
+                              bodyColor: isDark ? '#f9fafb' : '#111827',
+                              borderColor: isDark ? '#374151' : '#e5e7eb',
+                              borderWidth: 1,
+                              cornerRadius: 8,
+                              padding: 10,
+                              callbacks: {
+                                label: ctx => {
+                                  const suffix = ctx.datasetIndex === 0 ? ' WPM' : '%';
+                                  return `${ctx.dataset.label}: ${ctx.parsed.y}${suffix}`;
+                                },
+                              },
+                            },
+                          },
+                          scales: {
+                            x: {
+                              grid: { display: false, drawBorder: false },
+                              ticks: {
+                                color: isDark ? '#9ca3af' : '#6b7280',
+                                font: { size: 10 },
+                                maxRotation: 45,
+                                maxTicksLimit: 15,
+                              },
+                            },
+                            y: {
+                              type: 'linear',
+                              position: 'left',
+                              beginAtZero: true,
+                              title: { display: true, text: 'WPM', color: isDark ? '#9ca3af' : '#6b7280', font: { size: 11 } },
+                              grid: { color: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)', drawBorder: false },
+                              ticks: { color: isDark ? '#9ca3af' : '#6b7280', font: { size: 11 }, stepSize: 20 },
+                            },
+                            y1: {
+                              type: 'linear',
+                              position: 'right',
+                              min: 0,
+                              max: 100,
+                              title: { display: true, text: 'Accuracy %', color: isDark ? '#9ca3af' : '#6b7280', font: { size: 11 } },
+                              grid: { drawOnChartArea: false, drawBorder: false },
+                              ticks: { color: isDark ? '#9ca3af' : '#6b7280', font: { size: 11 }, stepSize: 20 },
+                            },
+                          },
+                        }}
+                      />
+                    </div>
+                  );
+                })()
+              ) : (
+                <div className={`text-center py-10 ${theme.textSecondary} text-sm`}>
+                  <TrendingUp className="w-10 h-10 mx-auto mb-3 opacity-30" />
+                  <p className="font-medium">Not enough data yet</p>
+                  <p className="text-xs mt-1">Complete typing sessions on multiple days to see your progress trend</p>
+                </div>
+              )}
             </div>
 
             {/* No data */}

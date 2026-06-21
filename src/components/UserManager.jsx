@@ -13,6 +13,8 @@ const UserManager = ({ onUserSelect, currentUser }) => {
   const [selectedAvatar, setSelectedAvatar] = useState('avatar1.png');
   const [error, setError] = useState('');
   const [editingAvatar, setEditingAvatar] = useState(null);
+  const [deletingUser, setDeletingUser] = useState(null);
+  const [deleteConfirmUsername, setDeleteConfirmUsername] = useState('');
   const editAvatarInputRef = React.useRef(null);
   const addAvatarInputRef = React.useRef(null);
   const { theme, isDarkMode } = useTheme();
@@ -55,14 +57,22 @@ const UserManager = ({ onUserSelect, currentUser }) => {
 
   const handleDeleteUser = (userId, e) => {
     e.stopPropagation();
-    if (window.confirm('Are you sure you want to delete this user? All progress will be lost.')) {
-      userManager.deleteUser(userId);
-      loadUsers();
-      
-      if (currentUser && currentUser.id === userId) {
-        onUserSelect(null);
-      }
+    const user = users.find(u => u.id === userId);
+    if (user) {
+      setDeletingUser(user);
+      setDeleteConfirmUsername('');
     }
+  };
+
+  const confirmDeleteUser = () => {
+    if (!deletingUser) return;
+    userManager.deleteUser(deletingUser.id);
+    loadUsers();
+    
+    if (currentUser && currentUser.id === deletingUser.id) {
+      onUserSelect(null);
+    }
+    setDeletingUser(null);
   };
 
   const handleSelectUser = (user) => {
@@ -473,6 +483,74 @@ const UserManager = ({ onUserSelect, currentUser }) => {
             </button>
           </div>
         )}
+        {/* Custom Delete Confirmation Modal */}
+        {deletingUser && (
+          <div
+            className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4"
+            onClick={() => setDeletingUser(null)}
+          >
+            <div
+              className={`${isDarkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'} border rounded-2xl p-6 max-w-md w-full shadow-2xl transform scale-100 transition-all`}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex items-center gap-3 text-red-500 mb-4">
+                <Trash2 className="w-8 h-8" />
+                <h3 className={`text-2xl font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
+                  Delete Profile
+                </h3>
+              </div>
+              
+              <p className={`text-sm ${isDarkMode ? 'text-gray-300' : 'text-gray-600'} mb-4 leading-relaxed`}>
+                Are you sure you want to delete <span className="font-extrabold text-red-500">{deletingUser.username}</span>? This action is permanent and all typing progress, stats, and achievements will be lost forever.
+              </p>
+              
+              <div className="mb-6">
+                <label className={`block text-xs font-bold uppercase tracking-wider mb-2 ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>
+                  Type <span className="font-mono text-red-400 select-all normal-case">{deletingUser.username}</span> to confirm:
+                </label>
+                <input
+                  type="text"
+                  value={deleteConfirmUsername}
+                  onChange={(e) => setDeleteConfirmUsername(e.target.value)}
+                  placeholder="Type username here"
+                  className={`w-full px-4 py-3 border-2 rounded-xl focus:ring-2 focus:ring-offset-2 ${
+                    isDarkMode 
+                      ? 'bg-gray-700 border-gray-600 text-white focus:border-red-500' 
+                      : 'bg-white border-gray-300 text-gray-800 focus:border-red-500'
+                  } transition-all font-mono`}
+                  autoFocus
+                  autoComplete="off"
+                />
+              </div>
+              
+              <div className="flex gap-3">
+                <button
+                  disabled={deleteConfirmUsername !== deletingUser.username}
+                  onClick={confirmDeleteUser}
+                  className={`flex-1 py-3 rounded-xl font-semibold flex items-center justify-center gap-2 transition-all ${
+                    deleteConfirmUsername === deletingUser.username
+                      ? 'bg-red-600 hover:bg-red-500 text-white shadow-lg active:scale-95 cursor-pointer'
+                      : 'bg-gray-300 dark:bg-gray-700 text-gray-500 dark:text-gray-400 cursor-not-allowed'
+                  }`}
+                >
+                  <Trash2 className="w-5 h-5" />
+                  Permanently Delete
+                </button>
+                <button
+                  onClick={() => setDeletingUser(null)}
+                  className={`px-5 py-3 border-2 rounded-xl font-semibold transition-all ${
+                    isDarkMode 
+                      ? 'border-gray-600 text-gray-300 hover:bg-gray-700' 
+                      : 'border-gray-300 text-gray-700 hover:bg-gray-50'
+                  }`}
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Hidden Global Input for Editing Existing Avatars */}
         <input 
           type="file" 

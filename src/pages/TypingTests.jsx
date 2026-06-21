@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Zap, Play, ArrowRight, Clock, Target } from 'lucide-react';
+import { Zap, Play, ArrowRight, Clock, Target, ClipboardList, Flame, TrendingUp } from 'lucide-react';
 import { typingTests } from '../data/lessons';
 import TypingComponent from '../components/TypingComponent';
 import { progressManager } from '../utils/storage';
@@ -67,6 +67,13 @@ const TypingTests = ({ currentUser, settings }) => {
     );
   }
 
+  const avgWpm = (() => {
+    const nonGameResults = userProgress.testResults.filter(r => r.type !== 'game');
+    return nonGameResults.length > 0 
+      ? Math.round(nonGameResults.reduce((sum, result) => sum + (result.wpm || 0), 0) / nonGameResults.length)
+      : 0;
+  })();
+
   return (
     <div className={`p-6 ${theme.background} min-h-screen`}>
       <div className="max-w-6xl mx-auto">
@@ -77,31 +84,74 @@ const TypingTests = ({ currentUser, settings }) => {
         </div>
 
         {/* Quick Stats */}
-        <div className={`${theme.cardBg} rounded-lg shadow-lg p-6 mb-8 border ${theme.border}`}>
-          <h2 className={`text-xl font-semibold ${theme.text} mb-4`}>Your Stats</h2>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <div className="text-center">
-              <div className={`text-2xl font-bold ${theme.accent}`}>{userProgress.stats.totalTests}</div>
-              <div className={`text-sm ${theme.textSecondary}`}>Tests Taken</div>
-            </div>
-            <div className="text-center">
-              <div className={`text-2xl font-bold ${theme.mode === 'dark' ? 'text-green-400' : 'text-green-600'}`}>{userProgress.stats.bestWPM}</div>
-              <div className={`text-sm ${theme.textSecondary}`}>Best WPM</div>
-            </div>
-            <div className="text-center">
-              <div className={`text-2xl font-bold ${theme.mode === 'dark' ? 'text-purple-400' : 'text-purple-600'}`}>{userProgress.stats.bestAccuracy}%</div>
-              <div className={`text-sm ${theme.textSecondary}`}>Best Accuracy</div>
-            </div>
-            <div className="text-center">
-              <div className={`text-2xl font-bold ${theme.mode === 'dark' ? 'text-orange-400' : 'text-orange-600'}`}>
-                {(() => {
-                  const nonGameResults = userProgress.testResults.filter(r => r.type !== 'game');
-                  return nonGameResults.length > 0 
-                    ? Math.round(nonGameResults.reduce((sum, result) => sum + (result.wpm || 0), 0) / nonGameResults.length)
-                    : 0;
-                })()}
+        <div className={`${theme.cardBg} rounded-2xl shadow-xl p-6 mb-8 border ${theme.border} relative overflow-hidden`}>
+          {/* Subtle background decoration */}
+          <div className="absolute top-0 right-0 w-64 h-64 bg-gradient-to-bl from-emerald-500/5 to-teal-500/5 rounded-full blur-3xl pointer-events-none" />
+          
+          <h2 className={`text-xl font-bold ${theme.text} mb-5 flex items-center gap-2`}>
+            <Zap className="w-5 h-5 text-yellow-500 animate-pulse" />
+            Your Test Stats
+          </h2>
+          
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-5">
+            {/* Tests Taken Card */}
+            <div className={`rounded-xl p-4 border transition-all duration-300 hover:scale-[1.03] hover:shadow-md ${
+              theme.mode === 'dark' 
+                ? 'bg-emerald-950/20 border-emerald-900/40' 
+                : 'bg-emerald-50 border-emerald-200 shadow-sm'
+            }`}>
+              <div className="flex items-center justify-between mb-2">
+                <span className={`text-xs font-semibold uppercase tracking-wider ${theme.textSecondary}`}>Tests Taken</span>
+                <div className={`p-1.5 rounded-lg ${theme.mode === 'dark' ? 'bg-emerald-900/30' : 'bg-emerald-100'}`}>
+                  <ClipboardList className="w-4 h-4 text-emerald-500" />
+                </div>
               </div>
-              <div className={`text-sm ${theme.textSecondary}`}>Avg WPM</div>
+              <div className={`text-3xl font-extrabold ${theme.text}`}>{userProgress.stats.totalTests}</div>
+            </div>
+
+            {/* Best WPM Card */}
+            <div className={`rounded-xl p-4 border transition-all duration-300 hover:scale-[1.03] hover:shadow-md ${
+              theme.mode === 'dark' 
+                ? 'bg-amber-950/20 border-amber-900/40' 
+                : 'bg-amber-50 border-amber-200 shadow-sm'
+            }`}>
+              <div className="flex items-center justify-between mb-2">
+                <span className={`text-xs font-semibold uppercase tracking-wider ${theme.textSecondary}`}>Best WPM</span>
+                <div className={`p-1.5 rounded-lg ${theme.mode === 'dark' ? 'bg-amber-900/30' : 'bg-amber-100'}`}>
+                  <Flame className="w-4 h-4 text-amber-500" />
+                </div>
+              </div>
+              <div className={`text-3xl font-extrabold ${theme.text}`}>{userProgress.stats.bestWPM}</div>
+            </div>
+
+            {/* Best Accuracy Card */}
+            <div className={`rounded-xl p-4 border transition-all duration-300 hover:scale-[1.03] hover:shadow-md ${
+              theme.mode === 'dark' 
+                ? 'bg-teal-950/20 border-teal-900/40' 
+                : 'bg-teal-50 border-teal-200 shadow-sm'
+            }`}>
+              <div className="flex items-center justify-between mb-2">
+                <span className={`text-xs font-semibold uppercase tracking-wider ${theme.textSecondary}`}>Best Accuracy</span>
+                <div className={`p-1.5 rounded-lg ${theme.mode === 'dark' ? 'bg-teal-900/30' : 'bg-teal-100'}`}>
+                  <Target className="w-4 h-4 text-teal-500" />
+                </div>
+              </div>
+              <div className={`text-3xl font-extrabold ${theme.text}`}>{userProgress.stats.bestAccuracy}%</div>
+            </div>
+
+            {/* Avg WPM Card */}
+            <div className={`rounded-xl p-4 border transition-all duration-300 hover:scale-[1.03] hover:shadow-md ${
+              theme.mode === 'dark' 
+                ? 'bg-rose-950/20 border-rose-900/40' 
+                : 'bg-rose-50 border-rose-200 shadow-sm'
+            }`}>
+              <div className="flex items-center justify-between mb-2">
+                <span className={`text-xs font-semibold uppercase tracking-wider ${theme.textSecondary}`}>Avg WPM</span>
+                <div className={`p-1.5 rounded-lg ${theme.mode === 'dark' ? 'bg-rose-900/30' : 'bg-rose-100'}`}>
+                  <TrendingUp className="w-4 h-4 text-rose-500" />
+                </div>
+              </div>
+              <div className={`text-3xl font-extrabold ${theme.text}`}>{avgWpm}</div>
             </div>
           </div>
         </div>

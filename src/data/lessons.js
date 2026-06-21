@@ -565,23 +565,116 @@ export const typingLessons = {
   }
 };
 
-// Typing courses data
+// Typing courses data — 16 practice cards across 4 categories
 export const typingCourses = {
-  "quick-words": {
-    title: "Quick Words",
-    content: "the is i who what when where why how you me we they them their there here now then can will would could should may might must shall"
+  // ── Category: Similar Word Combos (12 cards) ──────────────────────────────
+  "combo-th": {
+    title: "TH Words",
+    category: "similar",
+    description: "Practice the 'th' combination — one of the most common in English",
+    content: "th th th the the the then then then them them them thin thin thin think think think that that that this this this there there there these these these though though though through through through"
   },
+  "combo-sh": {
+    title: "SH Words",
+    category: "similar",
+    description: "Master the 'sh' blend found in many everyday words",
+    content: "sh sh sh she she she ship ship ship shop shop shop show show show shy shy shy shell shell shell shine shine shine share share share short short short should should should"
+  },
+  "combo-ch": {
+    title: "CH Words",
+    category: "similar",
+    description: "Build muscle memory for the 'ch' letter pair",
+    content: "ch ch ch chin chin chin chat chat chat chop chop chop check check check child child child change change change choose choose choose church church church chain chain chain"
+  },
+  "combo-wh": {
+    title: "WH Words",
+    category: "similar",
+    description: "Practice question starters and common 'wh' words",
+    content: "wh wh wh who who who what what what when when when where where where why why why which which which while while while white white white whole whole whole wheel wheel wheel"
+  },
+  "combo-ki": {
+    title: "KI Words",
+    category: "similar",
+    description: "Train the 'ki' combination across various words",
+    content: "ki ki ki king king king kite kite kite kind kind kind knife knife knife knight knight knight kick kick kick kill kill kill kiss kiss kiss kit kit kit kitchen kitchen kitchen"
+  },
+  "combo-pr": {
+    title: "PR Words",
+    category: "similar",
+    description: "Strengthen the 'pr' blend used in many common words",
+    content: "pr pr pr pre pre pre print print print price price price press press press prove prove prove pride pride pride prize prize prize pretty pretty pretty promise promise promise"
+  },
+  "combo-st": {
+    title: "ST Words",
+    category: "similar",
+    description: "Practice the frequent 'st' combination",
+    content: "st st st stop stop stop stay stay stay step step step store store store story story story start start start stand stand stand still still still strong strong strong"
+  },
+  "combo-tr": {
+    title: "TR Words",
+    category: "similar",
+    description: "Build speed with the 'tr' letter pair",
+    content: "tr tr tr tree tree tree trip trip trip true true true try try try trade trade trade train train train trust trust trust trick trick trick treat treat treat"
+  },
+  "combo-gr": {
+    title: "GR Words",
+    category: "similar",
+    description: "Master the 'gr' blend for smoother typing flow",
+    content: "gr gr gr grow grow grow green green green great great great group group group grade grade grade grand grand grand grass grass grass graph graph graph grip grip grip"
+  },
+  "combo-bl": {
+    title: "BL Words",
+    category: "similar",
+    description: "Practice the 'bl' combination across multiple words",
+    content: "bl bl bl blue blue blue black black black block block block blend blend blend blind blind blind blank blank blank bless bless bless blood blood blood bloom bloom bloom"
+  },
+  "combo-cr": {
+    title: "CR Words",
+    category: "similar",
+    description: "Train finger coordination for the 'cr' pair",
+    content: "cr cr cr cry cry cry crew crew crew crop crop crop cross cross cross crash crash crash cream cream cream crown crown crown crazy crazy crazy craft craft craft"
+  },
+  "combo-sp": {
+    title: "SP Words",
+    category: "similar",
+    description: "Speed up your 'sp' combination typing",
+    content: "sp sp sp spin spin spin spot spot spot speak speak speak speed speed speed space space space spend spend spend sport sport sport split split split spare spare spare"
+  },
+
+  // ── Category: Alphabet & Finger Mapping (2 cards) ────────────────────────
+  "alpha-keys": {
+    title: "A–Z Alphabet",
+    category: "alphabet",
+    description: "Type the full alphabet without pausing — build flow across all letter keys",
+    content: "abcdefghijklmnopqrstuvwxyz abcdefghijklmnopqrstuvwxyz zyxwvutsrqponmlkjihgfedcba zyxwvutsrqponmlkjihgfedcba abcdefghijklm nopqrstuvwxyz abcdefghijklmnopqrstuvwxyz"
+  },
+  "number-keys": {
+    title: "Number Row Practice",
+    category: "alphabet",
+    description: "Practice the number row with same-finger home-to-number key mapping",
+    content: "1a 2s 3d 4f 5f 6j 7j 8k 9l 0; a1 s2 d3 f4 f5 j6 j7 k8 l9 ;0 1a2s 3d4f 5f6j 7j8k 9l0; 1234567890 0987654321 12345 67890 11 22 33 44 55 66 77 88 99 00 147 258 369 1230 4560 7890"
+  },
+
+  // ── Category: Common Words Practice (1 card) ─────────────────────────────
   "common-words": {
-    title: "Most Used Words",
-    content: "car dog cat bye hello good bad yes no maybe perhaps however therefore because although through without within during before after above below"
+    title: "Common Words Drill",
+    category: "words",
+    description: "Practice the most frequently used English words for speed",
+    content: "the and for are but not you all can had her was one our out day get has him his how its may new now old see way who did let say too use the be to of in that have it for on with he as do at this but by from they we say she or an will my one all would there their what so up out if about who get which go me when make can like time no just him know take people into year your good some could them"
   },
-  "short-sentences": {
-    title: "Short Sentences", 
-    content: "I am fine. How are you? This is good. We can do it. They are here. She is happy. He is tall. It is time. You are smart."
+
+  // ── Category: Symbols & Special Keys (2 cards) ───────────────────────────
+  "symbols-basic": {
+    title: "Symbols & Operators",
+    category: "symbols",
+    description: "Practice common symbols, math operators, and punctuation marks",
+    content: "+ - * / = + - * / = ! @ # $ % ^ & * ( ) ! @ # $ % ^ & * ( ) _ + = - _ + = - { } [ ] { } [ ] : ; ' \" , . < > ? / : ; ' \" , . < > ? / ~ ` | \\"
   },
-  "medium-text": {
-    title: "Medium Paragraphs",
-    content: "Technology has revolutionized the way we communicate and work. From smartphones to artificial intelligence, our daily lives are increasingly intertwined with digital innovations that continue to shape our future."
+  "symbols-real": {
+    title: "Real-World Symbols",
+    category: "symbols",
+    description: "Type symbols in practical contexts — emails, prices, code patterns",
+    content: "email@test.com user@domain.org $99.99 $14.50 50% off 100% done (hello) (world) [array] [index] {object} {value} key: value; #hashtag @mention !important 2 + 2 = 4 10 - 3 = 7 5 * 6 = 30 20 / 4 = 5 x != y a == b c >= d"
   }
 };
 
