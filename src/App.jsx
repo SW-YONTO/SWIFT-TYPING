@@ -5,6 +5,7 @@ import { ThemeProvider, useTheme } from './contexts/ThemeContext';
 import ErrorBoundary from './components/ErrorBoundary';
 import UserManager from './components/UserManager';
 import Navigation from './components/Navigation';
+import UpdateToast from './components/UpdateToast';
 
 // Lazy-loaded page components for code splitting
 const TypingLessons = React.lazy(() => import('./pages/TypingLessons'));
@@ -172,6 +173,7 @@ function App() {
               </Routes>
             </Suspense>
           </main>
+          <UpdateToast />
         </div>
       </Router>
       </ErrorBoundary>

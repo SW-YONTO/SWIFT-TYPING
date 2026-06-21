@@ -29,7 +29,9 @@ import {
   Flame,
   AlertCircle,
   Camera,
-  Plus
+  Plus,
+  RefreshCw,
+  WifiOff
 } from 'lucide-react';
 import { progressManager, themes, userManager, streakManager, dataManager } from '../utils/storage';
 import { useTheme } from '../contexts/ThemeContext';
@@ -71,6 +73,81 @@ const Settings = ({ currentUser, settings, onSettingsChange, onUserUpdate }) => 
   const avatarInputRef = useRef(null);
   const [showAvatarModal, setShowAvatarModal] = useState(false);
   const [currentAvatar, setCurrentAvatar] = useState(() => currentUser?.avatar || 'avatar1.png');
+
+  // Electron Updater States
+  const [updateStatus, setUpdateStatus] = useState('idle'); // idle, checking, available, downloading, downloaded, error, not-available
+  const [updateProgress, setUpdateProgress] = useState(0);
+  const [updateVersion, setUpdateVersion] = useState(null);
+  const [updateError, setUpdateError] = useState('');
+  const [isOnline, setIsOnline] = useState(navigator.onLine);
+
+  const isElectron = window.electronAPI !== undefined;
+
+  useEffect(() => {
+    const handleOnline = () => setIsOnline(true);
+    const handleOffline = () => setIsOnline(false);
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+
+    if (!isElectron) return;
+
+    const unsubscribeChecking = window.electronAPI.onCheckingForUpdate(() => {
+      setUpdateStatus('checking');
+    });
+
+    const unsubscribeAvailable = window.electronAPI.onUpdateAvailable((info) => {
+      setUpdateVersion(info);
+      setUpdateStatus('available');
+    });
+
+    const unsubscribeNotAvailable = window.electronAPI.onUpdateNotAvailable(() => {
+      setUpdateStatus('not-available');
+    });
+
+    const unsubscribeProgress = window.electronAPI.onDownloadProgress((progressObj) => {
+      setUpdateStatus('downloading');
+      setUpdateProgress(Math.round(progressObj.percent || 0));
+    });
+
+    const unsubscribeDownloaded = window.electronAPI.onUpdateDownloaded((info) => {
+      setUpdateVersion(info);
+      setUpdateStatus('downloaded');
+    });
+
+    const unsubscribeError = window.electronAPI.onUpdateError((err) => {
+      setUpdateStatus('error');
+      setUpdateError(typeof err === 'string' ? err : 'Error checking/downloading update');
+    });
+
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+      unsubscribeChecking();
+      unsubscribeAvailable();
+      unsubscribeNotAvailable();
+      unsubscribeProgress();
+      unsubscribeDownloaded();
+      unsubscribeError();
+    };
+  }, [isElectron]);
+
+  const handleCheckForUpdates = () => {
+    if (!isOnline) return;
+    setUpdateStatus('checking');
+    setUpdateError('');
+    window.electronAPI.checkForUpdates();
+  };
+
+  const handleDownloadUpdate = () => {
+    if (!isOnline) return;
+    setUpdateStatus('downloading');
+    setUpdateProgress(0);
+    window.electronAPI.downloadUpdate();
+  };
+
+  const handleQuitAndInstall = () => {
+    window.electronAPI.quitAndInstall();
+  };
 
   // Update streak data on mount
   useEffect(() => {
@@ -1240,7 +1317,7 @@ const Settings = ({ currentUser, settings, onSettingsChange, onUserUpdate }) => 
             <div className={`space-y-4`}>
               <div className="flex justify-between items-center py-2">
                 <span className={`${theme.textSecondary} text-sm`}>Version</span>
-                <span className={`font-bold ${theme.text}`}>3.26.7</span>
+                <span className={`font-bold ${theme.text}`}>3.26.8</span>
               </div>
               <div className="flex justify-between items-center py-2">
                 <span className={`${theme.textSecondary} text-sm`}>Developer</span>
@@ -1254,6 +1331,114 @@ const Settings = ({ currentUser, settings, onSettingsChange, onUserUpdate }) => 
                 <span className={`${theme.textSecondary} text-sm`}>Platform</span>
                 <span className={`font-medium ${theme.text}`}>Desktop (Electron)</span>
               </div>
+
+              {/* Electron Update Section */}
+              <div className={`border-t ${theme.border} pt-4 mt-4 space-y-3`}>
+                <div className="flex items-center justify-between">
+                  <span className={`${theme.textSecondary} text-xs font-semibold uppercase tracking-wider`}>Updates</span>
+                  {!isElectron && (
+                    <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-green-100 dark:bg-green-950 text-green-700 dark:text-green-400">
+                      Web (Auto-updated)
+                    </span>
+                  )}
+                  {isElectron && !isOnline && (
+                    <span className="flex items-center gap-1 text-[10px] font-bold text-red-500">
+                      <WifiOff className="w-3.5 h-3.5" />
+                      Offline
+                    </span>
+                  )}
+                </div>
+
+                {isElectron && (
+                  <div className="space-y-3">
+                    {/* Render update progress bar */}
+                    {updateStatus === 'downloading' && (
+                      <div className="space-y-1">
+                        <div className="flex justify-between text-xs font-semibold">
+                          <span className={theme.textSecondary}>Downloading update...</span>
+                          <span className={theme.text}>{updateProgress}%</span>
+                        </div>
+                        <div className={`w-full h-1.5 rounded-full ${theme.mode === 'dark' ? 'bg-gray-700' : 'bg-gray-200'}`}>
+                          <div 
+                            className="h-full rounded-full bg-linear-to-r from-blue-500 to-indigo-500 transition-all duration-300"
+                            style={{ width: `${updateProgress}%` }}
+                          />
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Status notifications */}
+                    {updateStatus === 'checking' && (
+                      <p className={`text-xs ${theme.textSecondary} text-center flex items-center justify-center gap-1.5`}>
+                        <RefreshCw className="w-3.5 h-3.5 animate-spin" /> Checking update server...
+                      </p>
+                    )}
+                    {updateStatus === 'not-available' && (
+                      <p className="text-xs text-green-600 dark:text-green-400 text-center font-medium">
+                        ✓ Swift Typing is up to date!
+                      </p>
+                    )}
+                    {updateStatus === 'available' && (
+                      <div className={`p-3 rounded-lg border border-amber-200 bg-amber-50 dark:bg-amber-950/20 dark:border-amber-900/40 text-center space-y-2`}>
+                        <p className="text-xs font-bold text-amber-700 dark:text-amber-400">
+                          Update Available: v{updateVersion?.version}
+                        </p>
+                        <button
+                          onClick={handleDownloadUpdate}
+                          disabled={!isOnline}
+                          className="w-full py-1.5 text-xs font-bold bg-amber-500 hover:bg-amber-400 text-white rounded-lg shadow-sm transition-all"
+                        >
+                          Download Update
+                        </button>
+                      </div>
+                    )}
+                    {updateStatus === 'downloaded' && (
+                      <div className={`p-3 rounded-lg border border-green-200 bg-green-50 dark:bg-green-950/20 dark:border-green-900/40 text-center space-y-2`}>
+                        <p className="text-xs font-bold text-green-700 dark:text-green-400">
+                          Update Ready to Install!
+                        </p>
+                        <button
+                          onClick={handleQuitAndInstall}
+                          className="w-full py-1.5 text-xs font-bold bg-green-600 hover:bg-green-500 text-white rounded-lg shadow-sm transition-all flex items-center justify-center gap-1"
+                        >
+                          <RefreshCw className="w-3 h-3 animate-spin" style={{ animationDuration: '3s' }} />
+                          Restart & Install Now
+                        </button>
+                      </div>
+                    )}
+                    {updateStatus === 'error' && (
+                      <div className={`p-3 rounded-lg border border-red-200 bg-red-50 dark:bg-red-950/20 dark:border-red-900/40 text-center space-y-1`}>
+                        <p className="text-xs font-bold text-red-700 dark:text-red-400">
+                          Update Error
+                        </p>
+                        <p className={`text-[10px] ${theme.textSecondary} truncate`}>
+                          {updateError}
+                        </p>
+                        <button
+                          onClick={handleCheckForUpdates}
+                          disabled={!isOnline}
+                          className="w-full mt-1.5 py-1 text-xs font-bold bg-red-600 hover:bg-red-500 text-white rounded-lg transition-all"
+                        >
+                          Retry Check
+                        </button>
+                      </div>
+                    )}
+
+                    {/* Standard check button when idle or not checking */}
+                    {(updateStatus === 'idle' || updateStatus === 'not-available') && (
+                      <button
+                        onClick={handleCheckForUpdates}
+                        disabled={!isOnline}
+                        className={`w-full py-2.5 rounded-xl text-xs font-semibold border ${theme.border} ${theme.text} ${theme.inputBg} hover:${theme.secondary} transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2`}
+                      >
+                        <RefreshCw className="w-3.5 h-3.5" />
+                        Check for Updates
+                      </button>
+                    )}
+                  </div>
+                )}
+              </div>
+
               <div className={`border-t ${theme.border} pt-4 mt-4`}>
                 <p className={`${theme.textSecondary} text-xs text-center`}>
                   A comprehensive offline typing tutor desktop application

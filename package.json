@@ -1,7 +1,7 @@
 {
   "name": "swift-typing",
   "private": true,
-  "version": "3.26.7",
+  "version": "3.26.8",
   "author": "SW-YONTO (Suraj Maurya)",
   "type": "module",
   "description": "A comprehensive offline typing tutor desktop application",
@@ -20,6 +20,7 @@
     "@supabase/supabase-js": "^2.106.1",
     "@tailwindcss/vite": "^4.1.11",
     "chart.js": "^4.5.0",
+    "electron-updater": "^6.8.9",
     "esbuild": "^0.28.0",
     "lucide-react": "^0.525.0",
     "prop-types": "^15.8.1",
@@ -60,6 +61,13 @@
       "output": "release",
       "buildResources": "build"
     },
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "SW-YONTO",
+        "repo": "SWIFT-TYPING"
+      }
+    ],
     "files": [
       "dist/**/*",
       "electron/**/*"
