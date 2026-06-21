@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { useTheme } from '../contexts/ThemeContext';
 import { Github, Mail, Instagram, Heart, Code, Gamepad2, Star, Award } from 'lucide-react';
 import surajAvatar from '../assets/suraj.jpg';
+import packageJson from '../../package.json';
 
 const Footer = () => {
   const { theme } = useTheme();
@@ -154,7 +155,7 @@ const Footer = () => {
             </div>
             
             <div className="flex items-center gap-4">
-              <span className={`text-xs ${theme.textSecondary}`}>Version 3.26.7</span>
+              <span className={`text-xs ${theme.textSecondary}`}>Version {packageJson.version}</span>
               <div className={`h-4 w-px ${theme.border}`}></div>
               <span className={`text-xs ${theme.textSecondary}`}>Offline Ready</span>
             </div>
