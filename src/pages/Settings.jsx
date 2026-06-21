@@ -42,6 +42,7 @@ import { soundEffects } from '../utils/soundEffects';
 import { achievementManager } from '../utils/achievements';
 
 import { compressImageToBase64 } from '../utils/image';
+import packageJson from '../../package.json';
 
 // Available avatars (14 default avatars)
 const AVATARS = Array.from({ length: 14 }, (_, i) => `avatar${i + 1}.png`);
@@ -1317,7 +1318,7 @@ const Settings = ({ currentUser, settings, onSettingsChange, onUserUpdate }) => 
             <div className={`space-y-4`}>
               <div className="flex justify-between items-center py-2">
                 <span className={`${theme.textSecondary} text-sm`}>Version</span>
-                <span className={`font-bold ${theme.text}`}>3.26.8</span>
+                <span className={`font-bold ${theme.text}`}>{packageJson.version}</span>
               </div>
               <div className="flex justify-between items-center py-2">
                 <span className={`${theme.textSecondary} text-sm`}>Developer</span>

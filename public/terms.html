@@ -260,7 +260,7 @@
         <li>Payments are processed securely via Stripe</li>
         <li>We offer refunds within 7 days of purchase if the product does not work as described</li>
         <li>Digital downloads (e.g., desktop app) are non-refundable once downloaded and verified working</li>
-        <li>Contact us at <a href="mailto:surajmoriya200@gmail.com">surajmoriya200@gmail.com</a> for refund requests
+        <li>Contact us at <a href="mailto:surajmoriya2007@gmail.com">surajmoriya2007@gmail.com</a> for refund requests
         </li>
       </ul>
 
@@ -321,8 +321,8 @@
         </div>
       </div>
       <div class="footer-bottom">
-        <span>© 2025 Swift Typing by Suraj Maurya. All rights reserved.</span>
-        <span>Version 3.26.7 · Made with ❤️</span>
+        <span>© 2026 Swift Typing by Suraj Maurya. All rights reserved.</span>
+        <span id="app-version">Version 3.26.9 · Made with ❤️</span>
       </div>
     </div>
   </footer>
@@ -339,6 +339,16 @@
         localStorage.setItem('landing_theme', 'light');
       }
     }
+
+    // Fetch latest version from GitHub Release
+    fetch('https://api.github.com/repos/SW-YONTO/SWIFT-TYPING/releases/latest')
+      .then(res => res.json())
+      .then(data => {
+        const ver = data.tag_name.replace(/^v/, '');
+        const verEl = document.getElementById('app-version');
+        if (verEl) verEl.textContent = 'Version ' + ver + ' · Made with ❤️';
+      })
+      .catch(() => {});
   </script>
 </body>
 

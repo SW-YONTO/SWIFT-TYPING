@@ -148,21 +148,23 @@ const UpdateToast = () => {
   if (minimized) {
     return (
       <div 
-        className="fixed bottom-6 right-6 z-[9999] cursor-pointer flex items-center gap-2 p-3 rounded-full shadow-2xl transition-all duration-300 hover:scale-105 border bg-linear-to-r from-blue-600 to-indigo-600 border-blue-500 text-white"
+        className="fixed bottom-6 right-6 z-[9999] cursor-pointer flex items-center gap-2.5 p-3 rounded-full shadow-2xl transition-all duration-300 hover:scale-105 border bg-linear-to-r from-blue-600 to-indigo-600 border-blue-500 text-white"
         onClick={() => setMinimized(false)}
         title="View Software Update"
       >
         {status === 'downloading' ? (
-          <div className="relative flex items-center justify-center w-6 h-6">
-            <RefreshCw className="w-4 h-4 animate-spin" />
-            <span className="absolute text-[8px] font-bold">{progress}%</span>
+          <div className="flex items-center gap-1 bg-white/10 px-2 py-0.5 rounded-full">
+            <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+            <span className="text-[10px] font-bold">{progress}%</span>
           </div>
         ) : status === 'downloaded' ? (
           <Sparkles className="w-5 h-5 animate-bounce text-amber-300" />
         ) : (
           <Download className="w-5 h-5 animate-pulse" />
         )}
-        <span className="text-xs font-bold pr-2">Update Available</span>
+        <span className="text-xs font-bold pr-2">
+          {status === 'downloading' ? 'Downloading Update...' : 'Update Available'}
+        </span>
         <button 
           onClick={(e) => {
             e.stopPropagation();
@@ -170,7 +172,7 @@ const UpdateToast = () => {
           }}
           className="hover:bg-white/20 p-1 rounded-full transition-colors"
         >
-          <X className="w-3. h-3" />
+          <X className="w-3.5 h-3.5" />
         </button>
       </div>
     );

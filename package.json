@@ -1,7 +1,7 @@
 {
   "name": "swift-typing",
   "private": true,
-  "version": "3.26.9",
+  "version": "3.26.8",
   "author": "SW-YONTO (Suraj Maurya)",
   "type": "module",
   "description": "A comprehensive offline typing tutor desktop application",
@@ -85,7 +85,8 @@
     "win": {
       "target": "nsis",
       "icon": "build/icon.ico",
-      "requestedExecutionLevel": "asInvoker"
+      "requestedExecutionLevel": "asInvoker",
+      "artifactName": "Swift-Typing-Setup-${version}.${ext}"
     },
     "nsis": {
       "oneClick": false,

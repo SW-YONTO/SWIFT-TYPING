@@ -102,7 +102,7 @@ const Footer = () => {
 
             <div className="space-y-4 mb-6">
               <a
-                href="mailto:surajmoriya200@gmail.com"
+                href="mailto:surajmoriya2007@gmail.com"
                 className={`flex items-center justify-center lg:justify-start gap-3 p-3 rounded-lg ${theme.secondary} hover:${theme.primary} hover:text-white transition-all duration-200 transform hover:scale-105`}
               >
                 <Mail className="w-5 h-5" />
@@ -110,13 +110,13 @@ const Footer = () => {
               </a>
 
               <a
-                href="https://instagram.com/red_eye_0.0"
+                href="https://instagram.com/swift-typing.me"
                 target="_blank"
                 rel="noopener noreferrer"
                 className={`flex items-center justify-center lg:justify-start gap-3 p-3 rounded-lg ${theme.secondary} hover:bg-pink-600 hover:text-white transition-all duration-200 transform hover:scale-105`}
               >
                 <Instagram className="w-5 h-5" />
-                <span className="text-sm">@red_eye_0.0</span>
+                <span className="text-sm">swift-typing.me</span>
               </a>
 
               <a

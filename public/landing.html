@@ -378,8 +378,8 @@
         </div>
       </div>
       <div class="footer-bottom">
-        <span>© 2025 Swift Typing by Suraj Maurya. All rights reserved.</span>
-        <span>Version 3.26.7 · Made with ❤️</span>
+        <span>© 2026 Swift Typing by Suraj Maurya. All rights reserved.</span>
+        <span id="app-version">Version 3.26.9 · Made with ❤️</span>
       </div>
     </div>
   </footer>
@@ -571,6 +571,16 @@
 
     // Enter key for coupon
     document.getElementById('couponInput').addEventListener('keydown', e => { if (e.key === 'Enter') applyCoupon() });
+
+    // Fetch latest version from GitHub Release
+    fetch('https://api.github.com/repos/SW-YONTO/SWIFT-TYPING/releases/latest')
+      .then(res => res.json())
+      .then(data => {
+        const ver = data.tag_name.replace(/^v/, '');
+        const verEl = document.getElementById('app-version');
+        if (verEl) verEl.textContent = 'Version ' + ver + ' · Made with ❤️';
+      })
+      .catch(() => {});
   </script>
 </body>
 
