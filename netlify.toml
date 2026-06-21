@@ -20,12 +20,12 @@
 
 [[redirects]]
   from = "/downloads/SwiftTyping-Setup.zip"
-  to = "https://github.com/SW-YONTO/SWIFT-TYPING/releases/download/v3.26.8/Swift-Typing-Setup-3.26.8.exe"
+  to = "https://github.com/SW-YONTO/SWIFT-TYPING/releases/download/v3.26.8/Swift-Typing-v3.26.8.zip"
   status = 302
   force = true
 
 [[redirects]]
   from = "/downloads/Swift-Typing-Setup-3.26.8.zip"
-  to = "https://github.com/SW-YONTO/SWIFT-TYPING/releases/download/v3.26.8/Swift-Typing-Setup-3.26.8.exe"
+  to = "https://github.com/SW-YONTO/SWIFT-TYPING/releases/download/v3.26.8/Swift-Typing-v3.26.8.zip"
   status = 302
   force = true
