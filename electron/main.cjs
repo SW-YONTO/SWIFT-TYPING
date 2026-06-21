@@ -2,6 +2,7 @@ const { app, BrowserWindow, nativeImage, ipcMain } = require('electron');
 const { autoUpdater } = require('electron-updater');
 const path = require('path');
 const fs = require('fs');
+const https = require('https');
 const isDev = process.env.NODE_ENV === 'development';
 
 // Set the app user model ID BEFORE ready event (critical for Windows taskbar/search icon)
@@ -105,21 +106,99 @@ app.on('activate', () => {
 // Auto Updater IPC and Event configuration
 autoUpdater.autoDownload = false; // Let the user trigger the download
 
-// Listeners from frontend
-ipcMain.on('check-for-updates', () => {
-  autoUpdater.checkForUpdates().catch(err => {
+// Helper function to query GitHub Releases API in development mode
+function checkUpdatesDevMode() {
+  if (mainWindow && !mainWindow.isDestroyed()) {
+    mainWindow.webContents.send('checking-for-update');
+  }
+
+  const options = {
+    hostname: 'api.github.com',
+    path: '/repos/SW-YONTO/SWIFT-TYPING/releases/latest',
+    headers: {
+      'User-Agent': 'Swift-Typing-Electron-App'
+    }
+  };
+
+  https.get(options, (res) => {
+    let data = '';
+    res.on('data', (chunk) => {
+      data += chunk;
+    });
+
+    res.on('end', () => {
+      try {
+        if (res.statusCode !== 200) {
+          throw new Error(`GitHub API returned status ${res.statusCode}`);
+        }
+
+        const release = JSON.parse(data);
+        const latestVersion = release.tag_name.replace(/^v/, '');
+        const currentVersion = app.getVersion();
+
+        const isNewer = compareVersions(latestVersion, currentVersion) > 0;
+
+        if (isNewer) {
+          mainWindow.webContents.send('update-available', {
+            version: latestVersion,
+            releaseDate: release.published_at,
+            note: release.body
+          });
+        } else {
+          mainWindow.webContents.send('update-not-available', {
+            version: latestVersion
+          });
+        }
+      } catch (err) {
+        if (mainWindow && !mainWindow.isDestroyed()) {
+          mainWindow.webContents.send('update-error', err.message || 'Error checking for updates');
+        }
+      }
+    });
+  }).on('error', (err) => {
     if (mainWindow && !mainWindow.isDestroyed()) {
-      mainWindow.webContents.send('update-error', err.message || 'Error checking for updates');
+      mainWindow.webContents.send('update-error', err.message || 'Network error checking for updates');
     }
   });
+}
+
+function compareVersions(v1, v2) {
+  const p1 = v1.split('.').map(Number);
+  const p2 = v2.split('.').map(Number);
+  for (let i = 0; i < 3; i++) {
+    if (p1[i] > p2[i]) return 1;
+    if (p1[i] < p2[i]) return -1;
+  }
+  return 0;
+}
+
+// Listeners from frontend
+ipcMain.on('check-for-updates', () => {
+  if (isDev || !app.isPackaged) {
+    checkUpdatesDevMode();
+  } else {
+    autoUpdater.checkForUpdates().catch(err => {
+      if (mainWindow && !mainWindow.isDestroyed()) {
+        mainWindow.webContents.send('update-error', err.message || 'Error checking for updates');
+      }
+    });
+  }
 });
 
 ipcMain.on('download-update', () => {
-  autoUpdater.downloadUpdate().catch(err => {
+  if (isDev || !app.isPackaged) {
+    const { shell } = require('electron');
+    shell.openExternal('https://github.com/SW-YONTO/SWIFT-TYPING/releases/latest');
     if (mainWindow && !mainWindow.isDestroyed()) {
-      mainWindow.webContents.send('update-error', err.message || 'Error downloading update');
+      mainWindow.webContents.send('update-not-available'); // reset state
     }
-  });
+  } else {
+    autoUpdater.downloadUpdate().catch(err => {
+      if (mainWindow && !mainWindow.isDestroyed()) {
+        mainWindow.webContents.send('update-error', err.message || 'Error downloading update');
+      }
+    });
+  }
 });
 
 ipcMain.on('quit-and-install', () => {
