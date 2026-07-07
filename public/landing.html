@@ -182,31 +182,7 @@
       </div>
     </section>
 
-    <!-- IN-PAGE AD — top (between hero & features) -->
-    <div style="padding:0 24px 0;display:flex;justify-content:center;">
-      <div style="
-    background:var(--card);
-    border:1px solid var(--border);
-    border-radius:16px;
-    padding:12px 16px;
-    display:flex;
-    flex-direction:column;
-    align-items:center;
-    gap:6px;
-    max-width:780px;
-    width:100%;
-    overflow:hidden;
-    position:relative;
-  ">
-        <span
-          style="font-size:9px;color:var(--text2);letter-spacing:0.08em;text-transform:uppercase;align-self:flex-start;opacity:0.6;">Advertisement</span>
-        <!-- TODO: Replace YOUR_TOP_AD_SLOT with slot ID from AdSense -->
-        <ins class="adsbygoogle" style="display:block;width:100%;min-height:90px;"
-          data-ad-client="ca-pub-4869966197556742" data-ad-slot="8506280207" data-ad-format="auto"
-          data-full-width-responsive="true"></ins>
-        <script>(adsbygoogle = window.adsbygoogle || []).push({});</script>
-      </div>
-    </div>
+
 
     <!-- FEATURES -->
     <section class="features" id="features">
@@ -311,6 +287,86 @@
               </svg>
               Download / Buy Now
             </button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- TOUCH TYPING GUIDE & FAQ -->
+    <section class="guide-section" id="typing-guide">
+      <div class="container">
+        <div class="section-tag">
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
+            stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1-2.5-2.5Z"/>
+            <path d="M6 6h10"/>
+            <path d="M6 10h10"/>
+          </svg>
+          Mastery Guide
+        </div>
+        <h2 class="section-title">The Art & Science of Touch Typing</h2>
+        <p class="section-sub">Understand the key concepts of typing speed, accuracy, and keyboard ergonomics.</p>
+        
+        <div class="guide-grid">
+          <div class="guide-card">
+            <h3>What is Touch Typing?</h3>
+            <p>Touch typing is the ability to use muscle memory, rather than sight, to find keys on a keyboard. By keeping your eyes on the screen and using all ten fingers, you drastically reduce cognitive fatigue and typing errors. Swift Typing helps you build this subconscious physical map of the keyboard through progressive learning cycles.</p>
+          </div>
+          <div class="guide-card">
+            <h3>The Home Row & Proper Hand Positioning</h3>
+            <p>The foundation of touch typing starts with the home row: <strong>A, S, D, F</strong> for your left hand, and <strong>J, K, L, ;</strong> for your right hand. Your thumbs rest naturally on the Space key. Always return your fingers to these home positions after hitting a key to maintain a reliable spatial reference point.</p>
+          </div>
+          <div class="guide-card">
+            <h3>Ergonomics: Typing Without Strain</h3>
+            <p>To avoid repetitive strain injuries (RSI) like carpal tunnel syndrome, sit upright with your elbows bent at a 90-degree angle. Keep your wrists straight and floating slightly above the desk rather than resting flat. A light tap is all that is needed to register keystrokes on modern keyboards.</p>
+          </div>
+          <div class="guide-card">
+            <h3>Focus on Accuracy First, Speed Later</h3>
+            <p>The biggest mistake beginners make is trying to type fast too early. Accuracy is the foundation of speed. Every mistake requires backspacing and re-typing, which cuts your net WPM (Words Per Minute) in half. Practice slowly, aim for 95%+ accuracy, and speed will follow naturally.</p>
+          </div>
+        </div>
+
+        <div class="faq-container">
+          <h3 class="faq-main-title">Frequently Asked Questions</h3>
+          
+          <div class="faq-item">
+            <button class="faq-question" onclick="toggleFaq(this)">
+              <span>How long does it take to learn touch typing?</span>
+              <svg class="faq-arrow" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+            </button>
+            <div class="faq-answer">
+              <p>With consistent practice of 15 to 30 minutes daily on Swift Typing, most users can transition to full touch typing within 2 to 4 weeks. Reaching high speeds (above 60 WPM) generally takes a few months of daily usage.</p>
+            </div>
+          </div>
+
+          <div class="faq-item">
+            <button class="faq-question" onclick="toggleFaq(this)">
+              <span>What is a good average typing speed?</span>
+              <svg class="faq-arrow" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+            </button>
+            <div class="faq-answer">
+              <p>The average typing speed is around 40 WPM. Professional typists, coders, and writers typically aim for 60 to 90 WPM. Speed levels above 100 WPM are considered elite and require dedicated practice.</p>
+            </div>
+          </div>
+
+          <div class="faq-item">
+            <button class="faq-question" onclick="toggleFaq(this)">
+              <span>Can I use Swift Typing completely offline?</span>
+              <svg class="faq-arrow" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+            </button>
+            <div class="faq-answer">
+              <p>Yes, Swift Typing is fully compatible with offline environments. You can download the desktop build for Windows, install it, and use all lessons, typing tests, progress tracking, and settings without an active internet connection.</p>
+            </div>
+          </div>
+
+          <div class="faq-item">
+            <button class="faq-question" onclick="toggleFaq(this)">
+              <span>Why is my net WPM lower than my gross WPM?</span>
+              <svg class="faq-arrow" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+            </button>
+            <div class="faq-answer">
+              <p>Gross WPM measures the total typing speed, regardless of errors. Net WPM subtracts uncorrected errors from your total, reflecting your actual typing throughput. High accuracy ensures that your net WPM stays close to your gross WPM.</p>
+            </div>
           </div>
         </div>
       </div>
@@ -474,6 +530,19 @@
       } else {
         root.setAttribute('data-theme', 'light');
         localStorage.setItem('landing_theme', 'light');
+      }
+    }
+
+    function toggleFaq(btn) {
+      const item = btn.parentElement;
+      const isActive = item.classList.contains('active');
+      
+      document.querySelectorAll('.faq-item').forEach(i => {
+        i.classList.remove('active');
+      });
+      
+      if (!isActive) {
+        item.classList.add('active');
       }
     }
 

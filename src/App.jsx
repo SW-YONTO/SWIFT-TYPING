@@ -6,6 +6,7 @@ import ErrorBoundary from './components/ErrorBoundary';
 import UserManager from './components/UserManager';
 import Navigation from './components/Navigation';
 import UpdateToast from './components/UpdateToast';
+import AdBanner from './components/AdBanner';
 
 // Lazy-loaded page components for code splitting
 const TypingLessons = React.lazy(() => import('./pages/TypingLessons'));
@@ -173,6 +174,13 @@ function App() {
               </Routes>
             </Suspense>
           </main>
+          
+          {currentUser && (
+            <div className="max-w-7xl mx-auto px-4 pb-4">
+              <AdBanner slot="8506280207" format="horizontal" style={{ maxHeight: '90px' }} />
+            </div>
+          )}
+
           <UpdateToast />
         </div>
       </Router>

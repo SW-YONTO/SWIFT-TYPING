@@ -4,7 +4,7 @@ import { useEffect, useRef } from 'react';
 const isElectron = typeof window !== 'undefined' && window.location.protocol === 'file:';
 
 /**
- * AdBanner — renders a Google AdSense display unit.
+ * AdBanner — renders a Google AdSense display unit and dynamically loads the script if needed.
  *
  * Props:
  *   slot   {string}  — Ad slot ID from your AdSense dashboard (required)
@@ -16,6 +16,18 @@ const AdBanner = ({ slot, format = 'auto', style = {} }) => {
 
   useEffect(() => {
     if (isElectron || !slot) return;
+
+    // Dynamically inject the AdSense script if it hasn't been loaded yet
+    const scriptId = 'google-adsense-script';
+    let script = document.getElementById(scriptId);
+    if (!script) {
+      script = document.createElement('script');
+      script.id = scriptId;
+      script.src = 'https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-4869966197556742';
+      script.async = true;
+      script.crossOrigin = 'anonymous';
+      document.body.appendChild(script);
+    }
 
     try {
       // Push the ad after mount — required by AdSense

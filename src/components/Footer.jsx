@@ -75,7 +75,7 @@ const Footer = () => {
           <div className="text-center lg:text-left">
             <h3 className={`text-lg font-semibold ${theme.text} mb-6`}>Quick Links</h3>
             <div className="space-y-3">
-              <a href="https://swift-typing.me" target="_blank" rel="noopener noreferrer" className={`block ${theme.textSecondary} hover:${theme.accent} transition-colors duration-200`}>
+              <a href="/landing" target="_blank" rel="noopener noreferrer" className={`block ${theme.textSecondary} hover:${theme.accent} transition-colors duration-200`}>
                 About Swift Typing
               </a>
               <Link to="/features" className={`block ${theme.textSecondary} hover:${theme.accent} transition-colors duration-200`}>
