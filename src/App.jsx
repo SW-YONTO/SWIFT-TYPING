@@ -263,9 +263,16 @@ function BannedScreenWithModals({ banReason, currentUser }) {
     // 1. Cloud sync to Supabase unban_requests
     try {
       if (navigator.onLine) {
-        await supabase.from('unban_requests').upsert([payload]);
+        const { error: dbError } = await supabase.from('unban_requests').insert([payload]);
+        if (dbError) {
+          console.error('[Supabase Appeals Error]', dbError.message);
+        } else {
+          console.log('[Supabase Appeals Success] Appeal inserted into unban_requests table.');
+        }
       }
-    } catch (e) { }
+    } catch (e) {
+      console.error('[Supabase Catch Error]', e);
+    }
 
     // 2. Automatic Real Email Dispatch to sw.esports.offical@gmail.com
     let mailSuccess = false;
