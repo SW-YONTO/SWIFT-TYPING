@@ -859,8 +859,8 @@ export default function AdminPortal() {
                     onClick={() => setSelectedTypist(u)}
                     className={`p-3.5 rounded-xl border transition-all cursor-pointer flex justify-between items-center ${
                       selectedTypist?.username === u.username
-                        ? 'bg-blue-500/10 border-blue-500/50 text-blue-400 font-extrabold shadow-sm'
-                        : 'border-slate-700/50 hover:bg-slate-800/20 text-slate-300'
+                        ? 'bg-blue-500/10 border-blue-500/50 text-blue-600 dark:text-blue-400 font-extrabold shadow-sm'
+                        : `${theme.border} ${theme.cardBg} hover:opacity-85 text-slate-700 dark:text-slate-300`
                     }`}
                   >
                     <div>

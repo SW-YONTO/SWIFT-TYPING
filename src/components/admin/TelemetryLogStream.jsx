@@ -1,5 +1,6 @@
 import React from 'react';
 import { Activity, Check, Copy, User, Trophy, Zap, TrendingUp, Target, Clock } from 'lucide-react';
+import { useTheme } from '../../contexts/ThemeContext';
 
 export default function TelemetryLogStream({
   theme,
@@ -8,20 +9,36 @@ export default function TelemetryLogStream({
   handleCopyDeviceId,
   handleSelectUser
 }) {
+  const { isDarkMode } = useTheme();
   const subTextClass = theme.textSecondary || 'text-gray-400';
 
   const getEventTypeColor = (type) => {
-    switch (type) {
-      case 'daily_summary':
-        return 'text-blue-400 font-bold';
-      case 'login':
-        return 'text-emerald-400 font-bold';
-      case 'on_startup':
-        return 'text-purple-400 font-bold';
-      case 'history_migration':
-        return 'text-amber-400 font-bold';
-      default:
-        return 'text-slate-400';
+    if (isDarkMode) {
+      switch (type) {
+        case 'daily_summary':
+          return 'text-blue-400 font-bold';
+        case 'login':
+          return 'text-emerald-400 font-bold';
+        case 'on_startup':
+          return 'text-purple-400 font-bold';
+        case 'history_migration':
+          return 'text-amber-400 font-bold';
+        default:
+          return 'text-slate-400';
+      }
+    } else {
+      switch (type) {
+        case 'daily_summary':
+          return 'text-blue-600 font-bold';
+        case 'login':
+          return 'text-emerald-600 font-bold';
+        case 'on_startup':
+          return 'text-purple-700 font-bold';
+        case 'history_migration':
+          return 'text-amber-600 font-bold';
+        default:
+          return 'text-slate-600';
+      }
     }
   };
 
@@ -42,11 +59,11 @@ export default function TelemetryLogStream({
               <th className="p-3">Version</th>
               <th className="p-3">Event Type</th>
               <th className="p-3">Device ID</th>
-              <th className="p-3 text-center"><Trophy className="w-3.5 h-3.5 mx-auto" title="Tests Completed" /></th>
-              <th className="p-3 text-center"><Zap className="w-3.5 h-3.5 mx-auto" title="Max WPM" /></th>
-              <th className="p-3 text-center"><TrendingUp className="w-3.5 h-3.5 mx-auto" title="Avg WPM" /></th>
-              <th className="p-3 text-center"><Target className="w-3.5 h-3.5 mx-auto" title="Accuracy" /></th>
-              <th className="p-3 text-center"><Clock className="w-3.5 h-3.5 mx-auto" title="Time Spent" /></th>
+              <th className="p-3 text-center"><Trophy className="w-3.5 h-3.5 mx-auto text-blue-500 dark:text-blue-400" title="Tests Completed" /></th>
+              <th className="p-3 text-center"><Zap className="w-3.5 h-3.5 mx-auto text-amber-500 dark:text-amber-400" title="Max WPM" /></th>
+              <th className="p-3 text-center"><TrendingUp className="w-3.5 h-3.5 mx-auto text-indigo-500 dark:text-indigo-400" title="Avg WPM" /></th>
+              <th className="p-3 text-center"><Target className="w-3.5 h-3.5 mx-auto text-emerald-500 dark:text-emerald-400" title="Accuracy" /></th>
+              <th className="p-3 text-center"><Clock className="w-3.5 h-3.5 mx-auto text-orange-500 dark:text-orange-400" title="Time Spent" /></th>
             </tr>
           </thead>
           <tbody className={`divide-y ${theme.border} font-mono`}>
@@ -61,26 +78,26 @@ export default function TelemetryLogStream({
                 const version = `${client} ${log.app_version || '3.26.8'}`;
 
                 return (
-                  <tr key={log.id} className="hover:bg-slate-800/20 transition-colors">
+                  <tr key={log.id} className="hover:bg-slate-500/5 dark:hover:bg-slate-800/20 transition-colors">
                     <td className={`p-3 whitespace-nowrap ${subTextClass}`}>{new Date(log.created_at).toLocaleTimeString()}</td>
                     <td className="p-3 whitespace-nowrap">
                       {data.username ? (
                         <button
                           onClick={() => handleSelectUser(data.username)}
-                          className="text-blue-400 hover:text-blue-300 hover:underline font-bold transition flex items-center gap-1.5 cursor-pointer text-left focus:outline-none"
+                          className="text-blue-600 dark:text-blue-400 hover:underline font-bold transition flex items-center gap-1.5 cursor-pointer text-left focus:outline-none"
                         >
                           <User className="w-3.5 h-3.5 flex-shrink-0" />
                           <span>{data.username}</span>
                         </button>
                       ) : (
-                        <span className="text-slate-500 italic">Anonymous</span>
+                        <span className="text-gray-500 dark:text-slate-500 italic">Anonymous</span>
                       )}
                     </td>
                     <td className={`p-3 whitespace-nowrap uppercase font-semibold ${subTextClass}`}>{version}</td>
                     <td className={`p-3 whitespace-nowrap ${getEventTypeColor(log.event_type)}`}>{log.event_type}</td>
                     <td className="p-3 whitespace-nowrap">
                       <div className="flex items-center gap-1.5">
-                        <span className="text-slate-400 text-[11px]">{log.device_id ? log.device_id.substring(0, 12) + '...' : 'Unknown'}</span>
+                        <span className="text-gray-600 dark:text-slate-400 text-[11px]">{log.device_id ? log.device_id.substring(0, 12) + '...' : 'Unknown'}</span>
                         {log.device_id && (
                           <button
                             onClick={() => handleCopyDeviceId(log.device_id)}
@@ -96,19 +113,19 @@ export default function TelemetryLogStream({
                         )}
                       </div>
                     </td>
-                    <td className="p-3 text-center font-bold text-blue-400">
+                    <td className="p-3 text-center font-bold text-blue-600 dark:text-blue-400">
                       {data.tests_completed !== undefined ? data.tests_completed : '-'}
                     </td>
-                    <td className="p-3 text-center font-bold text-amber-400">
+                    <td className="p-3 text-center font-bold text-amber-600 dark:text-amber-400">
                       {data.max_wpm !== undefined ? `${data.max_wpm} WPM` : '-'}
                     </td>
-                    <td className="p-3 text-center font-bold text-indigo-400">
+                    <td className="p-3 text-center font-bold text-indigo-600 dark:text-indigo-400">
                       {data.avg_wpm !== undefined ? `${data.avg_wpm} WPM` : '-'}
                     </td>
-                    <td className="p-3 text-center font-bold text-emerald-400">
+                    <td className="p-3 text-center font-bold text-emerald-600 dark:text-emerald-400">
                       {data.avg_accuracy !== undefined ? `${data.avg_accuracy}%` : '-'}
                     </td>
-                    <td className="p-3 text-center font-bold text-orange-400">
+                    <td className="p-3 text-center font-bold text-orange-600 dark:text-orange-400">
                       {data.total_time_seconds !== undefined ? `${Math.round(data.total_time_seconds / 60)}m` : '-'}
                     </td>
                   </tr>
