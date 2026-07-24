@@ -307,6 +307,11 @@ function BannedScreenWithModals({ banReason, currentUser }) {
     try {
       if (navigator.onLine) {
         console.log('[Mailer] Dispatching appeal via FormSubmit JSON...');
+        const submitTime = new Date().toLocaleString('en-US', {
+          dateStyle: 'full',
+          timeStyle: 'medium'
+        });
+
         const res = await fetch('https://formsubmit.co/ajax/sw.esports.offical@gmail.com', {
           method: 'POST',
           headers: {
@@ -314,18 +319,20 @@ function BannedScreenWithModals({ banReason, currentUser }) {
             'Accept': 'application/json'
           },
           body: JSON.stringify({
-            name: username,
-            email: 'sw.esports.offical@gmail.com',
-            _replyto: 'sw.esports.offical@gmail.com',
-            _subject: `🚨 Swift Typing Unban Request — User: ${username} (${deviceId})`,
+            _subject: `🚨 Swift Typing Unban Request — ${username || 'Typist'} (${deviceId})`,
             _captcha: 'false',
             _template: 'table',
-            Username: username,
-            Device_ID: deviceId,
-            Ban_Reason: banReason || 'N/A',
-            Appeal_Message: appealMessage.trim(),
-            message: `User: ${username} | Device: ${deviceId} | Reason: ${banReason || 'N/A'} | Appeal: ${appealMessage.trim()}`,
-            submitted_at: new Date().toLocaleString()
+            _url: 'https://swift-typing.me/app#/admin',
+            "1. User Name": username || 'Anonymous Typist',
+            "2. Device ID": deviceId,
+            "3. Ban Reason": banReason || 'Suspended by Administrator',
+            "4. Appeal Message": appealMessage.trim(),
+            "5. Submitted At": submitTime,
+            "6. Technical Details": `Browser: ${navigator.userAgent.substring(0, 100)} | Platform: ${navigator.platform}`,
+            "7. Admin Unban Portal Link": "https://swift-typing.me/app#/admin",
+            name: username || 'Anonymous Typist',
+            email: 'sw.esports.offical@gmail.com',
+            _replyto: 'sw.esports.offical@gmail.com'
           })
         });
 
