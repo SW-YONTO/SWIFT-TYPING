@@ -401,10 +401,13 @@ export default function AdminPortal() {
     adminAuditManager.logAction('USER_UNBAN', identifier, 'Admin unbanned account');
     setStatusMsg(`✅ Unbanned '${identifier}'.`);
 
-    // Supabase cloud sync
+    // Supabase cloud sync — delete by exact match AND case-insensitive match
     try {
       if (navigator.onLine) {
+        // Delete where device_id matches the identifier (could be username or device id)
         await supabase.from('user_moderation').delete().eq('device_id', identifier);
+        // Also try lowercase match in case ban was stored with different casing
+        await supabase.from('user_moderation').delete().eq('device_id', identifier.toLowerCase());
       }
     } catch (e) {}
   };

@@ -312,22 +312,67 @@ function BannedScreenWithModals({ banReason, currentUser }) {
             'Accept': 'application/json'
           },
           body: JSON.stringify({
-            _subject: `🚨 [REF-${refCode}] Swift Typing Unban Request — ${username || 'Typist'} (${deviceId})`,
+            _subject: `🚨 [REF-${refCode}] Unban Appeal — ${username || 'Typist'}`,
             _captcha: 'false',
-            _template: 'table',
+            _template: 'box',
             _url: 'https://swift-typing.me/app#/admin',
-            message: `Unban Appeal from ${username || 'Anonymous'} | Device: ${deviceId} | Reason: ${banReason || 'N/A'} | Appeal: ${appealMessage.trim()}`,
-            "Reference Code": `REF-${refCode}`,
-            "1. User Name": username || 'Anonymous Typist',
-            "2. Device ID": deviceId,
-            "3. Ban Reason": banReason || 'Suspended by Administrator',
-            "4. Appeal Message": appealMessage.trim(),
-            "5. Submitted At": submitTime,
-            "6. Technical Details": `Browser: ${navigator.userAgent.substring(0, 100)} | Platform: ${navigator.platform}`,
-            "7. Admin Unban Portal Link": "https://swift-typing.me/app#/admin",
             name: username || 'Anonymous Typist',
             email: 'sw.esports.offical@gmail.com',
-            _replyto: 'sw.esports.offical@gmail.com'
+            _replyto: 'sw.esports.offical@gmail.com',
+            message: `
+<div style="font-family:'Segoe UI',Arial,sans-serif;max-width:560px;margin:0 auto;">
+  <div style="background:linear-gradient(135deg,#1e3a5f 0%,#0f172a 100%);padding:28px 24px;border-radius:16px 16px 0 0;text-align:center;">
+    <h1 style="margin:0;color:#fff;font-size:22px;font-weight:800;letter-spacing:-0.5px;">⚡ Swift Typing</h1>
+    <p style="margin:6px 0 0;color:#94a3b8;font-size:12px;font-weight:500;">Unban Appeal Notification</p>
+  </div>
+
+  <div style="background:#f8fafc;padding:24px;border-left:1px solid #e2e8f0;border-right:1px solid #e2e8f0;">
+    <div style="background:#fff;border:1px solid #e2e8f0;border-radius:12px;overflow:hidden;">
+      <div style="background:#fef2f2;padding:12px 16px;border-bottom:1px solid #fecaca;">
+        <span style="color:#dc2626;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;">🚨 Unban Request — REF-${refCode}</span>
+      </div>
+      <table style="width:100%;border-collapse:collapse;font-size:13px;">
+        <tr style="border-bottom:1px solid #f1f5f9;">
+          <td style="padding:12px 16px;color:#64748b;font-weight:600;width:140px;vertical-align:top;">User Name</td>
+          <td style="padding:12px 16px;color:#0f172a;font-weight:700;">${username || 'Anonymous Typist'}</td>
+        </tr>
+        <tr style="border-bottom:1px solid #f1f5f9;background:#f8fafc;">
+          <td style="padding:12px 16px;color:#64748b;font-weight:600;vertical-align:top;">Device ID</td>
+          <td style="padding:12px 16px;color:#0f172a;font-family:monospace;font-size:12px;">${deviceId}</td>
+        </tr>
+        <tr style="border-bottom:1px solid #f1f5f9;">
+          <td style="padding:12px 16px;color:#64748b;font-weight:600;vertical-align:top;">Ban Reason</td>
+          <td style="padding:12px 16px;color:#dc2626;font-weight:600;font-style:italic;">${banReason || 'Suspended by Administrator'}</td>
+        </tr>
+        <tr style="border-bottom:1px solid #f1f5f9;background:#f8fafc;">
+          <td style="padding:12px 16px;color:#64748b;font-weight:600;vertical-align:top;">Appeal Message</td>
+          <td style="padding:12px 16px;color:#0f172a;line-height:1.5;">${appealMessage.trim()}</td>
+        </tr>
+        <tr style="border-bottom:1px solid #f1f5f9;">
+          <td style="padding:12px 16px;color:#64748b;font-weight:600;vertical-align:top;">Submitted At</td>
+          <td style="padding:12px 16px;color:#0f172a;">${submitTime}</td>
+        </tr>
+        <tr style="background:#f8fafc;">
+          <td style="padding:12px 16px;color:#64748b;font-weight:600;vertical-align:top;">Platform</td>
+          <td style="padding:12px 16px;color:#475569;font-size:11px;">${navigator.platform} — ${navigator.userAgent.substring(0, 80)}</td>
+        </tr>
+      </table>
+    </div>
+
+    <div style="text-align:center;padding:20px 0 8px;">
+      <a href="https://swift-typing.me/app#/admin" style="display:inline-block;background:linear-gradient(135deg,#2563eb,#1d4ed8);color:#fff;font-size:14px;font-weight:700;padding:14px 36px;border-radius:10px;text-decoration:none;letter-spacing:0.3px;">
+        ⚡ Open Admin Portal &amp; Review
+      </a>
+      <p style="margin:10px 0 0;color:#94a3b8;font-size:11px;">Click above to unban or manage this user directly</p>
+    </div>
+  </div>
+
+  <div style="background:#0f172a;padding:16px 24px;border-radius:0 0 16px 16px;text-align:center;">
+    <p style="margin:0;color:#475569;font-size:10px;">Swift Typing v3.26 · Admin Moderation System · REF-${refCode}</p>
+    <p style="margin:4px 0 0;color:#334155;font-size:10px;">swift-typing.me</p>
+  </div>
+</div>
+            `.trim()
           })
         });
 

@@ -248,7 +248,9 @@ export default function AdminModeration({
                       <div className="flex items-center gap-2">
                         <button
                           onClick={() => {
-                            handleUnbanUser(item.device_id);
+                            // Unban by both username and device_id to ensure the Supabase row is found
+                            if (item.username) handleUnbanUser(item.username);
+                            if (item.device_id && item.device_id !== item.username) handleUnbanUser(item.device_id);
                             if (handleDeleteAppeal) handleDeleteAppeal(item);
                           }}
                           className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl text-xs transition flex items-center gap-1 cursor-pointer shadow-sm"
