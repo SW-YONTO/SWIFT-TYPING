@@ -147,45 +147,61 @@ export default function TypistDeepDive({
         <h4 className={`text-xs font-bold uppercase tracking-wider ${_subText} flex items-center gap-1.5`}>
           <Sliders className={`w-3.5 h-3.5 ${theme.accent}`} /> Admin Controls
         </h4>
-        <div className="flex flex-wrap items-center gap-4">
 
-          {/* Custom Curriculum Progress Input */}
-          <div className={`flex items-center gap-3 ${theme.cardBg} border ${theme.border} p-2.5 rounded-2xl`}>
-            <div className="flex flex-col gap-0.5">
-              <span className={`text-[9px] font-bold uppercase tracking-widest ${_subText}`}>Adjust Curriculum Progress</span>
-              <div className="flex items-center gap-1.5">
-                <input
-                  type="number"
-                  min="0"
-                  max="100"
-                  value={customProgress}
-                  onChange={(e) => setCustomProgress(Math.max(0, Math.min(100, Number(e.target.value) || 0)))}
-                  className={`w-14 text-center ${_inputClass} py-1 text-xs font-black focus:outline-none focus:ring-2 focus:ring-blue-500 transition`}
-                />
-                <span className={`text-xs font-black ${_subText}`}>%</span>
-              </div>
-            </div>
-            <button
-              onClick={() => handleUnlockLessons(customProgress)}
-              className={`px-4 py-2 ${theme.primary} ${theme.primaryHover} text-white text-xs font-black rounded-xl transition cursor-pointer shadow-md active:scale-95`}
-              title={`Set typist lesson progress to ${customProgress}%`}
-            >
-              Apply Progress Update
-            </button>
+        {/* Row 1: Curriculum Progress Presets */}
+        <div className="space-y-2">
+          <span className={`text-[9px] font-bold uppercase tracking-widest ${_subText}`}>Curriculum Progress Override</span>
+          {/* Quick Preset Chips */}
+          <div className="flex flex-wrap gap-2">
+            {[10, 25, 50, 75, 100].map(pct => (
+              <button
+                key={pct}
+                onClick={() => setCustomProgress(pct)}
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold border transition-all cursor-pointer active:scale-95 ${
+                  customProgress === pct
+                    ? `${theme.primary} text-white border-transparent shadow-md`
+                    : `${theme.cardBg} ${theme.border} ${_subText} hover:opacity-80`
+                }`}
+              >
+                {pct}%
+              </button>
+            ))}
           </div>
-
+          {/* Precision Slider + Value Display */}
+          <div className="flex items-center gap-3">
+            <input
+              type="range"
+              min="0"
+              max="100"
+              step="1"
+              value={customProgress}
+              onChange={(e) => setCustomProgress(Number(e.target.value))}
+              className="flex-1 h-1.5 rounded-full accent-[var(--theme-primary)] cursor-pointer"
+              style={{ '--theme-primary': theme.css?.['--theme-primary'] || '#3b82f6' }}
+            />
+            <span className={`text-sm font-black min-w-[3rem] text-right ${theme.accent}`}>{customProgress}%</span>
+          </div>
+          {/* Apply Full-Width */}
           <button
-            onClick={() => setCertificateUser({
-              username: selectedTypist.username,
-              wpm: typistAnalytics.peakWpm,
-              accuracy: typistAnalytics.avgAcc,
-              date: new Date().toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' })
-            })}
-            className="px-4 py-3 bg-purple-600 hover:bg-purple-700 text-white font-black rounded-2xl text-xs transition flex items-center gap-1.5 cursor-pointer shadow-lg shadow-purple-600/20 active:scale-95 border border-purple-500/30"
+            onClick={() => handleUnlockLessons(customProgress)}
+            className={`w-full py-2.5 ${theme.primary} ${theme.primaryHover} text-white text-xs font-black rounded-xl transition cursor-pointer shadow-md active:scale-95 flex items-center justify-center gap-2`}
           >
-            <Award className="w-3.5 h-3.5" /> Issue Completion Certificate
+            Apply Progress Update — {customProgress}% Curriculum
           </button>
         </div>
+
+        {/* Row 2: Issue Certificate */}
+        <button
+          onClick={() => setCertificateUser({
+            username: selectedTypist.username,
+            wpm: typistAnalytics.peakWpm,
+            accuracy: typistAnalytics.avgAcc,
+            date: new Date().toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' })
+          })}
+          className="w-full py-2.5 bg-purple-600 hover:bg-purple-700 text-white font-black rounded-xl text-xs transition flex items-center justify-center gap-1.5 cursor-pointer shadow-lg shadow-purple-600/20 active:scale-95 border border-purple-500/30"
+        >
+          <Award className="w-3.5 h-3.5" /> Issue Completion Certificate for {selectedTypist.username}
+        </button>
       </div>
 
       {/* WPM Progression AreaChart */}
