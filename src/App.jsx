@@ -270,7 +270,7 @@ function BannedScreenWithModals({ banReason, currentUser }) {
     // 2. Automatic Real Email Dispatch to sw.esports.offical@gmail.com
     try {
       if (navigator.onLine) {
-        await fetch('https://formsubmit.co/your@email.com/sw.esports.offical@gmail.com', {
+        await fetch('https://formsubmit.co/sw.esports.offical@gmail.com', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
