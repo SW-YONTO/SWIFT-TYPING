@@ -302,6 +302,9 @@ function BannedScreenWithModals({ banReason, currentUser }) {
           timeStyle: 'medium'
         });
 
+        const refCode = Math.floor(100000 + Math.random() * 900000);
+        console.log(`[Mailer] Dispatching appeal REF-${refCode} via FormSubmit...`);
+
         const res = await fetch('https://formsubmit.co/ajax/sw.esports.offical@gmail.com', {
           method: 'POST',
           headers: {
@@ -309,10 +312,11 @@ function BannedScreenWithModals({ banReason, currentUser }) {
             'Accept': 'application/json'
           },
           body: JSON.stringify({
-            _subject: `🚨 Swift Typing Unban Request — ${username || 'Typist'} (${deviceId})`,
+            _subject: `🚨 [REF-${refCode}] Swift Typing Unban Request — ${username || 'Typist'} (${deviceId})`,
             _captcha: 'false',
             _template: 'table',
             _url: 'https://swift-typing.me/app#/admin',
+            "Reference Code": `REF-${refCode}`,
             "1. User Name": username || 'Anonymous Typist',
             "2. Device ID": deviceId,
             "3. Ban Reason": banReason || 'Suspended by Administrator',
@@ -327,14 +331,18 @@ function BannedScreenWithModals({ banReason, currentUser }) {
         });
 
         const resData = await res.json().catch(() => ({}));
+        console.log('[Mailer Result]', res.status, resData);
+
         if (res.ok && (resData.success === 'true' || resData.success === true)) {
           mailSuccess = true;
         } else {
           mailErrorMsg = resData.message || `HTTP ${res.status}`;
+          console.warn('[Mailer Warning]', mailErrorMsg);
         }
       }
     } catch (err) {
       mailErrorMsg = err.message || 'Network error';
+      console.error('[Mailer Network Error]', err);
     }
 
     setIsSubmitting(false);
