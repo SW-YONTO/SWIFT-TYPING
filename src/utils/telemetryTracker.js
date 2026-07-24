@@ -45,6 +45,33 @@ class TelemetryTracker {
     this.syncPastHistory();
   }
 
+  async checkBanStatus() {
+    if (!navigator.onLine) {
+      return localStorage.getItem('swift_device_banned') === 'true';
+    }
+
+    try {
+      const { data, error } = await supabase
+        .from('user_moderation')
+        .select('*')
+        .eq('device_id', this.deviceId)
+        .eq('is_banned', true)
+        .maybeSingle();
+
+      if (data) {
+        localStorage.setItem('swift_device_banned', 'true');
+        localStorage.setItem('swift_ban_reason', data.ban_reason || 'No reason specified.');
+        return true;
+      } else {
+        localStorage.setItem('swift_device_banned', 'false');
+        localStorage.removeItem('swift_ban_reason');
+        return false;
+      }
+    } catch (e) {
+      return localStorage.getItem('swift_device_banned') === 'true';
+    }
+  }
+
   getPlatformInfo() {
     const isElectron = !!(
       window.electron || 

@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { supabase } from '../utils/supabaseClient';
 import { useTheme } from '../contexts/ThemeContext';
 import { userManager, progressManager } from '../utils/storage';
+import { typingLessons } from '../data/lessons';
 import { 
   Lock, ShieldAlert, Users, Activity, 
   CheckCircle, Ban, Monitor, Zap, Award, RefreshCw, Layers,
@@ -45,14 +46,31 @@ export default function AdminPortal() {
   const [registeredUsersList, setRegisteredUsersList] = useState([]);
   const [bannedDevices, setBannedDevices] = useState([]);
   const [banInput, setBanInput] = useState('');
+  const [banReasonInput, setBanReasonInput] = useState('Abuse of service or leaderboard cheating.');
   const [statusMsg, setStatusMsg] = useState('');
   const [copiedDeviceId, setCopiedDeviceId] = useState(null);
+  
+  // Certificate Modal State
+  const [certificateUser, setCertificateUser] = useState(null);
 
   // Enterprise Sidebar & Typist Inspector States
-  const [activeTab, setActiveTab] = useState('overview'); // 'overview' | 'users' | 'moderation'
+  const getInitialTab = () => {
+    const hash = window.location.hash;
+    if (hash.includes('#users') || hash.includes('/users')) return 'users';
+    if (hash.includes('#moderation') || hash.includes('/moderation')) return 'moderation';
+    return 'overview';
+  };
+
+  const [activeTab, setActiveTab] = useState(getInitialTab()); 
   const [selectedTypist, setSelectedTypist] = useState(null);
-  const [timeRange, setTimeRange] = useState('1M'); // '1M' | '3M' | '6M'
+  const [timeRange, setTimeRange] = useState('1D'); // '1D' | '1W' | '1M' | '3M' | '6M'
+  const [isFilterExpanded, setIsFilterExpanded] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+
+  const handleTabChange = (tab) => {
+    setActiveTab(tab);
+    window.location.hash = `#/admin#${tab}`;
+  };
 
   const handleCopyDeviceId = (deviceId) => {
     if (!deviceId) return;
@@ -63,6 +81,48 @@ export default function AdminPortal() {
     setCopiedDeviceId(deviceId);
     setStatusMsg(`📋 Copied device ID (${deviceId}) & filled ban field!`);
     setTimeout(() => setCopiedDeviceId(null), 2500);
+  };
+
+  const handleUnlockLessons = (percentage) => {
+    if (!selectedTypist) return;
+    
+    // Find the local user profile matching selected typist
+    const localUsers = userManager.getUsers() || [];
+    const localUser = localUsers.find(u => u.username?.toLowerCase() === selectedTypist.username?.toLowerCase());
+    if (!localUser) {
+      setStatusMsg("⚠️ Cannot change progress: Typist profile is remote-only or not registered on this local computer.");
+      return;
+    }
+
+    // Get complete flat list of lessons
+    const flatLessons = [];
+    Object.values(typingLessons).forEach(unit => {
+      unit.lessons.forEach(l => {
+        flatLessons.push({
+          lessonId: l.id,
+          wpm: 55 + Math.floor(Math.random() * 25),
+          accuracy: 94 + Math.floor(Math.random() * 5),
+          completedAt: new Date().toISOString()
+        });
+      });
+    });
+
+    const unlockCount = Math.ceil(flatLessons.length * (percentage / 100));
+    const completedLessons = flatLessons.slice(0, unlockCount);
+
+    const progress = progressManager.getUserProgress(localUser.id);
+    progress.completedLessons = completedLessons;
+    
+    // Also simulate stats accumulation
+    progress.stats.totalTests = Math.max(progress.stats.totalTests, unlockCount);
+    progress.stats.totalTime = Math.max(progress.stats.totalTime, unlockCount * 90);
+    progress.stats.bestWPM = Math.max(progress.stats.bestWPM, 75);
+    
+    progressManager.saveUserProgress(localUser.id, progress);
+    setStatusMsg(`🔓 Successfully unlocked ${percentage}% (${unlockCount}/${flatLessons.length}) lessons for ${selectedTypist.username}!`);
+    
+    // Refresh admin data metrics
+    fetchAdminData();
   };
 
   // Compute deep analytics for selected typist
@@ -89,7 +149,12 @@ export default function AdminPortal() {
     // Combine data points
     let dataPoints = [];
     const now = Date.now();
-    const daysCutoff = timeRange === '1M' ? 30 : timeRange === '3M' ? 90 : 180;
+    let daysCutoff = 30;
+    if (timeRange === '1D') daysCutoff = 1;
+    else if (timeRange === '1W') daysCutoff = 7;
+    else if (timeRange === '1M') daysCutoff = 30;
+    else if (timeRange === '3M') daysCutoff = 90;
+    else if (timeRange === '6M') daysCutoff = 180;
     const cutoffTime = now - daysCutoff * 24 * 60 * 60 * 1000;
 
     // Add telemetry logs
@@ -482,8 +547,13 @@ export default function AdminPortal() {
   const handleBanUser = async () => {
     if (!banInput.trim()) return;
     try {
-      await supabase.from('user_moderation').upsert({ device_id: banInput.trim(), is_banned: true, ban_reason: 'Flagged by Admin' });
+      await supabase.from('user_moderation').upsert({ 
+        device_id: banInput.trim(), 
+        is_banned: true, 
+        ban_reason: banReasonInput.trim() || 'Abuse of service or leaderboard cheating.' 
+      });
       setBanInput('');
+      setBanReasonInput('Abuse of service or leaderboard cheating.');
       setStatusMsg('Device successfully added to ban list!');
       fetchAdminData();
     } catch (err) {
@@ -620,7 +690,7 @@ export default function AdminPortal() {
       {/* Enterprise Sidebar & Tab Navigation Bar */}
       <div className={`flex items-center gap-2 border-b ${theme.border} pb-3 overflow-x-auto`}>
         <button
-          onClick={() => setActiveTab('overview')}
+          onClick={() => handleTabChange('overview')}
           className={`flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold text-sm transition-all cursor-pointer ${
             activeTab === 'overview' 
               ? `${theme.accent} ${theme.secondary || 'bg-blue-500/15'} border ${theme.border}` 
@@ -632,7 +702,7 @@ export default function AdminPortal() {
 
         <button
           onClick={() => {
-            setActiveTab('users');
+            handleTabChange('users');
             if (!selectedTypist && registeredUsersList.length > 0) {
               setSelectedTypist(registeredUsersList[0]);
             }
@@ -647,7 +717,7 @@ export default function AdminPortal() {
         </button>
 
         <button
-          onClick={() => setActiveTab('moderation')}
+          onClick={() => handleTabChange('moderation')}
           className={`flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold text-sm transition-all cursor-pointer ${
             activeTab === 'moderation' 
               ? `text-red-500 bg-red-500/10 border border-red-500/30` 
@@ -858,8 +928,8 @@ export default function AdminPortal() {
                     onClick={() => setSelectedTypist(u)}
                     className={`p-3.5 rounded-xl border transition-all cursor-pointer flex justify-between items-center ${
                       selectedTypist?.username === u.username
-                        ? `${theme.accent} ${theme.secondary || 'bg-blue-500/15'} border-blue-500 font-bold shadow-sm`
-                        : `${theme.border} hover:opacity-80`
+                        ? 'bg-blue-500/10 border-blue-500/50 text-blue-400 font-extrabold shadow-sm'
+                        : 'border-slate-700/50 hover:bg-slate-800/20 text-slate-300'
                     }`}
                   >
                     <div>
@@ -897,49 +967,96 @@ export default function AdminPortal() {
                       <Download className="w-3.5 h-3.5" /> Export Recovery File
                     </button>
 
-                    {/* 1M / 3M / 6M Timeline Switcher */}
-                    <div className="flex items-center gap-1.5 p-1 bg-slate-500/10 border border-slate-500/20 rounded-xl">
-                      <Filter className="w-3.5 h-3.5 ml-2 text-slate-400" />
-                      {['1M', '3M', '6M'].map((range) => (
-                        <button
-                          key={range}
-                          onClick={() => setTimeRange(range)}
-                          className={`px-3 py-1 rounded-lg text-xs font-bold transition cursor-pointer ${
-                            timeRange === range
-                              ? 'bg-blue-600 text-white shadow-sm'
-                              : 'text-slate-400 hover:text-slate-200'
-                          }`}
-                        >
-                          {range}
-                        </button>
-                      ))}
+                    {/* Collapsible/Expandable Timeline Filter Switcher */}
+                    <div 
+                      onClick={() => setIsFilterExpanded(!isFilterExpanded)}
+                      className={`flex items-center gap-1.5 p-1 bg-slate-500/10 border border-slate-500/20 rounded-xl cursor-pointer transition-all duration-300 overflow-hidden ${
+                        isFilterExpanded ? 'max-w-[320px]' : 'max-w-[80px]'
+                      }`}
+                      title={isFilterExpanded ? 'Click to collapse filter options' : 'Click to expand filter options'}
+                    >
+                      <Filter className="w-3.5 h-3.5 ml-1.5 text-slate-400 flex-shrink-0" />
+                      
+                      {isFilterExpanded ? (
+                        <div className="flex items-center gap-1">
+                          {['1D', '1W', '1M', '3M', '6M'].map((range) => (
+                            <button
+                              key={range}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setTimeRange(range);
+                                setIsFilterExpanded(false);
+                              }}
+                              className={`px-2 py-0.5 rounded-lg text-xs font-bold transition cursor-pointer ${
+                                timeRange === range
+                                  ? 'bg-blue-600 text-white shadow-sm'
+                                  : 'text-slate-400 hover:text-slate-200'
+                              }`}
+                            >
+                              {range}
+                            </button>
+                          ))}
+                        </div>
+                      ) : (
+                        <span className="text-xs font-extrabold text-blue-400 mr-2 flex-shrink-0">{timeRange}</span>
+                      )}
                     </div>
                   </div>
                 </div>
 
                 {/* Metric Summary Cards */}
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                  <div className={`p-4 border ${theme.border} rounded-2xl ${theme.secondary || 'bg-blue-500/5'}`}>
+                  <div className="bg-slate-800/30 border border-slate-700/50 p-4 rounded-2xl text-center">
                     <p className={`text-xs uppercase font-semibold ${subTextClass}`}>Peak Speed</p>
-                    <p className={`text-2xl font-black mt-1 ${theme.accent}`}>{typistAnalytics.peakWpm} <span className="text-xs font-normal">WPM</span></p>
+                    <p className="text-2xl font-black mt-1 text-blue-400">{typistAnalytics.peakWpm} <span className="text-xs font-normal text-slate-400">WPM</span></p>
                   </div>
 
-                  <div className={`p-4 border ${theme.border} rounded-2xl ${theme.secondary || 'bg-blue-500/5'}`}>
+                  <div className="bg-slate-800/30 border border-slate-700/50 p-4 rounded-2xl text-center">
                     <p className={`text-xs uppercase font-semibold ${subTextClass}`}>Avg Accuracy</p>
-                    <p className="text-2xl font-black mt-1 text-emerald-500">{typistAnalytics.avgAcc}%</p>
+                    <p className="text-2xl font-black mt-1 text-emerald-400">{typistAnalytics.avgAcc}%</p>
                   </div>
 
-                  <div className={`p-4 border ${theme.border} rounded-2xl ${theme.secondary || 'bg-blue-500/5'}`}>
+                  <div className="bg-slate-800/30 border border-slate-700/50 p-4 rounded-2xl text-center">
                     <p className={`text-xs uppercase font-semibold ${subTextClass}`}>Lessons Done</p>
-                    <p className="text-2xl font-black mt-1 text-purple-500">{typistAnalytics.completedLessonsCount}</p>
+                    <p className="text-2xl font-black mt-1 text-purple-400">{typistAnalytics.completedLessonsCount}</p>
                   </div>
 
-                  <div className={`p-4 border ${theme.border} rounded-2xl ${theme.secondary || 'bg-blue-500/5'}`}>
+                  <div className="bg-slate-800/30 border border-slate-700/50 p-4 rounded-2xl text-center">
                     <p className={`text-xs uppercase font-semibold ${subTextClass}`}>Practice Time</p>
-                    <p className="text-2xl font-black mt-1 text-amber-500">{typistAnalytics.timeSpentMins} <span className="text-xs font-normal">mins</span></p>
+                    <p className="text-2xl font-black mt-1 text-amber-400">{typistAnalytics.timeSpentMins} <span className="text-xs font-normal text-slate-400">mins</span></p>
                   </div>
                 </div>
-
+                {/* Admin Operations Panel */}
+                <div className={`p-5 border ${theme.border} rounded-2xl ${theme.cardBg} space-y-4`}>
+                  <h4 className="text-xs font-bold uppercase tracking-wider text-slate-400">Admin Controls</h4>
+                  <div className="flex flex-wrap items-center gap-3">
+                    <button
+                      onClick={() => handleUnlockLessons(50)}
+                      className="px-4 py-2 border border-slate-600 hover:bg-slate-800 rounded-xl text-xs font-bold transition cursor-pointer"
+                      title="Set user completed lessons progress to 50%"
+                    >
+                      Unlock 50% Lessons
+                    </button>
+                    <button
+                      onClick={() => handleUnlockLessons(100)}
+                      className="px-4 py-2 border border-slate-600 hover:bg-slate-800 rounded-xl text-xs font-bold transition cursor-pointer"
+                      title="Set user completed lessons progress to 100%"
+                    >
+                      Unlock 100% Lessons
+                    </button>
+                    <button
+                      onClick={() => setCertificateUser({
+                        username: selectedTypist.username,
+                        wpm: typistAnalytics.peakWpm,
+                        accuracy: typistAnalytics.avgAcc,
+                        date: new Date().toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' })
+                      })}
+                      className="px-4 py-2 bg-purple-600 hover:bg-purple-500 text-white font-bold rounded-xl text-xs transition flex items-center gap-1.5 cursor-pointer"
+                    >
+                      <Award className="w-3.5 h-3.5" /> Issue Completion Certificate
+                    </button>
+                  </div>
+                </div>
                 {/* 1M / 3M / 6M WPM Progression AreaChart */}
                 <div className="space-y-3">
                   <h3 className="text-sm font-extrabold uppercase tracking-wider flex items-center gap-2">
@@ -988,16 +1105,32 @@ export default function AdminPortal() {
               <Ban className="w-5 h-5 text-red-500" /> Device Moderation & Banning
             </h3>
             <p className={`text-xs ${subTextClass}`}>Ban fraudulent device IDs from syncing leaderboard scores</p>
-            <div className="flex gap-2">
-              <input
-                type="text"
-                value={banInput}
-                onChange={(e) => setBanInput(e.target.value)}
-                placeholder="Paste device_id to ban..."
-                className={`flex-1 ${inputClass} font-mono py-2`}
-              />
-              <button onClick={handleBanUser} className="px-4 py-2 bg-red-600 hover:bg-red-500 text-white font-bold rounded-xl text-sm transition cursor-pointer">
-                Ban
+            <div className="space-y-3">
+              <div className="space-y-1">
+                <label className={`text-[10px] font-bold uppercase tracking-wider ${subTextClass}`}>Device ID</label>
+                <input
+                  type="text"
+                  value={banInput}
+                  onChange={(e) => setBanInput(e.target.value)}
+                  placeholder="Paste device_id to ban..."
+                  className={`w-full ${inputClass} font-mono py-2.5 text-xs`}
+                />
+              </div>
+              <div className="space-y-1">
+                <label className={`text-[10px] font-bold uppercase tracking-wider ${subTextClass}`}>Reason for Suspension</label>
+                <input
+                  type="text"
+                  value={banReasonInput}
+                  onChange={(e) => setBanReasonInput(e.target.value)}
+                  placeholder="Enter custom reason..."
+                  className={`w-full ${inputClass} py-2.5 text-xs`}
+                />
+              </div>
+              <button 
+                onClick={handleBanUser} 
+                className="w-full py-3 bg-red-600 hover:bg-red-505 text-white font-black rounded-xl text-xs transition cursor-pointer flex items-center justify-center gap-1.5"
+              >
+                <Ban className="w-3.5 h-3.5" /> Ban Device ID & Account
               </button>
             </div>
           </div>
@@ -1016,6 +1149,117 @@ export default function AdminPortal() {
                 ))
               )}
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Certificate of Completion Modal */}
+      {certificateUser && (
+        <div className="fixed inset-0 z-50 bg-black/85 flex items-center justify-center p-4 print:p-0 print:bg-white print:static">
+          <style dangerouslySetInnerHTML={{__html: `
+            @media print {
+              body * {
+                visibility: hidden !important;
+              }
+              #cert-print-area, #cert-print-area * {
+                visibility: visible !important;
+              }
+              #cert-print-area {
+                position: absolute;
+                left: 0;
+                top: 0;
+                width: 100vw;
+                height: 100vh;
+                margin: 0;
+                padding: 2rem;
+                background: white !important;
+                color: black !important;
+                border: none !important;
+                box-shadow: none !important;
+              }
+              .print\\:hidden {
+                display: none !important;
+              }
+              .print\\:text-black {
+                color: #000000 !important;
+              }
+              .print\\:border-amber-600 {
+                border-color: #d97706 !important;
+              }
+            }
+          `}} />
+          
+          <div id="cert-print-area" className="bg-slate-900 border border-slate-700/50 rounded-3xl p-8 max-w-2xl w-full space-y-6 shadow-2xl relative print:border-none print:shadow-none print:bg-white print:text-black">
+            
+            {/* Certificate Document Border */}
+            <div className="border-4 border-double border-amber-500/60 p-8 space-y-8 text-center bg-slate-950/40 relative print:bg-transparent print:border-amber-600 print:text-black">
+              
+              {/* Corner Ornaments */}
+              <div className="absolute top-2 left-2 text-amber-500/50 font-serif text-lg">✦</div>
+              <div className="absolute top-2 right-2 text-amber-500/50 font-serif text-lg">✦</div>
+              <div className="absolute bottom-2 left-2 text-amber-500/50 font-serif text-lg">✦</div>
+              <div className="absolute bottom-2 right-2 text-amber-500/50 font-serif text-lg">✦</div>
+
+              <div className="space-y-2">
+                <Trophy className="w-12 h-12 mx-auto text-amber-500 print:text-amber-600" />
+                <h1 className="text-3xl font-serif text-amber-500 font-bold uppercase tracking-wider print:text-amber-600">Certificate of Completion</h1>
+                <p className="text-[10px] uppercase tracking-widest text-slate-400 font-mono print:text-slate-500">Swift Typing Touch Typing Academy</p>
+              </div>
+
+              <div className="space-y-4">
+                <p className="text-sm font-serif italic text-slate-300 print:text-slate-700">This prestigious award is proudly presented to</p>
+                <h2 className="text-4xl font-extrabold text-white font-serif border-b-2 border-amber-500/30 max-w-md mx-auto pb-2 print:text-black print:border-amber-600">
+                  {certificateUser.username}
+                </h2>
+                <p className="text-xs text-slate-400 max-w-md mx-auto leading-relaxed print:text-slate-600">
+                  for successfully mastering touch typing fundamentals, achieving outstanding finger muscle coordination, and completing the Touch Typing Lesson Curriculum.
+                </p>
+              </div>
+
+              {/* Stats Block */}
+              <div className="grid grid-cols-2 gap-4 max-w-sm mx-auto p-4 bg-slate-900/60 border border-slate-800 rounded-xl print:bg-slate-100 print:border-slate-300">
+                <div>
+                  <p className="text-[9px] uppercase tracking-wider text-slate-500">Peak WPM Speed</p>
+                  <p className="text-lg font-black text-blue-400">{certificateUser.wpm} WPM</p>
+                </div>
+                <div>
+                  <p className="text-[9px] uppercase tracking-wider text-slate-500">Average Accuracy</p>
+                  <p className="text-lg font-black text-emerald-400">{certificateUser.accuracy}%</p>
+                </div>
+              </div>
+
+              {/* Signatures */}
+              <div className="flex justify-between items-end pt-6 max-w-md mx-auto text-xs text-slate-400 print:text-slate-800">
+                <div className="space-y-1">
+                  <p className="font-semibold text-slate-300 italic font-serif print:text-black">Touch Typing Instructor</p>
+                  <div className="w-24 border-t border-slate-700 mx-auto print:border-slate-500"></div>
+                  <p className="text-[9px] text-slate-500">Signature</p>
+                </div>
+                <div>
+                  <p className="font-semibold text-slate-300 print:text-black">{certificateUser.date}</p>
+                  <div className="w-24 border-t border-slate-700 mx-auto print:border-slate-500"></div>
+                  <p className="text-[9px] text-slate-500">Date Issued</p>
+                </div>
+              </div>
+
+            </div>
+
+            {/* Print & Close Controls */}
+            <div className="flex justify-end gap-3 print:hidden">
+              <button
+                onClick={() => setCertificateUser(null)}
+                className="px-4 py-2 border border-slate-700 hover:bg-slate-800 text-slate-300 font-semibold rounded-xl text-xs transition cursor-pointer"
+              >
+                Close
+              </button>
+              <button
+                onClick={() => window.print()}
+                className="px-4 py-2 bg-amber-500 hover:bg-amber-600 text-slate-950 font-black rounded-xl text-xs transition flex items-center gap-1.5 cursor-pointer shadow-lg shadow-amber-500/10"
+              >
+                <Download className="w-3.5 h-3.5" /> Print / Save PDF
+              </button>
+            </div>
+
           </div>
         </div>
       )}

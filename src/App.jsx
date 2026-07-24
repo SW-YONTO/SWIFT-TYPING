@@ -8,6 +8,7 @@ import Navigation from './components/Navigation';
 import UpdateToast from './components/UpdateToast';
 import AdBanner from './components/AdBanner';
 
+import { ShieldAlert } from 'lucide-react';
 import { telemetry } from './utils/telemetryTracker';
 
 // Lazy-loaded page components for code splitting
@@ -41,6 +42,8 @@ const PageLoader = () => {
 function App() {
   const [currentUser, setCurrentUser] = useState(null);
   const [currentPage, setCurrentPage] = useState('lessons');
+  const [isBanned, setIsBanned] = useState(false);
+  const [banReason, setBanReason] = useState('No reason specified.');
   const [userSettings, setUserSettings] = useState({
     timeLimit: 60,
     wordLimit: 50,
@@ -50,6 +53,16 @@ function App() {
   useEffect(() => {
     // Initialize anonymous telemetry tracking
     telemetry.init();
+
+    // Check ban status
+    const checkBan = async () => {
+      const banned = await telemetry.checkBanStatus();
+      if (banned) {
+        setIsBanned(true);
+        setBanReason(localStorage.getItem('swift_ban_reason') || 'No reason specified.');
+      }
+    };
+    checkBan();
 
     // Try to load current user on app start
     const user = userManager.getCurrentUser();
@@ -96,6 +109,51 @@ function App() {
       progressManager.updateSettings(currentUser.id, updatedSettings);
     }
   };
+
+  // Show banned block screen if device is restricted
+  if (isBanned) {
+    return (
+      <ThemeProvider>
+        <div className="min-h-screen bg-slate-950 flex items-center justify-center p-4">
+          <div className="max-w-md w-full bg-slate-900 border border-red-500/30 rounded-3xl p-8 space-y-6 shadow-2xl text-center">
+            <div className="w-16 h-16 bg-red-500/10 border border-red-500/30 rounded-full flex items-center justify-center mx-auto text-red-500 animate-pulse">
+              <ShieldAlert className="w-8 h-8" />
+            </div>
+            <div className="space-y-2">
+              <h1 className="text-2xl font-black text-white">Access Suspended</h1>
+              <p className="text-sm text-slate-400">
+                Your device has been banned from accessing Swift Typing cloud features.
+              </p>
+            </div>
+            <div className="p-4 bg-red-500/5 border border-red-500/20 rounded-2xl text-left space-y-1">
+              <p className="text-xs font-bold text-red-500 uppercase tracking-wider">Reason for Suspension:</p>
+              <p className="text-sm text-slate-300 font-medium italic">"{banReason}"</p>
+            </div>
+            <div className="grid grid-cols-1 gap-3">
+              <a
+                href={`mailto:support@swift-typing.com?subject=Unban%20Request%20-%20Device%20${telemetry.deviceId}&body=Dear%20Support,%0D%0A%0D%0AMy%20Device%20ID%20is:%20${telemetry.deviceId}%0D%0AMy%20Username%20is:%20${currentUser?.username || 'Unknown'}%0D%0A%0D%0APlease%20review%20my%20device%20ban.%20Reason:%20${banReason}`}
+                className="w-full py-3.5 bg-red-600 hover:bg-red-500 text-white font-bold rounded-2xl transition shadow-lg shadow-red-600/20 text-center text-sm"
+              >
+                Request for Unban
+              </a>
+              <button
+                onClick={() => {
+                  if (confirm("WARNING: Deleting your account will clear all your lesson progress, stats, and achievements permanently from this device. Are you sure you want to proceed to create a new profile?")) {
+                    localStorage.clear();
+                    window.location.reload();
+                  }
+                }}
+                className="w-full py-3.5 bg-slate-800 hover:bg-slate-700 text-slate-300 font-semibold rounded-2xl border border-slate-700 hover:border-slate-600 transition text-sm cursor-pointer"
+              >
+                Delete Account & Start Fresh
+              </button>
+            </div>
+            <p className="text-[10px] text-slate-500 font-mono">Device ID: {telemetry.deviceId}</p>
+          </div>
+        </div>
+      </ThemeProvider>
+    );
+  }
 
   // Show user manager if no user is selected
   if (!currentUser) {
