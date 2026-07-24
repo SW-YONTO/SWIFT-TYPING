@@ -1,9 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { supabase } from '../utils/supabaseClient';
 import { useTheme } from '../contexts/ThemeContext';
-import { userManager, progressManager } from '../utils/storage';
+import { userManager, progressManager, adminAuditManager } from '../utils/storage';
 import { typingLessons } from '../data/lessons';
-import { Users, Ban, RefreshCw, LogOut, LayoutDashboard, CheckCircle } from 'lucide-react';
+import { Users, Ban, RefreshCw, LogOut, LayoutDashboard, CheckCircle, Clock } from 'lucide-react';
 
 import AdminLockScreen     from '../components/admin/AdminLockScreen';
 import AdminOverview       from '../components/admin/AdminOverview';
@@ -24,9 +24,10 @@ export default function AdminPortal() {
   const [authError,       setAuthError]       = useState('');
   const [isShaking,       setIsShaking]       = useState(false);
 
-  // ─── Loading / Status ────────────────────────────────────────
-  const [loading,    setLoading]    = useState(false);
-  const [statusMsg,  setStatusMsg]  = useState('');
+  // ─── Loading / Status / Auto-Refresh ───────────────────────
+  const [loading,             setLoading]             = useState(false);
+  const [statusMsg,           setStatusMsg]           = useState('');
+  const [autoRefreshInterval, setAutoRefreshInterval] = useState(0); // 0 = off, 30 = 30s, 60 = 1m, 300 = 5m
 
   // ─── Overview data ───────────────────────────────────────────
   const [stats, setStats] = useState({
@@ -38,12 +39,13 @@ export default function AdminPortal() {
   const [platformDistribution, setPlatformDistribution] = useState([]);
   const [telemetryLogs,        setTelemetryLogs]        = useState([]);
 
-  // ─── Users / Moderation ──────────────────────────────────────
+  // ─── Users / Moderation / Audit Logs ────────────────────────
   const [registeredUsersList, setRegisteredUsersList] = useState([]);
   const [bannedDevices,       setBannedDevices]       = useState([]);
   const [banInput,            setBanInput]            = useState('');
   const [banReasonInput,      setBanReasonInput]      = useState('Abuse of service or leaderboard cheating.');
   const [copiedDeviceId,      setCopiedDeviceId]      = useState(null);
+  const [auditLogs,           setAuditLogs]           = useState([]);
 
   // ─── Navigation / UI ─────────────────────────────────────────
   const getInitialTab = () => {
@@ -60,10 +62,10 @@ export default function AdminPortal() {
   const [searchQuery,       setSearchQuery]       = useState('');
   const [certificateUser,   setCertificateUser]   = useState(null);
 
-  // ─── Theme helpers (computed once, shared across sub-components) ──
-  const cardClass      = `${theme.cardBg} ${theme.border} border shadow-2xl rounded-3xl transition-all duration-300`;
-  const subTextClass   = theme.textSecondary || 'text-gray-400';
-  const inputClass     = `${theme.inputBg} ${theme.border} border ${theme.text} rounded-2xl px-4 py-3.5 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all duration-200`;
+  // ─── Theme styling helpers ───────────────────────────
+  const cardClass    = `${theme.cardBg} ${theme.border} border shadow-xl rounded-3xl transition-all duration-300`;
+  const subTextClass = theme.textSecondary || 'text-gray-400';
+  const inputClass   = `${theme.inputBg} ${theme.border} border ${theme.text} rounded-2xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all duration-200`;
 
   // ─── Routing helpers ─────────────────────────────────────────
   const handleTabChange = (tab) => {
@@ -95,6 +97,20 @@ export default function AdminPortal() {
     if (registeredUsersList.length > 0) handleHashChange();
     return () => window.removeEventListener('hashchange', handleHashChange);
   }, [registeredUsersList]);
+
+  // Load audit logs on mount
+  useEffect(() => {
+    setAuditLogs(adminAuditManager.getLogs());
+  }, []);
+
+  // Auto Refresh Interval Timer (I-5)
+  useEffect(() => {
+    if (!isAuthenticated || autoRefreshInterval <= 0) return;
+    const interval = setInterval(() => {
+      fetchAdminData();
+    }, autoRefreshInterval * 1000);
+    return () => clearInterval(interval);
+  }, [isAuthenticated, autoRefreshInterval]);
 
   // ─── Auth ─────────────────────────────────────────────────────
   const triggerShake = () => { setIsShaking(true); setTimeout(() => setIsShaking(false), 600); };
@@ -223,26 +239,51 @@ export default function AdminPortal() {
       }
     } catch (e) {}
 
+    setAuditLogs(adminAuditManager.getLogs());
     setLoading(false);
   }
 
-  // ─── Moderation ───────────────────────────────────────────────
+  // ─── Moderation (H-8, H-10, H-11, A-7) ───────────────────────────
   const handleBanUser = async () => {
-    if (!banInput.trim()) return;
+    const target = banInput.trim();
+    if (!target) return;
+    const reason = banReasonInput.trim() || 'Abuse of service or leaderboard cheating.';
     try {
-      await supabase.from('user_moderation').upsert({ device_id: banInput.trim(), is_banned: true, ban_reason: banReasonInput.trim() || 'Abuse of service.' });
+      await supabase.from('user_moderation').upsert({ 
+        device_id: target, 
+        is_banned: true, 
+        ban_reason: reason 
+      });
+      adminAuditManager.logAction('USER_BAN', target, `Reason: ${reason}`);
       setBanInput('');
-      setStatusMsg('Device successfully added to ban list!');
+      setStatusMsg(`🚫 Account/Device '${target}' added to ban list!`);
       fetchAdminData();
-    } catch { setStatusMsg('Device banned locally.'); }
+    } catch { 
+      adminAuditManager.logAction('USER_BAN', target, `Locally banned. Reason: ${reason}`);
+      setStatusMsg(`Locally banned '${target}'.`); 
+    }
+  };
+
+  const handleQuickBan = (user) => {
+    const username = user.username || user.id;
+    setBanInput(username);
+    setActiveTab('moderation');
+    setStatusMsg(`Pre-filled ban input with username '${username}'.`);
   };
 
   const handleUnbanUser = async (deviceId) => {
     try {
       await supabase.from('user_moderation').delete().eq('device_id', deviceId);
-      setStatusMsg(`Device ${deviceId.substring(0, 8)}... unbanned.`);
+      adminAuditManager.logAction('USER_UNBAN', deviceId, 'Admin removed suspension');
+      setStatusMsg(`Unbanned '${deviceId}'.`);
       fetchAdminData();
     } catch {}
+  };
+
+  const handleClearAuditLogs = () => {
+    adminAuditManager.clearLogs();
+    setAuditLogs([]);
+    setStatusMsg('Audit logs cleared.');
   };
 
   const handleCopyDeviceId = (deviceId) => {
@@ -254,7 +295,49 @@ export default function AdminPortal() {
     setTimeout(() => setCopiedDeviceId(null), 2500);
   };
 
-  // ─── Progress / Unlock ────────────────────────────────────────
+  // ─── Quick Cert & Export ─────────────────────────────────────
+  const handleIssueCertQuick = (user) => {
+    setSelectedTypist(user);
+    setCertificateUser({
+      username: user.username,
+      wpm: user.averageWPM || 60,
+      accuracy: 96,
+      date: new Date().toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' })
+    });
+    adminAuditManager.logAction('CERTIFICATE_ISSUED', user.username, `WPM: ${user.averageWPM || 60}`);
+  };
+
+  const handleExportBackupQuick = (user) => {
+    setSelectedTypist(user);
+    handleExportBackup();
+  };
+
+  // ─── Granular Single Lesson Toggle (E-6) ─────────────────────
+  const handleToggleSingleLesson = (username, lessonId) => {
+    const localUser = (userManager.getUsers() || []).find(u => u.username?.toLowerCase() === username.toLowerCase());
+    if (!localUser) {
+      setStatusMsg("⚠️ Profile is remote-only or not registered on this device.");
+      return;
+    }
+    const progress = progressManager.getUserProgress(localUser.id);
+    const exists = progress.completedLessons.some(l => l.lessonId === lessonId);
+    if (exists) {
+      progress.completedLessons = progress.completedLessons.filter(l => l.lessonId !== lessonId);
+    } else {
+      progress.completedLessons.push({
+        lessonId,
+        wpm: 60,
+        accuracy: 95,
+        completedAt: new Date().toISOString()
+      });
+    }
+    progressManager.saveUserProgress(localUser.id, progress);
+    adminAuditManager.logAction('PROGRESS_UPDATE', username, `${exists ? 'Removed' : 'Unlocked'} single lesson '${lessonId}'`);
+    setStatusMsg(`${exists ? '🔒 Locked' : '🔓 Unlocked'} lesson '${lessonId}' for ${username}!`);
+    fetchAdminData();
+  };
+
+  // ─── Progress / Bulk Unlock ────────────────────────────────────
   const handleUnlockLessons = (percentage) => {
     if (!selectedTypist) return;
     const localUser = (userManager.getUsers() || []).find(u => u.username?.toLowerCase() === selectedTypist.username?.toLowerCase());
@@ -274,6 +357,8 @@ export default function AdminPortal() {
     progress.stats.totalTime   = Math.max(progress.stats.totalTime, unlockCount * 90);
     progress.stats.bestWPM     = Math.max(progress.stats.bestWPM, 75);
     progressManager.saveUserProgress(localUser.id, progress);
+
+    adminAuditManager.logAction('PROGRESS_UPDATE', selectedTypist.username, `Bulk progress set to ${percentage}% (${unlockCount} lessons)`);
     setStatusMsg(`🔓 Unlocked ${percentage}% (${unlockCount}/${flatLessons.length}) lessons for ${selectedTypist.username}!`);
     fetchAdminData();
   };
@@ -317,6 +402,19 @@ export default function AdminPortal() {
     };
   };
 
+  // Get completed lessons list for selected user
+  const getUserCompletedLessons = () => {
+    if (!selectedTypist) return [];
+    try {
+      const u = (userManager.getUsers() || []).find(lu => lu.username?.toLowerCase() === selectedTypist.username?.toLowerCase());
+      if (u) {
+        const prog = progressManager.getUserProgress(u.id);
+        return prog?.completedLessons || [];
+      }
+    } catch {}
+    return [];
+  };
+
   // ─── Export Recovery ──────────────────────────────────────────
   const handleExportBackup = () => {
     if (!selectedTypist) return;
@@ -349,6 +447,8 @@ export default function AdminPortal() {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a'); a.href = url; a.download = `swift-typing-recovery-${selectedTypist.username}.json`;
     document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(url);
+    
+    adminAuditManager.logAction('EXPORT_DATA', selectedTypist.username, 'Exported JSON recovery file');
     setStatusMsg(`💾 Recovery file exported for ${selectedTypist.username}!`);
   };
 
@@ -375,23 +475,42 @@ export default function AdminPortal() {
   const tabs = [
     { id: 'overview',    label: 'Overview Dashboard',              icon: <LayoutDashboard className="w-4 h-4" />, count: null,                   activeClass: `${theme.accent} ${theme.secondary} border ${theme.border}`, },
     { id: 'users',       label: 'Typist Profiles & Progression',   icon: <Users className="w-4 h-4" />,          count: registeredUsersList.length, activeClass: `${theme.accent} ${theme.secondary} border ${theme.border}`, },
-    { id: 'moderation',  label: 'Moderation & Bans',               icon: <Ban className="w-4 h-4 text-red-500" />, count: bannedDevices.length,  activeClass: 'text-red-500 bg-red-500/10 border border-red-500/30',      },
+    { id: 'moderation',  label: 'Moderation & Audit',              icon: <Ban className="w-4 h-4 text-red-500" />, count: bannedDevices.length,  activeClass: 'text-red-500 bg-red-500/10 border border-red-500/30',      },
   ];
 
   // ─── Main Render ──────────────────────────────────────────────
   return (
-    <div className={`min-h-screen p-4 md:p-8 max-w-7xl mx-auto space-y-8 ${theme.text}`}>
+    <div className={`min-h-screen p-4 md:p-8 max-w-7xl mx-auto space-y-8 ${theme.background} ${theme.text}`}>
 
       {/* Header */}
       <div className={`flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border-b ${theme.border} pb-6`}>
         <div>
           <div className="flex items-center gap-3">
             <h1 className="text-3xl font-extrabold tracking-tight">Admin Operations Center</h1>
-            <span className={`px-2.5 py-0.5 border ${theme.border} ${theme.accent} rounded-full text-xs font-semibold ${theme.secondary}`}>System Active</span>
+            <span className={`px-2.5 py-0.5 border ${theme.border} ${theme.accent} rounded-full text-xs font-semibold ${theme.secondary}`}>
+              System Active
+            </span>
           </div>
-          <p className={`text-sm mt-1 ${subTextClass}`}>Real-time telemetry, user analytics &amp; moderation controls</p>
+          <p className={`text-sm mt-1 ${subTextClass}`}>Real-time telemetry, user analytics, moderation &amp; curriculum controls</p>
         </div>
-        <div className="flex items-center gap-3">
+        
+        <div className="flex flex-wrap items-center gap-3">
+          {/* Auto Refresh Dropdown (I-5) */}
+          <div className="flex items-center gap-1.5 px-3 py-2 border border-gray-500/30 rounded-xl text-xs font-semibold bg-gray-500/10">
+            <Clock className="w-3.5 h-3.5 opacity-70" />
+            <span>Auto Sync:</span>
+            <select
+              value={autoRefreshInterval}
+              onChange={(e) => setAutoRefreshInterval(Number(e.target.value))}
+              className="bg-transparent focus:outline-none font-bold cursor-pointer"
+            >
+              <option value={0} className="text-gray-900">Off</option>
+              <option value={30} className="text-gray-900">Every 30s</option>
+              <option value={60} className="text-gray-900">Every 1m</option>
+              <option value={300} className="text-gray-900">Every 5m</option>
+            </select>
+          </div>
+
           <button onClick={fetchAdminData} disabled={loading} className={`flex items-center gap-2 px-4 py-2 border ${theme.border} ${theme.cardBg} rounded-xl text-sm font-medium hover:opacity-80 transition cursor-pointer`}>
             <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''} ${theme.accent}`} /> Refresh Data
           </button>
@@ -433,6 +552,7 @@ export default function AdminPortal() {
           stats={stats} dailyData={dailyData} platformDistribution={platformDistribution}
           telemetryLogs={telemetryLogs} copiedDeviceId={copiedDeviceId}
           handleCopyDeviceId={handleCopyDeviceId} handleSelectUser={handleSelectUser}
+          loading={loading} registeredUsersList={registeredUsersList}
         />
       )}
 
@@ -442,13 +562,15 @@ export default function AdminPortal() {
             theme={theme} cardClass={cardClass} subTextClass={subTextClass} inputClass={inputClass}
             registeredUsersList={registeredUsersList} selectedTypist={selectedTypist}
             setSelectedTypist={setSelectedTypist} searchQuery={searchQuery} setSearchQuery={setSearchQuery}
+            handleQuickBan={handleQuickBan} handleIssueCertQuick={handleIssueCertQuick} handleExportBackupQuick={handleExportBackupQuick}
           />
           <TypistDeepDive
             theme={theme} isDarkMode={isDarkMode} cardClass={cardClass} subTextClass={subTextClass} inputClass={inputClass}
             selectedTypist={selectedTypist} typistAnalytics={typistAnalytics}
             handleExportBackup={handleExportBackup} timeRange={timeRange} setTimeRange={setTimeRange}
             isFilterExpanded={isFilterExpanded} setIsFilterExpanded={setIsFilterExpanded}
-            handleUnlockLessons={handleUnlockLessons} setCertificateUser={setCertificateUser}
+            handleUnlockLessons={handleUnlockLessons} handleToggleSingleLesson={handleToggleSingleLesson}
+            setCertificateUser={setCertificateUser} userCompletedLessons={getUserCompletedLessons()}
           />
         </div>
       )}
@@ -459,6 +581,7 @@ export default function AdminPortal() {
           banInput={banInput} setBanInput={setBanInput}
           banReasonInput={banReasonInput} setBanReasonInput={setBanReasonInput}
           handleBanUser={handleBanUser} handleUnbanUser={handleUnbanUser} bannedDevices={bannedDevices}
+          auditLogs={auditLogs} handleClearAuditLogs={handleClearAuditLogs}
         />
       )}
 

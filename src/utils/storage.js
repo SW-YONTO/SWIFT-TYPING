@@ -4,7 +4,8 @@ import { telemetry } from './telemetryTracker';
 export const STORAGE_KEYS = {
   USERS: 'typing_app_users',
   CURRENT_USER: 'typing_app_current_user',
-  USER_PROGRESS: 'typing_app_user_progress'
+  USER_PROGRESS: 'typing_app_user_progress',
+  ADMIN_AUDIT_LOGS: 'swift_admin_audit_logs'
 };
 
 // Safe localStorage helper with error handling
@@ -855,5 +856,37 @@ export const keyStatsManager = {
   // Reset key stats
   resetKeyStats: (userId) => {
     localStorage.removeItem(`${keyStatsManager.KEY_STATS_KEY}_${userId}`);
+  }
+};
+
+export const adminAuditManager = {
+  getLogs: () => {
+    try {
+      const logs = safeStorage.getItem(STORAGE_KEYS.ADMIN_AUDIT_LOGS);
+      return logs ? JSON.parse(logs) : [];
+    } catch (e) {
+      return [];
+    }
+  },
+  logAction: (action, target, details = '') => {
+    try {
+      const logs = adminAuditManager.getLogs();
+      const newEntry = {
+        id: `audit_${Date.now()}_${Math.random().toString(36).substr(2, 4)}`,
+        action, // 'PROGRESS_UPDATE', 'USER_BAN', 'USER_UNBAN', 'CERTIFICATE_ISSUED', 'EXPORT_DATA'
+        target, // username or device_id
+        details,
+        timestamp: new Date().toISOString()
+      };
+      logs.unshift(newEntry);
+      // keep max 200 logs
+      safeStorage.setItem(STORAGE_KEYS.ADMIN_AUDIT_LOGS, JSON.stringify(logs.slice(0, 200)));
+      return newEntry;
+    } catch (e) {
+      return null;
+    }
+  },
+  clearLogs: () => {
+    safeStorage.removeItem(STORAGE_KEYS.ADMIN_AUDIT_LOGS);
   }
 };
