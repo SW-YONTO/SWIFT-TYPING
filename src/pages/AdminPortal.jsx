@@ -28,7 +28,15 @@ export default function AdminPortal() {
   // ─── Toast Notification (Floating) ──────────────────────────
   const [loading,             setLoading]             = useState(false);
   const [statusMsg,           setStatusMsgState]      = useState('');
-  const [autoRefreshInterval, setAutoRefreshInterval] = useState(0);
+  const [autoRefreshInterval, setAutoRefreshIntervalState] = useState(() => {
+    const saved = localStorage.getItem('swift_admin_auto_refresh');
+    return saved !== null ? Number(saved) : 30;
+  });
+
+  const setAutoRefreshInterval = (val) => {
+    setAutoRefreshIntervalState(val);
+    localStorage.setItem('swift_admin_auto_refresh', String(val));
+  };
 
   const setStatusMsg = (msg) => {
     setStatusMsgState(msg);
