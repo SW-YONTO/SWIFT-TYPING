@@ -841,7 +841,7 @@ export default function AdminPortal() {
               <span className={`text-xs ${subTextClass}`}>Scrollable table • Max 500 recent events</span>
             </div>
             <div className={`overflow-x-auto overflow-y-auto max-h-96 border ${theme.border} rounded-xl`}>
-              <table className="w-full text-left text-xs">
+              <table className="w-full text-left text-xs min-w-[900px]">
                 <thead className={`sticky top-0 z-10 ${theme.secondary} ${subTextClass} uppercase font-semibold border-b ${theme.border}`}>
                   <tr>
                     <th className="p-3">Time</th>
@@ -884,8 +884,46 @@ export default function AdminPortal() {
                         <td className={`p-3 ${subTextClass}`}>{log.os_platform}</td>
                         <td className={`p-3 ${subTextClass}`}>{log.app_version}</td>
                         <td className="p-3 font-semibold text-emerald-500">{log.event_type}</td>
-                        <td className={`p-3 max-w-sm truncate ${subTextClass}`} title={JSON.stringify(log.event_data)}>
-                          {JSON.stringify(log.event_data)}
+                        <td className="p-3">
+                          {log.event_data ? (
+                            <div className="flex flex-wrap items-center gap-1.5 text-[11px] font-semibold">
+                              {log.event_data.username && (
+                                <span className="px-2 py-0.5 bg-slate-800 border border-slate-700 text-slate-300 rounded-lg">
+                                  👤 {log.event_data.username}
+                                </span>
+                              )}
+                              {log.event_data.tests_completed !== undefined && (
+                                <span className="px-2 py-0.5 bg-blue-500/10 border border-blue-500/20 text-blue-400 rounded-lg">
+                                  🏆 {log.event_data.tests_completed} tests
+                                </span>
+                              )}
+                              {log.event_data.max_wpm !== undefined && (
+                                <span className="px-2 py-0.5 bg-amber-500/10 border border-amber-500/20 text-amber-400 rounded-lg">
+                                  ⚡ Max: {log.event_data.max_wpm} WPM
+                                </span>
+                              )}
+                              {log.event_data.avg_wpm !== undefined && (
+                                <span className="px-2 py-0.5 bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 rounded-lg">
+                                  📈 Avg: {log.event_data.avg_wpm} WPM
+                                </span>
+                              )}
+                              {log.event_data.avg_accuracy !== undefined && (
+                                <span className="px-2 py-0.5 bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 rounded-lg">
+                                  🎯 Acc: {log.event_data.avg_accuracy}%
+                                </span>
+                              )}
+                              {log.event_data.total_time_seconds !== undefined && (
+                                <span className="px-2 py-0.5 bg-orange-500/10 border border-orange-500/20 text-orange-400 rounded-lg">
+                                  ⏱️ {Math.round(log.event_data.total_time_seconds / 60)} mins
+                                </span>
+                              )}
+                              {!log.event_data.username && !log.event_data.tests_completed && (
+                                <span className="text-slate-400 italic">{JSON.stringify(log.event_data)}</span>
+                              )}
+                            </div>
+                          ) : (
+                            <span className="text-slate-500 italic">No data</span>
+                          )}
                         </td>
                       </tr>
                     ))
