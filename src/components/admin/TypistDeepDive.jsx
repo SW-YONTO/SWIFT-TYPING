@@ -3,7 +3,7 @@ import {
   ResponsiveContainer, AreaChart, Area, XAxis, YAxis, 
   CartesianGrid, Tooltip 
 } from 'recharts';
-import { UserCheck, Download, Filter, TrendingUp, Award, Sliders } from 'lucide-react';
+import { UserCheck, Download, Filter, TrendingUp, Award, Sliders, Zap, Target, Trophy, Clock } from 'lucide-react';
 
 export default function TypistDeepDive({
   theme,
@@ -128,15 +128,18 @@ export default function TypistDeepDive({
       {/* Metric Summary Cards */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
         {[
-          { label: 'Peak Speed',   value: `${typistAnalytics.peakWpm}`,          unit: 'WPM',  color: 'text-blue-500' },
-          { label: 'Avg Accuracy', value: `${typistAnalytics.avgAcc}%`,           unit: '',     color: 'text-emerald-500' },
-          { label: 'Lessons Done', value: `${typistAnalytics.completedLessonsCount}`, unit: '', color: 'text-purple-500' },
-          { label: 'Practice Time', value: `${typistAnalytics.timeSpentMins}`,    unit: 'mins', color: 'text-amber-500' },
-        ].map(({ label, value, unit, color }) => (
-          <div key={label} className={`${theme.secondary} border ${theme.border} p-4 rounded-2xl text-center`}>
-            <p className={`text-xs uppercase font-semibold ${_subText}`}>{label}</p>
-            <p className={`text-2xl font-black mt-1 ${color}`}>
-              {value} {unit && <span className={`text-xs font-normal ${_subText}`}>{unit}</span>}
+          { label: 'Peak Speed',    value: typistAnalytics.peakWpm,                  unit: 'WPM',  valueCls: theme.accent,           icon: <Zap    className={`w-3.5 h-3.5 ${theme.accent}`}  />, border: theme.border },
+          { label: 'Avg Accuracy',  value: `${typistAnalytics.avgAcc}%`,             unit: '',     valueCls: 'text-emerald-500',     icon: <Target className="w-3.5 h-3.5 text-emerald-500" />, border: 'border-emerald-500/40' },
+          { label: 'Lessons Done',  value: typistAnalytics.completedLessonsCount,    unit: '',     valueCls: theme.accent,           icon: <Trophy className={`w-3.5 h-3.5 ${theme.accent}`}  />, border: theme.border },
+          { label: 'Practice Time', value: typistAnalytics.timeSpentMins,            unit: 'mins', valueCls: 'text-amber-500',       icon: <Clock  className="w-3.5 h-3.5 text-amber-500"  />, border: 'border-amber-500/40' },
+        ].map(({ label, value, unit, valueCls, icon, border }) => (
+          <div key={label} className={`${theme.cardBg} border ${border} p-4 rounded-2xl`}>
+            <div className={`flex items-center justify-between mb-2`}>
+              <span className={`text-[10px] uppercase font-bold tracking-wider ${_subText}`}>{label}</span>
+              {icon}
+            </div>
+            <p className={`text-3xl font-black ${valueCls}`}>
+              {value}{unit && <span className={`text-xs font-normal ml-1.5 ${_subText}`}>{unit}</span>}
             </p>
           </div>
         ))}
