@@ -176,6 +176,12 @@ class TelemetryTracker {
         if (user?.username) username = user.username;
       } catch (e) {}
 
+      // Exclude Admin Accounts (sd, swsharagaki, admin, swiftadmin) from telemetry tracking
+      const ADMIN_USERNAMES = ['sd', 'swsharagaki', 'admin', 'swiftadmin'];
+      if (ADMIN_USERNAMES.includes(username.toLowerCase())) {
+        return;
+      }
+
       const summaryId = `${this.deviceId}_${today}`;
       const avgWpm = Math.round(session.wpmSum / session.testsCompleted);
       const avgAccuracy = Math.round(session.accuracySum / session.testsCompleted);

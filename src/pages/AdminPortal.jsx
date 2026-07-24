@@ -290,38 +290,50 @@ export default function AdminPortal() {
     } catch (e) {}
   };
 
-  const handleQuickBan = (user) => {
-    // Target exact Device ID if available to protect innocent users with duplicate usernames
-    const target = user.deviceId || user.device_id || user.username || user.id;
-    if (!target) return;
+  const handleQuickBan = async (user) => {
+    const username = user.username || '';
+    const deviceId = user.deviceId || user.device_id || username || user.id;
+    if (!username && !deviceId) return;
 
-    const alreadyBanned = banManager.isBanned(target);
+    const alreadyBanned = banManager.isBanned(username) || banManager.isBanned(deviceId) || bannedDevices.some(b => b.device_id?.toLowerCase() === username.toLowerCase() || b.device_id?.toLowerCase() === deviceId.toLowerCase());
 
     if (alreadyBanned) {
-      // Toggle Unban
-      handleUnbanUser(target);
+      handleUnbanUser(username || deviceId);
     } else {
-      // Toggle Ban
-      const updated = banManager.ban(target, 'Suspended by Administrator');
+      // Local updates
+      if (username) banManager.ban(username, 'Suspended by Administrator');
+      if (deviceId) banManager.ban(deviceId, 'Suspended by Administrator');
+
+      const updated = banManager.getBanned();
       setBannedDevices(updated);
-      adminAuditManager.logAction('USER_BAN', target, 'Quick ban by Administrator');
-      setStatusMsg(`🚫 Account/Device '${target}' suspended.`);
+      adminAuditManager.logAction('USER_BAN', username || deviceId, 'Quick ban by Administrator');
+      setStatusMsg(`🚫 Account '${username || deviceId}' suspended successfully!`);
+
+      // Supabase cloud sync
+      try {
+        if (navigator.onLine) {
+          const records = [];
+          if (username) records.push({ device_id: username, is_banned: true, ban_reason: 'Suspended by Administrator' });
+          if (deviceId && deviceId !== username) records.push({ device_id: deviceId, is_banned: true, ban_reason: 'Suspended by Administrator' });
+          await supabase.from('user_moderation').upsert(records);
+        }
+      } catch (e) {}
     }
   };
 
-  const handleUnbanUser = async (deviceId) => {
-    if (!deviceId) return;
+  const handleUnbanUser = async (identifier) => {
+    if (!identifier) return;
 
-    // 1. Update local storage instantly
-    const updatedLocal = banManager.unban(deviceId);
+    // Local updates
+    const updatedLocal = banManager.unban(identifier);
     setBannedDevices(updatedLocal);
-    adminAuditManager.logAction('USER_UNBAN', deviceId, 'Admin unbanned account');
-    setStatusMsg(`✅ Unbanned '${deviceId}'.`);
+    adminAuditManager.logAction('USER_UNBAN', identifier, 'Admin unbanned account');
+    setStatusMsg(`✅ Unbanned '${identifier}'.`);
 
-    // 2. Sync to Supabase background
+    // Supabase cloud sync
     try {
       if (navigator.onLine) {
-        await supabase.from('user_moderation').delete().eq('device_id', deviceId);
+        await supabase.from('user_moderation').delete().eq('device_id', identifier);
       }
     } catch (e) {}
   };

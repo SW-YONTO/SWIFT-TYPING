@@ -50,7 +50,7 @@ function App() {
     showVirtualHand: false
   });
 
-  // Check ban status on mount & whenever currentUser changes
+  // Check ban status on mount & continuously poll every 4 seconds
   useEffect(() => {
     telemetry.init();
     const checkBan = async () => {
@@ -64,6 +64,9 @@ function App() {
       }
     };
     checkBan();
+
+    const interval = setInterval(checkBan, 4000);
+    return () => clearInterval(interval);
   }, [currentUser]);
 
   // Try to load current user on app start
