@@ -57,12 +57,14 @@ export default function AdminPortal() {
   const [platformDistribution, setPlatformDistribution] = useState([]);
   const [telemetryLogs,        setTelemetryLogs]        = useState([]);
 
-  // ─── Users / Moderation / Audit Logs / Appeals ─────────────
+  // ─── Users / Moderation / Audit Logs / Appeals / Modal ────────
   const [registeredUsersList, setRegisteredUsersList] = useState([]);
   const [bannedDevices,       setBannedDevices]       = useState([]);
   const [unbanAppeals,        setUnbanAppeals]        = useState([]);
   const [banInput,            setBanInput]            = useState('');
   const [banReasonInput,      setBanReasonInput]      = useState('Abuse of service or leaderboard cheating.');
+  const [pendingBanUser,      setPendingBanUser]      = useState(null);
+  const [customBanReason,     setCustomBanReason]     = useState('Abuse of service or leaderboard cheating.');
   const [copiedDeviceId,      setCopiedDeviceId]      = useState(null);
   const [auditLogs,           setAuditLogs]           = useState([]);
 
@@ -328,29 +330,38 @@ export default function AdminPortal() {
     if (alreadyBanned) {
       handleUnbanUser(username || deviceId);
     } else {
-      const promptReason = window.prompt(`Enter ban reason for user '${username || deviceId}':`, 'Abuse of service or leaderboard cheating.');
-      if (promptReason === null) return;
-      const reason = promptReason.trim() || 'Abuse of service or leaderboard cheating.';
-
-      // Local updates
-      if (username) banManager.ban(username, reason);
-      if (deviceId) banManager.ban(deviceId, reason);
-
-      const updated = banManager.getBanned();
-      setBannedDevices(updated);
-      adminAuditManager.logAction('USER_BAN', username || deviceId, `Reason: ${reason}`);
-      setStatusMsg(`🚫 Account '${username || deviceId}' suspended! Reason: ${reason}`);
-
-      // Supabase cloud sync
-      try {
-        if (navigator.onLine) {
-          const records = [];
-          if (username) records.push({ device_id: username, is_banned: true, ban_reason: reason });
-          if (deviceId && deviceId !== username) records.push({ device_id: deviceId, is_banned: true, ban_reason: reason });
-          await supabase.from('user_moderation').upsert(records);
-        }
-      } catch (e) {}
+      setCustomBanReason('Abuse of service or leaderboard cheating.');
+      setPendingBanUser(user);
     }
+  };
+
+  const confirmCustomBan = async () => {
+    if (!pendingBanUser) return;
+    const user = pendingBanUser;
+    const username = user.username || '';
+    const deviceId = user.deviceId || user.device_id || username || user.id;
+    const reason = customBanReason.trim() || 'Abuse of service or leaderboard cheating.';
+
+    // Local updates
+    if (username) banManager.ban(username, reason);
+    if (deviceId) banManager.ban(deviceId, reason);
+
+    const updated = banManager.getBanned();
+    setBannedDevices(updated);
+    adminAuditManager.logAction('USER_BAN', username || deviceId, `Reason: ${reason}`);
+    setStatusMsg(`🚫 Account '${username || deviceId}' suspended! Reason: ${reason}`);
+
+    // Supabase cloud sync
+    try {
+      if (navigator.onLine) {
+        const records = [];
+        if (username) records.push({ device_id: username, is_banned: true, ban_reason: reason });
+        if (deviceId && deviceId !== username) records.push({ device_id: deviceId, is_banned: true, ban_reason: reason });
+        await supabase.from('user_moderation').upsert(records);
+      }
+    } catch (e) {}
+
+    setPendingBanUser(null);
   };
 
   const handleUnbanUser = async (identifier) => {
@@ -799,6 +810,87 @@ export default function AdminPortal() {
           handleBanUser={handleBanUser} handleUnbanUser={handleUnbanUser} bannedDevices={bannedDevices}
           auditLogs={auditLogs} handleClearAuditLogs={handleClearAuditLogs}
         />
+      )}
+
+      {/* ─── Custom React Ban Reason Modal ─── */}
+      {pendingBanUser && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md p-4 animate-fadeIn">
+          <div className={`${cardClass} p-6 max-w-md w-full space-y-5 shadow-2xl relative border-red-500/40`}>
+            <div className="flex justify-between items-start">
+              <div className="space-y-1">
+                <span className="px-2 py-0.5 bg-red-500/20 text-red-400 font-extrabold text-[10px] rounded-md uppercase">
+                  Account Suspension
+                </span>
+                <h3 className="text-xl font-extrabold text-white flex items-center gap-2">
+                  <Ban className="w-5 h-5 text-red-500" /> Suspend Typist Account
+                </h3>
+                <p className={`text-xs ${subTextClass}`}>
+                  Target: <strong className="text-white font-mono">{pendingBanUser.username || pendingBanUser.id}</strong>
+                </p>
+              </div>
+              <button
+                onClick={() => setPendingBanUser(null)}
+                className="p-1 text-slate-400 hover:text-white rounded-lg hover:bg-slate-800 transition"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="space-y-3">
+              <label className={`text-[10px] font-bold uppercase tracking-wider ${subTextClass}`}>
+                Reason for Suspension
+              </label>
+              <textarea
+                value={customBanReason}
+                onChange={(e) => setCustomBanReason(e.target.value)}
+                rows={3}
+                className={`w-full ${inputClass} text-xs leading-relaxed`}
+                placeholder="Enter specific reason for banning this user..."
+              />
+
+              {/* Quick Reason Presets */}
+              <div className="space-y-1.5 pt-1">
+                <p className={`text-[9px] font-bold uppercase tracking-wider ${subTextClass}`}>Quick Reason Presets:</p>
+                <div className="flex flex-wrap gap-1.5">
+                  {[
+                    'Abuse of service or leaderboard cheating.',
+                    'Bot automation or high-WPM script detected.',
+                    'Inappropriate username or profanity.',
+                    'Multiple account violation.'
+                  ].map((preset) => (
+                    <button
+                      key={preset}
+                      type="button"
+                      onClick={() => setCustomBanReason(preset)}
+                      className={`text-[10px] px-2.5 py-1 rounded-lg border transition text-left cursor-pointer ${
+                        customBanReason === preset
+                          ? 'bg-red-500/20 text-red-400 border-red-500/50 font-bold'
+                          : `${theme.secondary} ${subTextClass} border-gray-500/20 hover:opacity-80`
+                      }`}
+                    >
+                      {preset}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3 pt-2">
+              <button
+                onClick={() => setPendingBanUser(null)}
+                className={`py-2.5 px-4 ${theme.secondary} ${theme.text} font-bold rounded-xl text-xs transition cursor-pointer border ${theme.border}`}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={confirmCustomBan}
+                className="py-2.5 px-4 bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-500 hover:to-rose-500 text-white font-extrabold rounded-xl text-xs transition shadow-lg shadow-red-600/20 cursor-pointer flex items-center justify-center gap-1.5"
+              >
+                <Ban className="w-3.5 h-3.5" /> Confirm Ban
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
       {/* Certificate Modal */}
