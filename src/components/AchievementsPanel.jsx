@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Trophy, Star, Zap, Target, Clock, BookOpen, Award, ChevronRight, X, Flame, Lock } from 'lucide-react';
 import { achievementManager, ACHIEVEMENTS, LEVELS } from '../utils/achievements';
 import { useTheme } from '../contexts/ThemeContext';
+import CompletionCertificate from './admin/CompletionCertificate';
 
 const AchievementsPanel = ({ userId, isOpen, onClose }) => {
   const { theme } = useTheme();
@@ -9,6 +10,7 @@ const AchievementsPanel = ({ userId, isOpen, onClose }) => {
   const [achievements, setAchievements] = useState([]);
   const [userData, setUserData] = useState({ totalXP: 0, level: 1, unlockedAchievements: [] });
   const [xpProgress, setXpProgress] = useState({ current: 0, required: 100, percentage: 0 });
+  const [showCertModal, setShowCertModal] = useState(false);
 
   useEffect(() => {
     if (userId && isOpen) {
@@ -177,7 +179,7 @@ const AchievementsPanel = ({ userId, isOpen, onClose }) => {
                     <p className={`text-sm ${theme.textSecondary} mb-2`}>
                       {achievement.description}
                     </p>
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 flex-wrap">
                       <span className={`text-xs font-medium px-2 py-1 rounded-full ${
                         achievement.unlocked
                           ? theme.mode === 'dark' ? 'bg-yellow-900/40 text-yellow-400' : 'bg-yellow-100 text-yellow-700'
@@ -186,9 +188,17 @@ const AchievementsPanel = ({ userId, isOpen, onClose }) => {
                         +{achievement.xp} XP
                       </span>
                       {achievement.unlocked && (
-                        <span className={`text-xs ${theme.mode === 'dark' ? 'text-green-400' : 'text-green-600'}`}>
-                          ✓ Unlocked
-                        </span>
+                        <>
+                          <span className={`text-xs ${theme.mode === 'dark' ? 'text-green-400' : 'text-green-600'}`}>
+                            ✓ Unlocked
+                          </span>
+                          <button
+                            onClick={() => setShowCertModal(true)}
+                            className="ml-auto px-2 py-1 bg-purple-500/10 hover:bg-purple-500/25 border border-purple-500/30 text-purple-500 text-[10px] font-bold rounded-lg transition flex items-center gap-1 cursor-pointer"
+                          >
+                            <Award className="w-3 h-3" /> Certificate
+                          </button>
+                        </>
                       )}
                     </div>
                   </div>
@@ -212,6 +222,13 @@ const AchievementsPanel = ({ userId, isOpen, onClose }) => {
           </p>
         </div>
       </div>
+
+      {showCertModal && (
+        <CompletionCertificate
+          typist={{ id: userId, username: 'Typist' }}
+          onClose={() => setShowCertModal(false)}
+        />
+      )}
     </div>
   );
 };

@@ -125,43 +125,7 @@ function App() {
   if (isBanned) {
     return (
       <ThemeProvider>
-        <div className="min-h-screen bg-slate-950 flex items-center justify-center p-4">
-          <div className="max-w-md w-full bg-slate-900 border border-red-500/30 rounded-3xl p-8 space-y-6 shadow-2xl text-center">
-            <div className="w-16 h-16 bg-red-500/10 border border-red-500/30 rounded-full flex items-center justify-center mx-auto text-red-500 animate-pulse">
-              <ShieldAlert className="w-8 h-8" />
-            </div>
-            <div className="space-y-2">
-              <h1 className="text-2xl font-black text-white">Access Suspended</h1>
-              <p className="text-sm text-slate-400">
-                Your device has been banned from accessing Swift Typing cloud features.
-              </p>
-            </div>
-            <div className="p-4 bg-red-500/5 border border-red-500/20 rounded-2xl text-left space-y-1">
-              <p className="text-xs font-bold text-red-500 uppercase tracking-wider">Reason for Suspension:</p>
-              <p className="text-sm text-slate-300 font-medium italic">"{banReason}"</p>
-            </div>
-            <div className="grid grid-cols-1 gap-3">
-              <a
-                href={`mailto:support@swift-typing.com?subject=Unban%20Request%20-%20Device%20${telemetry.deviceId}&body=Dear%20Support,%0D%0A%0D%0AMy%20Device%20ID%20is:%20${telemetry.deviceId}%0D%0AMy%20Username%20is:%20${currentUser?.username || 'Unknown'}%0D%0A%0D%0APlease%20review%20my%20device%20ban.%20Reason:%20${banReason}`}
-                className="w-full py-3.5 bg-red-600 hover:bg-red-500 text-white font-bold rounded-2xl transition shadow-lg shadow-red-600/20 text-center text-sm"
-              >
-                Request for Unban
-              </a>
-              <button
-                onClick={() => {
-                  if (confirm("WARNING: Deleting your account will clear all your lesson progress, stats, and achievements permanently from this device. Are you sure you want to proceed to create a new profile?")) {
-                    localStorage.clear();
-                    window.location.reload();
-                  }
-                }}
-                className="w-full py-3.5 bg-slate-800 hover:bg-slate-700 text-slate-300 font-semibold rounded-2xl border border-slate-700 hover:border-slate-600 transition text-sm cursor-pointer"
-              >
-                Delete Account & Start Fresh
-              </button>
-            </div>
-            <p className="text-[10px] text-slate-500 font-mono">Device ID: {telemetry.deviceId}</p>
-          </div>
-        </div>
+        <BannedScreenWithModals banReason={banReason} currentUser={currentUser} />
       </ThemeProvider>
     );
   }
@@ -266,3 +230,168 @@ function App() {
 }
 
 export default App;
+
+// ─── Custom Banned Screen with Account Delete & In-App Appeal Modals ──────
+function BannedScreenWithModals({ banReason, currentUser }) {
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [showAppealModal, setShowAppealModal] = useState(false);
+  const [appealMessage, setAppealMessage]     = useState('');
+  const [isSubmitting, setIsSubmitting]       = useState(false);
+  const [appealStatus, setAppealStatus]       = useState('');
+
+  const handleSendAppeal = async () => {
+    if (!appealMessage.trim()) return;
+    setIsSubmitting(true);
+    const deviceId = telemetry.deviceId;
+    const username = currentUser?.username || 'Anonymous';
+
+    const payload = {
+      device_id: deviceId,
+      username,
+      appeal_message: appealMessage.trim(),
+      ban_reason: banReason,
+      created_at: new Date().toISOString()
+    };
+
+    // Save locally
+    try {
+      const existingAppeals = JSON.parse(localStorage.getItem('swift_unban_appeals') || '[]');
+      existingAppeals.push(payload);
+      localStorage.setItem('swift_unban_appeals', JSON.stringify(existingAppeals));
+    } catch (e) {}
+
+    // Cloud sync to Supabase unban_requests
+    try {
+      if (navigator.onLine) {
+        await supabase.from('unban_requests').upsert([payload]);
+      }
+    } catch (e) {}
+
+    setIsSubmitting(false);
+    setAppealStatus('✅ Your unban appeal has been submitted to the Admin Panel for review!');
+    setTimeout(() => {
+      setShowAppealModal(false);
+      setAppealMessage('');
+      setAppealStatus('');
+    }, 2500);
+  };
+
+  const handleConfirmDeleteAccount = () => {
+    localStorage.clear();
+    window.location.reload();
+  };
+
+  return (
+    <div className="min-h-screen bg-slate-950 flex items-center justify-center p-4 relative">
+      <div className="max-w-md w-full bg-slate-900 border border-red-500/30 rounded-3xl p-8 space-y-6 shadow-2xl text-center">
+        <div className="w-16 h-16 bg-red-500/10 border border-red-500/30 rounded-full flex items-center justify-center mx-auto text-red-500 animate-pulse">
+          <ShieldAlert className="w-8 h-8" />
+        </div>
+        <div className="space-y-2">
+          <h1 className="text-2xl font-black text-white">Access Suspended</h1>
+          <p className="text-sm text-slate-400">
+            Your device has been banned from accessing Swift Typing cloud features.
+          </p>
+        </div>
+        <div className="p-4 bg-red-500/5 border border-red-500/20 rounded-2xl text-left space-y-1">
+          <p className="text-xs font-bold text-red-500 uppercase tracking-wider">Reason for Suspension:</p>
+          <p className="text-sm text-slate-300 font-medium italic">"{banReason}"</p>
+        </div>
+
+        <div className="grid grid-cols-1 gap-3">
+          <button
+            onClick={() => setShowAppealModal(true)}
+            className="w-full py-3.5 bg-red-600 hover:bg-red-500 text-white font-bold rounded-2xl transition shadow-lg shadow-red-600/20 text-center text-sm cursor-pointer"
+          >
+            Submit Unban Appeal (In-App)
+          </button>
+          <button
+            onClick={() => setShowDeleteModal(true)}
+            className="w-full py-3.5 bg-slate-800 hover:bg-slate-700 text-slate-300 font-semibold rounded-2xl border border-slate-700 hover:border-slate-600 transition text-sm cursor-pointer"
+          >
+            Delete Account & Start Fresh
+          </button>
+        </div>
+        <p className="text-[10px] text-slate-500 font-mono">Device ID: {telemetry.deviceId}</p>
+      </div>
+
+      {/* ─── Custom Account Deletion Modal (Replaces browser confirm) ─── */}
+      {showDeleteModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-md p-4 animate-fadeIn">
+          <div className="max-w-sm w-full bg-slate-900 border border-slate-800 rounded-3xl p-6 space-y-5 shadow-2xl text-center">
+            <div className="w-14 h-14 bg-amber-500/10 border border-amber-500/30 rounded-2xl flex items-center justify-center mx-auto text-amber-500">
+              <ShieldAlert className="w-7 h-7" />
+            </div>
+            <div className="space-y-1.5">
+              <h3 className="text-lg font-bold text-white">Permanently Delete Account?</h3>
+              <p className="text-xs text-slate-400 leading-relaxed">
+                This will clear all your local progress, lesson badges, and saved statistics from this device.
+              </p>
+            </div>
+            <div className="grid grid-cols-2 gap-3 pt-2">
+              <button
+                onClick={() => setShowDeleteModal(false)}
+                className="py-2.5 px-4 bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold rounded-xl text-xs transition cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleConfirmDeleteAccount}
+                className="py-2.5 px-4 bg-red-600 hover:bg-red-500 text-white font-bold rounded-xl text-xs transition shadow-lg shadow-red-600/20 cursor-pointer"
+              >
+                Yes, Clear & Reset
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ─── Custom In-App Unban Appeal Modal ─── */}
+      {showAppealModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md p-4 animate-fadeIn">
+          <div className="max-w-md w-full bg-slate-900 border border-slate-800 rounded-3xl p-6 space-y-5 shadow-2xl text-left">
+            <div className="flex justify-between items-center">
+              <h3 className="text-base font-extrabold text-white flex items-center gap-2">
+                <ShieldAlert className="w-5 h-5 text-red-500" /> Submit Unban Appeal
+              </h3>
+              <button onClick={() => setShowAppealModal(false)} className="text-slate-400 hover:text-white transition">
+                ✕
+              </button>
+            </div>
+            <p className="text-xs text-slate-400">
+              Explain why your account suspension should be reviewed. This message will be sent directly to the Admin Panel.
+            </p>
+
+            <textarea
+              rows={4}
+              value={appealMessage}
+              onChange={(e) => setAppealMessage(e.target.value)}
+              placeholder="Describe what happened or request a review..."
+              className="w-full bg-slate-950 border border-slate-800 rounded-2xl p-3.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-red-500 transition resize-none"
+            />
+
+            {appealStatus && (
+              <p className="text-xs font-bold text-emerald-400 text-center">{appealStatus}</p>
+            )}
+
+            <div className="flex items-center justify-end gap-3 pt-2">
+              <button
+                onClick={() => setShowAppealModal(false)}
+                className="py-2.5 px-4 bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold rounded-xl text-xs transition cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleSendAppeal}
+                disabled={isSubmitting || !appealMessage.trim()}
+                className="py-2.5 px-5 bg-red-600 hover:bg-red-500 disabled:opacity-50 text-white font-bold rounded-xl text-xs transition cursor-pointer"
+              >
+                {isSubmitting ? 'Submitting...' : 'Submit Appeal'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}

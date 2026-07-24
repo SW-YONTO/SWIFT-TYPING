@@ -31,13 +31,15 @@ import {
   Camera,
   Plus,
   RefreshCw,
-  WifiOff
+  WifiOff,
+  Award
 } from 'lucide-react';
 import { progressManager, themes, userManager, streakManager, dataManager } from '../utils/storage';
 import { useTheme } from '../contexts/ThemeContext';
 import Footer from '../components/Footer';
 import AnalyticsCalendar from '../components/AnalyticsCalendar';
 import AchievementsPanel from '../components/AchievementsPanel';
+import CompletionCertificate from '../components/admin/CompletionCertificate';
 import { soundEffects } from '../utils/soundEffects';
 import { achievementManager } from '../utils/achievements';
 
@@ -66,6 +68,7 @@ const Settings = ({ currentUser, settings, onSettingsChange, onUserUpdate }) => 
   const [newUsername, setNewUsername] = useState(currentUser?.username || '');
   const [showAnalytics, setShowAnalytics] = useState(false);
   const [showAchievements, setShowAchievements] = useState(false);
+  const [showCertModal, setShowCertModal] = useState(false);
   const [soundEnabled, setSoundEnabled] = useState(() => soundEffects.getConfig().enabled);
   const [soundVolume, setSoundVolume] = useState(() => soundEffects.getConfig().volume);
   const [streakData, setStreakData] = useState(() => streakManager.checkStreak(currentUser?.id));
@@ -1502,8 +1505,40 @@ const Settings = ({ currentUser, settings, onSettingsChange, onUserUpdate }) => 
               Backups include progress, achievements, and streak data
             </p>
           </div>
+
+          {/* Official Certificates Card */}
+          <div className={`${theme.cardBg} rounded-2xl p-6 border ${theme.border} shadow-lg space-y-4`}>
+            <div className="flex items-center gap-3">
+              <div className={`p-3 ${theme.mode === 'dark' ? 'bg-purple-900/40' : 'bg-purple-100'} rounded-xl`}>
+                <Award className={`w-6 h-6 ${theme.mode === 'dark' ? 'text-purple-400' : 'text-purple-600'}`} />
+              </div>
+              <div>
+                <h3 className={`font-semibold ${theme.text}`}>Official Certificate</h3>
+                <p className={`text-sm ${theme.textSecondary}`}>Download your verified completion certificate</p>
+              </div>
+            </div>
+            
+            <button
+              onClick={() => setShowCertModal(true)}
+              className="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-bold px-4 py-3 rounded-xl transition-all shadow-md cursor-pointer hover:scale-[1.02]"
+            >
+              <Award className="w-5 h-5" />
+              <span>View &amp; Download Certificate</span>
+            </button>
+            <p className={`${theme.textSecondary} text-xs text-center`}>
+              Official print-ready certificate with QR verification code
+            </p>
+          </div>
         </div>
       </div>
+
+      {/* Certificate Preview & Exporter Modal */}
+      {showCertModal && (
+        <CompletionCertificate
+          typist={currentUser}
+          onClose={() => setShowCertModal(false)}
+        />
+      )}
       
       {/* Analytics Calendar Modal */}
       {showAnalytics && (

@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Users, Search, Ban, Award, Download, AlertTriangle, ShieldCheck, ShieldAlert } from 'lucide-react';
 import { banManager } from '../../utils/storage';
+import CustomDropdown from '../common/CustomDropdown';
 
 export default function AdminUserList({
   theme,
@@ -64,18 +65,17 @@ export default function AdminUserList({
             className={`w-full ${inputClass} pl-8 text-xs py-1.5`}
           />
         </div>
-        <div className="relative">
-          <select
-            value={sortBy}
-            onChange={(e) => setSortBy(e.target.value)}
-            className={`${theme.inputBg} border ${theme.border} ${theme.text} text-[11px] font-bold rounded-xl px-2.5 py-2 focus:outline-none cursor-pointer`}
-          >
-            <option value="wpm_desc">Sort: WPM ↓</option>
-            <option value="wpm_asc">Sort: WPM ↑</option>
-            <option value="tests_desc">Sort: Tests ↓</option>
-            <option value="name_asc">Sort: Name (A-Z)</option>
-          </select>
-        </div>
+        <CustomDropdown
+          value={sortBy}
+          onChange={(val) => setSortBy(val)}
+          theme={theme}
+          options={[
+            { value: 'wpm_desc', label: 'Sort: WPM ↓' },
+            { value: 'wpm_asc', label: 'Sort: WPM ↑' },
+            { value: 'tests_desc', label: 'Sort: Tests ↓' },
+            { value: 'name_asc', label: 'Sort: Name (A-Z)' },
+          ]}
+        />
       </div>
 
       {/* Typist Cards List */}

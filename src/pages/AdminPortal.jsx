@@ -11,6 +11,7 @@ import AdminUserList       from '../components/admin/AdminUserList';
 import AdminModeration     from '../components/admin/AdminModeration';
 import TypistDeepDive      from '../components/admin/TypistDeepDive';
 import CompletionCertificate from '../components/admin/CompletionCertificate';
+import CustomDropdown      from '../components/common/CustomDropdown';
 
 const DEFAULT_ADMIN_PASS = 'swiftadmin123';
 
@@ -597,20 +598,18 @@ export default function AdminPortal() {
         
         <div className="flex flex-wrap items-center gap-3">
           {/* Auto Refresh Dropdown (I-5) */}
-          <div className="flex items-center gap-1.5 px-3 py-2 border border-gray-500/30 rounded-xl text-xs font-semibold bg-gray-500/10">
-            <Clock className="w-3.5 h-3.5 opacity-70" />
-            <span>Auto Sync:</span>
-            <select
-              value={autoRefreshInterval}
-              onChange={(e) => setAutoRefreshInterval(Number(e.target.value))}
-              className="bg-transparent focus:outline-none font-bold cursor-pointer"
-            >
-              <option value={0} className="text-gray-900">Off</option>
-              <option value={30} className="text-gray-900">Every 30s</option>
-              <option value={60} className="text-gray-900">Every 1m</option>
-              <option value={300} className="text-gray-900">Every 5m</option>
-            </select>
-          </div>
+          <CustomDropdown
+            icon={Clock}
+            value={autoRefreshInterval}
+            onChange={(val) => setAutoRefreshInterval(Number(val))}
+            theme={theme}
+            options={[
+              { value: 0, label: 'Auto Sync: Off' },
+              { value: 30, label: 'Auto Sync: Every 30s' },
+              { value: 60, label: 'Auto Sync: Every 1m' },
+              { value: 300, label: 'Auto Sync: Every 5m' },
+            ]}
+          />
 
           <button onClick={fetchAdminData} disabled={loading} className={`flex items-center gap-2 px-4 py-2 border ${theme.border} ${theme.cardBg} rounded-xl text-sm font-medium hover:opacity-80 transition cursor-pointer`}>
             <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''} ${theme.accent}`} /> Refresh Data
