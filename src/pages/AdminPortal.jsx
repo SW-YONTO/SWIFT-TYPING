@@ -105,6 +105,7 @@ export default function AdminPortal() {
 
     let supabaseLogs = [];
     let isRemoteOnline = false;
+    let remoteError = null;
 
     // 2. Try fetching Supabase Telemetry Logs safely with timeout
     try {
@@ -115,13 +116,19 @@ export default function AdminPortal() {
           .order('created_at', { ascending: false })
           .limit(500);
 
-        if (!error && rawLogs) {
+        if (error) {
+          remoteError = error.message || 'Supabase query error';
+        } else if (rawLogs) {
           supabaseLogs = rawLogs;
           isRemoteOnline = true;
         }
       }
     } catch (err) {
-      // Graceful fallback to local
+      remoteError = err.message || 'Connection failed';
+    }
+
+    if (remoteError) {
+      setStatusMsg(`⚠️ Database Sync Alert: Cannot connect to Supabase (${remoteError}). Please update VITE_SUPABASE_URL in Netlify settings.`);
     }
 
     setTelemetryLogs(supabaseLogs);
