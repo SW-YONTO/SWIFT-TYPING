@@ -492,15 +492,43 @@ export default function AdminPortal() {
   };
 
   // ─── Quick Cert & Export ─────────────────────────────────────
-  const handleIssueCertQuick = (user) => {
+  const handleIssueCertQuick = async (user) => {
+    const certWpm = user.averageWPM || 60;
+    const certDate = new Date().toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' });
+
+    let totalTime = 14400; // default 4 hours
+    try {
+      const localUser = (userManager.getUsers() || []).find(u => u.username?.toLowerCase() === user.username?.toLowerCase());
+      if (localUser) {
+        const prog = progressManager.getUserProgress(localUser.id);
+        if (prog?.stats?.totalTime) {
+          totalTime = prog.stats.totalTime;
+        }
+      }
+    } catch (e) {}
+
     setSelectedTypist(user);
     setCertificateUser({
       username: user.username,
-      wpm: user.averageWPM || 60,
-      accuracy: 96,
-      date: new Date().toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' })
+      wpm: certWpm,
+      totalTime: totalTime,
+      date: certDate
     });
-    adminAuditManager.logAction('CERTIFICATE_ISSUED', user.username, `WPM: ${user.averageWPM || 60}`);
+    adminAuditManager.logAction('CERTIFICATE_ISSUED', user.username, `WPM: ${certWpm}`);
+
+    // Sync to Supabase so client gets toast notification
+    try {
+      if (navigator.onLine) {
+        await supabase.from('issued_certificates').insert({
+          username: user.username,
+          device_id: user.deviceId || user.device_id || '',
+          wpm: certWpm,
+          total_time: totalTime,
+          issued_by: 'Administrator'
+        });
+      }
+    } catch (e) {}
+    setStatusMsg(`🎓 Certificate issued to "${user.username}" (${certWpm} WPM).`);
   };
 
   const handleExportBackupQuick = (user) => {

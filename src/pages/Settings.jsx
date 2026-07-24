@@ -1533,12 +1533,17 @@ const Settings = ({ currentUser, settings, onSettingsChange, onUserUpdate }) => 
       </div>
 
       {/* Certificate Preview & Exporter Modal */}
-      {showCertModal && (
-        <CompletionCertificate
-          typist={currentUser}
-          onClose={() => setShowCertModal(false)}
-        />
-      )}
+      {showCertModal && (() => {
+        const savedCerts = JSON.parse(localStorage.getItem(`swift_issued_certs_${currentUser?.id}`) || '[]');
+        const latestCert = savedCerts.length > 0 ? savedCerts[savedCerts.length - 1] : null;
+        return (
+          <CompletionCertificate
+            certificateUser={latestCert}
+            typist={currentUser}
+            onClose={() => setShowCertModal(false)}
+          />
+        );
+      })()}
       
       {/* Analytics Calendar Modal */}
       {showAnalytics && (

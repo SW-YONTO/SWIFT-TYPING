@@ -7,8 +7,9 @@ import UserManager from './components/UserManager';
 import Navigation from './components/Navigation';
 import UpdateToast from './components/UpdateToast';
 import AdBanner from './components/AdBanner';
+import CompletionCertificate from './components/admin/CompletionCertificate';
 
-import { ShieldAlert } from 'lucide-react';
+import { ShieldAlert, Award, X } from 'lucide-react';
 import { telemetry } from './utils/telemetryTracker';
 import { supabase } from './utils/supabaseClient';
 
@@ -43,6 +44,8 @@ const PageLoader = () => {
 function App() {
   const [currentUser, setCurrentUser] = useState(null);
   const [currentPage, setCurrentPage] = useState('lessons');
+  const [newCertificate, setNewCertificate] = useState(null);
+  const [showActiveCertModal, setShowActiveCertModal] = useState(false);
   // Synchronous initialization from localStorage prevents 1-second unban flash on reload
   const [isBanned, setIsBanned] = useState(() => {
     return localStorage.getItem('swift_device_banned') === 'true';
@@ -81,6 +84,79 @@ function App() {
     const interval = setInterval(checkBan, 10 * 60 * 1000);
     return () => clearInterval(interval);
   }, []);
+
+  // Check for new certificates from Supabase periodically
+  useEffect(() => {
+    if (!currentUser) {
+      setNewCertificate(null);
+      return;
+    }
+
+    const checkNewCertificates = async () => {
+      try {
+        if (navigator.onLine) {
+          const { data, error } = await supabase
+            .from('issued_certificates')
+            .select('*')
+            .eq('username', currentUser.username)
+            .eq('is_seen', false)
+            .order('issued_at', { ascending: false });
+
+          if (!error && data && data.length > 0) {
+            const latestCert = data[0];
+            
+            // Format issued date
+            const dateVal = latestCert.issued_at 
+              ? new Date(latestCert.issued_at).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })
+              : new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+
+            setNewCertificate({
+              id: latestCert.id,
+              username: latestCert.username,
+              wpm: latestCert.wpm,
+              totalTime: latestCert.total_time,
+              date: dateVal
+            });
+
+            // Save the certificate data locally in user's profile for persistent download
+            const savedCerts = JSON.parse(localStorage.getItem(`swift_issued_certs_${currentUser.id}`) || '[]');
+            if (!savedCerts.some(c => c.id === latestCert.id)) {
+              savedCerts.push({
+                id: latestCert.id,
+                username: latestCert.username,
+                wpm: latestCert.wpm,
+                totalTime: latestCert.total_time,
+                date: dateVal
+              });
+              localStorage.setItem(`swift_issued_certs_${currentUser.id}`, JSON.stringify(savedCerts));
+            }
+          }
+        }
+      } catch (e) {
+        console.error('Failed to fetch certificates:', e);
+      }
+    };
+
+    checkNewCertificates();
+    const interval = setInterval(checkNewCertificates, 5 * 60 * 1000); // Check every 5 minutes
+    return () => clearInterval(interval);
+  }, [currentUser]);
+
+  const handleDismissCertToast = async () => {
+    if (!newCertificate) return;
+    const certId = newCertificate.id;
+    setNewCertificate(null);
+
+    // Call Supabase background sync to mark as seen
+    try {
+      if (navigator.onLine) {
+        await supabase
+          .from('issued_certificates')
+          .update({ is_seen: true })
+          .eq('id', certId);
+      }
+    } catch (e) {}
+  };
 
   const loadUserSettings = (userId) => {
     const progress = progressManager.getUserProgress(userId);
@@ -226,6 +302,51 @@ function App() {
             )}
 
             <UpdateToast />
+
+            {/* New Certificate Issued Toast */}
+            {newCertificate && (
+              <div className="fixed bottom-20 right-6 z-50 max-w-sm w-full p-4 bg-slate-905 bg-slate-900/95 border border-amber-500/40 shadow-2xl rounded-2xl text-white flex flex-col gap-3 backdrop-blur-md animate-fadeIn">
+                <div className="flex items-start gap-3">
+                  <div className="p-2.5 bg-amber-500/10 rounded-xl text-amber-400">
+                    <Award className="w-5 h-5" />
+                  </div>
+                  <div className="flex-1 space-y-1">
+                    <h4 className="font-bold text-xs uppercase tracking-wider text-amber-400">Certificate Awarded</h4>
+                    <p className="text-[11px] text-slate-300 leading-normal">
+                      An official Certificate of Mastery has been issued to you by the Academy.
+                    </p>
+                  </div>
+                  <button onClick={handleDismissCertToast} className="p-1 hover:opacity-70 text-slate-400 hover:text-white transition">
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+                <div className="flex gap-2">
+                  <button 
+                    onClick={() => {
+                      setShowActiveCertModal(true);
+                      handleDismissCertToast();
+                    }}
+                    className="flex-1 py-1.5 bg-gradient-to-r from-amber-600 to-amber-500 hover:from-amber-500 hover:to-amber-400 text-slate-950 text-[10px] font-black rounded-lg transition"
+                  >
+                    View &amp; Download
+                  </button>
+                  <button 
+                    onClick={handleDismissCertToast}
+                    className="px-3 py-1.5 border border-slate-700 hover:bg-slate-800 text-slate-300 text-[10px] font-bold rounded-lg transition"
+                  >
+                    Dismiss
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* Certificate Preview Modal */}
+            {showActiveCertModal && newCertificate && (
+              <CompletionCertificate
+                certificateUser={newCertificate}
+                onClose={() => setShowActiveCertModal(false)}
+              />
+            )}
           </div>
         </Router>
       </ErrorBoundary>

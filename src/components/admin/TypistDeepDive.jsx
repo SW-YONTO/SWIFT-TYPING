@@ -171,7 +171,7 @@ export default function TypistDeepDive({
             onClick={() => setCertificateUser({
               username: selectedTypist.username,
               wpm: typistAnalytics.peakWpm,
-              accuracy: typistAnalytics.avgAcc,
+              totalTime: (typistAnalytics.timeSpentMins || 240) * 60,
               date: new Date().toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' })
             })}
             className="px-3 py-1.5 bg-purple-600 hover:bg-purple-700 text-white font-bold rounded-xl text-xs transition flex items-center gap-1.5 cursor-pointer shadow-sm active:scale-95"

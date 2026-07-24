@@ -3,6 +3,7 @@ import { Trophy, Star, Zap, Target, Clock, BookOpen, Award, ChevronRight, X, Fla
 import { achievementManager, ACHIEVEMENTS, LEVELS } from '../utils/achievements';
 import { useTheme } from '../contexts/ThemeContext';
 import CompletionCertificate from './admin/CompletionCertificate';
+import { userManager } from '../utils/storage';
 
 const AchievementsPanel = ({ userId, isOpen, onClose }) => {
   const { theme } = useTheme();
@@ -223,12 +224,18 @@ const AchievementsPanel = ({ userId, isOpen, onClose }) => {
         </div>
       </div>
 
-      {showCertModal && (
-        <CompletionCertificate
-          typist={{ id: userId, username: 'Typist' }}
-          onClose={() => setShowCertModal(false)}
-        />
-      )}
+      {showCertModal && (() => {
+        const currentUser = (userManager.getUsers() || []).find(u => u.id === userId) || { id: userId, username: 'Typist' };
+        const savedCerts = JSON.parse(localStorage.getItem(`swift_issued_certs_${userId}`) || '[]');
+        const latestCert = savedCerts.length > 0 ? savedCerts[savedCerts.length - 1] : null;
+        return (
+          <CompletionCertificate
+            certificateUser={latestCert}
+            typist={currentUser}
+            onClose={() => setShowCertModal(false)}
+          />
+        );
+      })()}
     </div>
   );
 };
