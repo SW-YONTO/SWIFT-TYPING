@@ -273,26 +273,24 @@ function BannedScreenWithModals({ banReason, currentUser }) {
 
     try {
       if (navigator.onLine) {
-        console.log('[Mailer] Dispatching appeal via FormSubmit FormData...');
-        
-        const formData = new FormData();
-        formData.append('name', username);
-        formData.append('email', 'sw.esports.offical@gmail.com');
-        formData.append('_subject', `🚨 Swift Typing Unban Request — User: ${username} (${deviceId})`);
-        formData.append('_captcha', 'false');
-        formData.append('_template', 'table');
-        formData.append('username', username);
-        formData.append('device_id', deviceId);
-        formData.append('ban_reason', banReason || 'N/A');
-        formData.append('appeal_message', appealMessage.trim());
-        formData.append('submitted_at', new Date().toLocaleString());
-
+        console.log('[Mailer] Dispatching appeal via FormSubmit JSON...');
         const res = await fetch('https://formsubmit.co/ajax/sw.esports.offical@gmail.com', {
           method: 'POST',
           headers: {
+            'Content-Type': 'application/json',
             'Accept': 'application/json'
           },
-          body: formData
+          body: JSON.stringify({
+            name: username,
+            email: 'sw.esports.offical@gmail.com',
+            _subject: `🚨 Swift Typing Unban Request — User: ${username} (${deviceId})`,
+            _captcha: 'false',
+            username: username,
+            device_id: deviceId,
+            ban_reason: banReason || 'N/A',
+            appeal_message: appealMessage.trim(),
+            submitted_at: new Date().toLocaleString()
+          })
         });
 
         const resData = await res.json().catch(() => ({}));
@@ -306,7 +304,7 @@ function BannedScreenWithModals({ banReason, currentUser }) {
         }
       }
     } catch (err) {
-      mailErrorMsg = err.message || 'Network dispatch failed';
+      mailErrorMsg = err.message || 'Network fetch failed';
       console.error('[Mailer Network Error]', err);
     }
 
@@ -320,7 +318,7 @@ function BannedScreenWithModals({ banReason, currentUser }) {
         setAppealStatus('');
       }, 3500);
     } else if (mailErrorMsg) {
-      setAppealStatus(`⚠️ Saved to Supabase DB ✅ | Mailer status: ${mailErrorMsg}\n(Tip: FormSubmit sends a 1-time activation link to sw.esports.offical@gmail.com. Open your Gmail inbox & click "Activate Form" once to receive future emails!)`);
+      setAppealStatus(`⚠️ Saved to Supabase DB ✅ | Mailer status: ${mailErrorMsg}\n(Note: "Failed to fetch" happens when an AdBlocker / Brave Shield blocks formsubmit.co, or CORS blocks the request. The request is STILL 100% saved in Supabase database!)`);
     } else {
       setAppealStatus('✅ Saved to Supabase unban_requests database.');
       setTimeout(() => {
