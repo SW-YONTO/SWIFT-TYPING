@@ -23,7 +23,7 @@ class TelemetryTracker {
   constructor() {
     this.deviceId = getDeviceId();
     this.lastSyncTime = 0;
-    this.SYNC_INTERVAL_MS = 60 * 1000; // Throttle syncs to 1 min max
+    this.SYNC_INTERVAL_MS = 10 * 60 * 1000; // 10-Minute Batch Throttle as requested
     this.initialized = false;
   }
 
@@ -31,9 +31,10 @@ class TelemetryTracker {
     if (this.initialized) return;
     this.initialized = true;
 
-    // Flush any pending offline stats on startup or online reconnect
+    // Flush pending offline stats on startup, online reconnect, or tab close
     if (typeof window !== 'undefined') {
-      window.addEventListener('online', () => this.syncDailySummary());
+      window.addEventListener('online', () => this.syncDailySummary(true));
+      window.addEventListener('beforeunload', () => this.syncDailySummary(true));
     }
 
     // Initial sync
@@ -96,14 +97,14 @@ class TelemetryTracker {
 
   /**
    * UPSERT 1 Single Daily Row to Supabase per user per day.
-   * If row exists today, it updates the numbers. If not, it creates it.
+   * Batched to sync every 10 minutes max, or on tab close/reconnect.
    */
-  async syncDailySummary() {
+  async syncDailySummary(force = false) {
     if (!navigator.onLine) return;
 
-    // 10-second cooldown throttle
+    // 10-minute batch interval (unless forced on reconnect or tab close)
     const now = Date.now();
-    if (now - this.lastSyncTime < 10000) return;
+    if (!force && now - this.lastSyncTime < this.SYNC_INTERVAL_MS) return;
 
     const today = new Date().toISOString().split('T')[0];
     const session = JSON.parse(localStorage.getItem('swift_today_session') || '{}');
