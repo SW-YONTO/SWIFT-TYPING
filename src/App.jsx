@@ -50,21 +50,24 @@ function App() {
     showVirtualHand: false
   });
 
+  // Check ban status on mount & whenever currentUser changes
   useEffect(() => {
-    // Initialize anonymous telemetry tracking
     telemetry.init();
-
-    // Check ban status
     const checkBan = async () => {
-      const banned = await telemetry.checkBanStatus();
+      const username = currentUser?.username || '';
+      const banned = await telemetry.checkBanStatus(username);
       if (banned) {
         setIsBanned(true);
-        setBanReason(localStorage.getItem('swift_ban_reason') || 'No reason specified.');
+        setBanReason(localStorage.getItem('swift_ban_reason') || 'Suspended by Administrator.');
+      } else {
+        setIsBanned(false);
       }
     };
     checkBan();
+  }, [currentUser]);
 
-    // Try to load current user on app start
+  // Try to load current user on app start
+  useEffect(() => {
     const user = userManager.getCurrentUser();
     if (user) {
       setCurrentUser(user);
@@ -77,10 +80,15 @@ function App() {
     setUserSettings(progress.settings);
   };
 
-  const handleUserSelect = (user) => {
+  const handleUserSelect = async (user) => {
     setCurrentUser(user);
     if (user) {
       loadUserSettings(user.id);
+      const banned = await telemetry.checkBanStatus(user.username);
+      if (banned) {
+        setIsBanned(true);
+        setBanReason(localStorage.getItem('swift_ban_reason') || 'Suspended by Administrator.');
+      }
     }
   };
 
