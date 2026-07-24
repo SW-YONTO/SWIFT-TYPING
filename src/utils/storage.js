@@ -5,7 +5,8 @@ export const STORAGE_KEYS = {
   USERS: 'typing_app_users',
   CURRENT_USER: 'typing_app_current_user',
   USER_PROGRESS: 'typing_app_user_progress',
-  ADMIN_AUDIT_LOGS: 'swift_admin_audit_logs'
+  ADMIN_AUDIT_LOGS: 'swift_admin_audit_logs',
+  BANNED_DEVICES: 'swift_banned_devices'
 };
 
 // Safe localStorage helper with error handling
@@ -888,5 +889,47 @@ export const adminAuditManager = {
   },
   clearLogs: () => {
     safeStorage.removeItem(STORAGE_KEYS.ADMIN_AUDIT_LOGS);
+  }
+};
+
+export const banManager = {
+  getBanned: () => {
+    try {
+      const list = safeStorage.getItem(STORAGE_KEYS.BANNED_DEVICES);
+      return list ? JSON.parse(list) : [];
+    } catch (e) {
+      return [];
+    }
+  },
+  ban: (deviceId, ban_reason = 'Abuse of service or leaderboard cheating.') => {
+    try {
+      const list = banManager.getBanned();
+      const existingIdx = list.findIndex(b => b.device_id?.toLowerCase() === deviceId.toLowerCase());
+      const item = { device_id: deviceId, is_banned: true, ban_reason, banned_at: new Date().toISOString() };
+      if (existingIdx >= 0) {
+        list[existingIdx] = item;
+      } else {
+        list.unshift(item);
+      }
+      safeStorage.setItem(STORAGE_KEYS.BANNED_DEVICES, JSON.stringify(list));
+      return list;
+    } catch (e) {
+      return [];
+    }
+  },
+  unban: (deviceId) => {
+    try {
+      const list = banManager.getBanned().filter(b => b.device_id?.toLowerCase() !== deviceId.toLowerCase());
+      safeStorage.setItem(STORAGE_KEYS.BANNED_DEVICES, JSON.stringify(list));
+      return list;
+    } catch (e) {
+      return [];
+    }
+  },
+  isBanned: (identifier) => {
+    if (!identifier) return false;
+    const clean = identifier.toLowerCase();
+    const list = banManager.getBanned();
+    return list.some(b => b.device_id?.toLowerCase() === clean);
   }
 };

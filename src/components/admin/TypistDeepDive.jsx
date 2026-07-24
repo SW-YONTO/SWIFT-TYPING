@@ -6,7 +6,7 @@ import {
 import { 
   UserCheck, Download, Filter, TrendingUp, Award, Sliders, 
   Zap, Target, Trophy, Clock, CheckCircle2, Lock, Unlock, PlayCircle, 
-  ChevronDown, ChevronUp, Layers, Ban, RotateCcw, ShieldAlert
+  ChevronDown, ChevronUp, Layers, Ban, RotateCcw, ShieldAlert, ShieldCheck
 } from 'lucide-react';
 import { typingLessons } from '../../data/lessons';
 
@@ -32,7 +32,8 @@ export default function TypistDeepDive({
   isBanned = false
 }) {
   const [customProgress, setCustomProgress] = useState(50);
-  const [expandedUnits, setExpandedUnits] = useState({}); // All collapsed initially
+  const [isCurriculumSectionExpanded, setIsCurriculumSectionExpanded] = useState(false); // Section folded by default
+  const [expandedUnits, setExpandedUnits] = useState({}); // Unit cards folded by default
 
   const _cardClass  = cardClass || `${theme.cardBg} ${theme.border} border shadow-2xl rounded-3xl transition-all duration-300`;
   const _subText    = subTextClass || theme.textSecondary || 'text-gray-500';
@@ -99,8 +100,8 @@ export default function TypistDeepDive({
                   <ShieldAlert className="w-3.5 h-3.5 text-red-500" /> Banned
                 </span>
               ) : (
-                <span className="px-2.5 py-0.5 bg-emerald-500/15 text-emerald-600 border border-emerald-500/30 rounded-full text-xs font-black">
-                  Active
+                <span className="px-2.5 py-0.5 bg-emerald-500/15 text-emerald-600 border border-emerald-500/30 rounded-full text-xs font-black flex items-center gap-1">
+                  <ShieldCheck className="w-3.5 h-3.5 text-emerald-500" /> Active
                 </span>
               )}
             </div>
@@ -159,11 +160,11 @@ export default function TypistDeepDive({
             onClick={() => handleQuickBan && handleQuickBan(selectedTypist)}
             className={`px-3 py-1.5 border rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer active:scale-95 ${
               isBanned
-                ? 'bg-emerald-500/10 hover:bg-emerald-500/20 border-emerald-500/30 text-emerald-600'
-                : 'bg-red-500/10 hover:bg-red-500/20 border-red-500/30 text-red-500'
+                ? 'bg-emerald-500/10 hover:bg-emerald-500/25 border-emerald-500/30 text-emerald-600'
+                : 'bg-red-500/10 hover:bg-red-500/25 border-red-500/30 text-red-500'
             }`}
           >
-            <Ban className="w-3.5 h-3.5" /> {isBanned ? 'Manage Suspension / Unban' : 'Suspend / Ban User'}
+            <Ban className="w-3.5 h-3.5" /> {isBanned ? 'Unban Typist Account' : 'Suspend / Ban Typist'}
           </button>
 
           <button
@@ -245,100 +246,125 @@ export default function TypistDeepDive({
         </div>
       </div>
 
-      {/* Per-Chapter / Unit Lesson Breakdown (Initially Collapsed, Inline Lock/Unlock Toggle) */}
+      {/* Folded Main Section for Curriculum Breakdown */}
       <div className="space-y-3">
-        <div className="flex items-center justify-between">
-          <h3 className="text-sm font-extrabold uppercase tracking-wider flex items-center gap-2">
-            <Layers className={`w-4 h-4 ${theme.accent}`} /> Curriculum Breakdown ({units.length} Chapters)
-          </h3>
-          <span className={`text-xs ${_subText}`}>Click any chapter to expand &amp; toggle individual lessons</span>
+        {/* Clickable Section Header (Folded initially) */}
+        <div
+          onClick={() => setIsCurriculumSectionExpanded(!isCurriculumSectionExpanded)}
+          className={`${theme.cardBg} border ${theme.border} p-4 rounded-2xl cursor-pointer flex justify-between items-center hover:opacity-95 transition select-none`}
+        >
+          <div className="flex items-center gap-2.5">
+            <Layers className={`w-5 h-5 ${theme.accent}`} />
+            <div>
+              <h3 className="text-sm font-extrabold uppercase tracking-wider">
+                Curriculum Breakdown ({units.length} Chapters)
+              </h3>
+              <p className={`text-[11px] ${_subText}`}>
+                {isCurriculumSectionExpanded ? 'Click to collapse chapters list' : 'Folded — click to expand chapter cards & toggle single lessons'}
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <span className={`text-xs font-extrabold ${theme.accent}`}>
+              {isCurriculumSectionExpanded ? 'Collapse' : 'Expand Chapters'}
+            </span>
+            {isCurriculumSectionExpanded ? (
+              <ChevronUp className={`w-4 h-4 ${theme.accent}`} />
+            ) : (
+              <ChevronDown className={`w-4 h-4 ${theme.accent}`} />
+            )}
+          </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-          {units.map(unit => (
-            <div key={unit.id} className={`${theme.cardBg} border ${theme.border} p-3.5 rounded-2xl space-y-2`}>
-              <div 
-                className="flex items-center justify-between cursor-pointer select-none"
-                onClick={() => toggleUnitExpand(unit.id)}
-              >
-                <div className="flex items-center gap-2">
-                  {unit.isFullyDone ? (
-                    <CheckCircle2 className="w-4 h-4 text-emerald-500 flex-shrink-0" />
-                  ) : unit.completedCount > 0 ? (
-                    <PlayCircle className={`w-4 h-4 ${theme.accent} flex-shrink-0`} />
-                  ) : (
-                    <Lock className={`w-4 h-4 ${_subText} flex-shrink-0`} />
-                  )}
-                  <div>
-                    <h5 className="text-xs font-bold">{unit.title}</h5>
-                    <p className={`text-[10px] ${_subText}`}>{unit.completedCount}/{unit.totalCount} completed</p>
+        {/* Render Chapters Grid ONLY when Section is Expanded */}
+        {isCurriculumSectionExpanded && (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-1 animate-fade-in">
+            {units.map(unit => (
+              <div key={unit.id} className={`${theme.cardBg} border ${theme.border} p-3.5 rounded-2xl space-y-2`}>
+                <div 
+                  className="flex items-center justify-between cursor-pointer select-none"
+                  onClick={() => toggleUnitExpand(unit.id)}
+                >
+                  <div className="flex items-center gap-2">
+                    {unit.isFullyDone ? (
+                      <CheckCircle2 className="w-4 h-4 text-emerald-500 flex-shrink-0" />
+                    ) : unit.completedCount > 0 ? (
+                      <PlayCircle className={`w-4 h-4 ${theme.accent} flex-shrink-0`} />
+                    ) : (
+                      <Lock className={`w-4 h-4 ${_subText} flex-shrink-0`} />
+                    )}
+                    <div>
+                      <h5 className="text-xs font-bold">{unit.title}</h5>
+                      <p className={`text-[10px] ${_subText}`}>{unit.completedCount}/{unit.totalCount} completed</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className={`text-xs font-black ${unit.isFullyDone ? 'text-emerald-500' : theme.accent}`}>
+                      {unit.percentage}%
+                    </span>
+                    {expandedUnits[unit.id] ? <ChevronUp className={`w-3.5 h-3.5 ${_subText}`} /> : <ChevronDown className={`w-3.5 h-3.5 ${_subText}`} />}
                   </div>
                 </div>
-                <div className="flex items-center gap-2">
-                  <span className={`text-xs font-black ${unit.isFullyDone ? 'text-emerald-500' : theme.accent}`}>
-                    {unit.percentage}%
-                  </span>
-                  {expandedUnits[unit.id] ? <ChevronUp className={`w-3.5 h-3.5 ${_subText}`} /> : <ChevronDown className={`w-3.5 h-3.5 ${_subText}`} />}
+
+                {/* Single Clean Progress Bar */}
+                <div className="w-full bg-gray-500/20 h-1.5 rounded-full overflow-hidden">
+                  <div 
+                    className={`h-full transition-all duration-300 ${unit.isFullyDone ? 'bg-emerald-500' : theme.primary}`} 
+                    style={{ width: `${unit.percentage}%` }}
+                  />
                 </div>
-              </div>
 
-              {/* Single Clean Progress Bar */}
-              <div className="w-full bg-gray-500/20 h-1.5 rounded-full overflow-hidden">
-                <div 
-                  className={`h-full transition-all duration-300 ${unit.isFullyDone ? 'bg-emerald-500' : theme.primary}`} 
-                  style={{ width: `${unit.percentage}%` }}
-                />
-              </div>
-
-              {/* Expanded Lesson Details with Inline Lock/Unlock Toggle Icon Button */}
-              {expandedUnits[unit.id] && (
-                <div className="pt-2 border-t border-dashed border-gray-500/20 space-y-1">
-                  {unit.lessons.map(l => {
-                    const isDone = userCompletedLessons.some(c => c.lessonId === l.id);
-                    return (
-                      <div 
-                        key={l.id} 
-                        className={`flex items-center justify-between text-xs p-2 rounded-xl transition ${
-                          isDone 
-                            ? 'bg-emerald-500/10 text-emerald-600 font-semibold border border-emerald-500/20' 
-                            : `${_subText} border border-transparent hover:bg-gray-500/10`
-                        }`}
-                      >
-                        <span className="truncate pr-2">{l.title}</span>
-                        
-                        {/* Interactive Lock/Unlock Icon Button */}
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleToggleSingleLesson && handleToggleSingleLesson(selectedTypist.username, l.id);
-                          }}
-                          className={`px-2 py-1 rounded-lg text-[10px] font-bold transition flex items-center gap-1 cursor-pointer ${
-                            isDone
-                              ? 'bg-emerald-500/20 text-emerald-600 hover:bg-red-500/20 hover:text-red-500'
-                              : 'bg-gray-500/20 text-gray-500 hover:bg-emerald-500/20 hover:text-emerald-600'
+                {/* Expanded Lesson Details with Inline Lock/Unlock Icon Toggle Button */}
+                {expandedUnits[unit.id] && (
+                  <div className="pt-2 border-t border-dashed border-gray-500/20 space-y-1">
+                    {unit.lessons.map(l => {
+                      const isDone = userCompletedLessons.some(c => c.lessonId === l.id);
+                      return (
+                        <div 
+                          key={l.id} 
+                          className={`flex items-center justify-between text-xs p-2 rounded-xl transition ${
+                            isDone 
+                              ? 'bg-emerald-500/10 text-emerald-600 font-semibold border border-emerald-500/20' 
+                              : `${_subText} border border-transparent hover:bg-gray-500/10`
                           }`}
-                          title={isDone ? 'Click to lock this lesson' : 'Click to unlock this lesson'}
                         >
-                          {isDone ? (
-                            <>
-                              <Unlock className="w-3 h-3 text-emerald-500" />
-                              <span>Unlocked</span>
-                            </>
-                          ) : (
-                            <>
-                              <Lock className="w-3 h-3 text-gray-400" />
-                              <span>Locked</span>
-                            </>
-                          )}
-                        </button>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
-          ))}
-        </div>
+                          <span className="truncate pr-2">{l.title}</span>
+                          
+                          {/* Interactive Lock/Unlock Icon Button */}
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleToggleSingleLesson && handleToggleSingleLesson(selectedTypist.username, l.id);
+                            }}
+                            className={`px-2 py-1 rounded-lg text-[10px] font-bold transition flex items-center gap-1 cursor-pointer ${
+                              isDone
+                                ? 'bg-emerald-500/20 text-emerald-600 hover:bg-red-500/20 hover:text-red-500'
+                                : 'bg-gray-500/20 text-gray-500 hover:bg-emerald-500/20 hover:text-emerald-600'
+                            }`}
+                            title={isDone ? 'Click to lock this lesson' : 'Click to unlock this lesson'}
+                          >
+                            {isDone ? (
+                              <>
+                                <Unlock className="w-3 h-3 text-emerald-500" />
+                                <span>Unlocked</span>
+                              </>
+                            ) : (
+                              <>
+                                <Lock className="w-3 h-3 text-gray-400" />
+                                <span>Locked</span>
+                              </>
+                            )}
+                          </button>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* WPM Progression AreaChart */}

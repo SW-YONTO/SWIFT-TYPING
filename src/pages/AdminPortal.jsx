@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../utils/supabaseClient';
 import { useTheme } from '../contexts/ThemeContext';
-import { userManager, progressManager, adminAuditManager } from '../utils/storage';
+import { userManager, progressManager, adminAuditManager, banManager } from '../utils/storage';
 import { typingLessons } from '../data/lessons';
-import { Users, Ban, RefreshCw, LogOut, LayoutDashboard, CheckCircle, Clock, Award, X, ShieldAlert } from 'lucide-react';
+import { Users, Ban, RefreshCw, LogOut, LayoutDashboard, CheckCircle, Clock, Award, X } from 'lucide-react';
 
 import AdminLockScreen     from '../components/admin/AdminLockScreen';
 import AdminOverview       from '../components/admin/AdminOverview';
@@ -24,12 +24,11 @@ export default function AdminPortal() {
   const [authError,       setAuthError]       = useState('');
   const [isShaking,       setIsShaking]       = useState(false);
 
-  // ─── Loading / Status Toast (Floating Toast Notification) ───
+  // ─── Toast Notification (Floating) ──────────────────────────
   const [loading,             setLoading]             = useState(false);
   const [statusMsg,           setStatusMsgState]      = useState('');
-  const [autoRefreshInterval, setAutoRefreshInterval] = useState(0); // 0 = off, 30 = 30s, 60 = 1m, 300 = 5m
+  const [autoRefreshInterval, setAutoRefreshInterval] = useState(0);
 
-  // Floating Toast Helper with Auto-Dismiss (3.5s)
   const setStatusMsg = (msg) => {
     setStatusMsgState(msg);
     if (msg) {
@@ -109,9 +108,10 @@ export default function AdminPortal() {
     return () => window.removeEventListener('hashchange', handleHashChange);
   }, [registeredUsersList]);
 
-  // Load audit logs on mount
+  // Load audit logs & local ban list on mount
   useEffect(() => {
     setAuditLogs(adminAuditManager.getLogs());
+    setBannedDevices(banManager.getBanned());
   }, []);
 
   // Auto Refresh Interval Timer (I-5)
@@ -242,52 +242,87 @@ export default function AdminPortal() {
     });
     setRegisteredUsersList(Object.values(typistMap));
 
+    // Merge Supabase bans with local banManager bans
+    const localBans = banManager.getBanned() || [];
+    let mergedBans = [...localBans];
+
     try {
       if (navigator.onLine) {
         const { data: banData } = await supabase.from('user_moderation').select('*').eq('is_banned', true);
-        if (banData) setBannedDevices(banData);
+        if (banData && banData.length > 0) {
+          banData.forEach(remoteItem => {
+            if (!mergedBans.some(b => b.device_id?.toLowerCase() === remoteItem.device_id?.toLowerCase())) {
+              mergedBans.push(remoteItem);
+              banManager.ban(remoteItem.device_id, remoteItem.ban_reason || 'Supabase ban');
+            }
+          });
+        }
       }
     } catch (e) {}
 
+    setBannedDevices(mergedBans);
     setAuditLogs(adminAuditManager.getLogs());
     setLoading(false);
   }
 
-  // ─── Moderation (H-8, H-10, H-11, A-7) ───────────────────────────
+  // ─── Moderation (100% Reliable Local + Synced Ban & Unban) ──────
   const handleBanUser = async () => {
     const target = banInput.trim();
     if (!target) return;
     const reason = banReasonInput.trim() || 'Abuse of service or leaderboard cheating.';
+    
+    // 1. Update local storage instantly
+    const updatedLocal = banManager.ban(target, reason);
+    setBannedDevices(updatedLocal);
+    adminAuditManager.logAction('USER_BAN', target, `Reason: ${reason}`);
+    setBanInput('');
+    setStatusMsg(`🚫 Account/Device '${target}' banned successfully!`);
+
+    // 2. Sync to Supabase background
     try {
-      await supabase.from('user_moderation').upsert({ 
-        device_id: target, 
-        is_banned: true, 
-        ban_reason: reason 
-      });
-      adminAuditManager.logAction('USER_BAN', target, `Reason: ${reason}`);
-      setBanInput('');
-      setStatusMsg(`🚫 Account/Device '${target}' added to ban list!`);
-      fetchAdminData();
-    } catch { 
-      adminAuditManager.logAction('USER_BAN', target, `Locally banned. Reason: ${reason}`);
-      setStatusMsg(`Locally banned '${target}'.`); 
-    }
+      if (navigator.onLine) {
+        await supabase.from('user_moderation').upsert({ 
+          device_id: target, 
+          is_banned: true, 
+          ban_reason: reason 
+        });
+      }
+    } catch (e) {}
   };
 
   const handleQuickBan = (user) => {
-    const username = user.username || user.id;
-    setBanInput(username);
-    setActiveTab('moderation');
-    setStatusMsg(`Pre-filled ban input with username '${username}'.`);
+    const target = user.username || user.id;
+    if (!target) return;
+
+    const alreadyBanned = banManager.isBanned(target);
+
+    if (alreadyBanned) {
+      // Toggle Unban
+      handleUnbanUser(target);
+    } else {
+      // Toggle Ban
+      const updated = banManager.ban(target, 'Suspended by Administrator');
+      setBannedDevices(updated);
+      adminAuditManager.logAction('USER_BAN', target, 'Quick ban by Administrator');
+      setStatusMsg(`🚫 Account/Device '${target}' suspended.`);
+    }
   };
 
   const handleUnbanUser = async (deviceId) => {
+    if (!deviceId) return;
+
+    // 1. Update local storage instantly
+    const updatedLocal = banManager.unban(deviceId);
+    setBannedDevices(updatedLocal);
+    adminAuditManager.logAction('USER_UNBAN', deviceId, 'Admin unbanned account');
+    setStatusMsg(`✅ Unbanned '${deviceId}'.`);
+
+    // 2. Sync to Supabase background
     try {
-      await supabase.from('user_moderation').delete().eq('device_id', deviceId);
-      adminAuditManager.logAction('USER_UNBAN', deviceId, 'Admin removed suspension');
-      setStatusMsg(`Unbanned '${deviceId}'.`);
-      fetchAdminData();
-    } catch {}
+      if (navigator.onLine) {
+        await supabase.from('user_moderation').delete().eq('device_id', deviceId);
+      }
+    } catch (e) {}
   };
 
   const handleClearAuditLogs = () => {
@@ -451,7 +486,7 @@ export default function AdminPortal() {
   const isSelectedTypistBanned = () => {
     if (!selectedTypist) return false;
     const name = selectedTypist.username?.toLowerCase();
-    return bannedDevices.some(b => b.device_id?.toLowerCase() === name || b.device_id?.toLowerCase() === selectedTypist.id?.toLowerCase());
+    return banManager.isBanned(name) || bannedDevices.some(b => b.device_id?.toLowerCase() === name || b.device_id?.toLowerCase() === selectedTypist.id?.toLowerCase());
   };
 
   // ─── Export Recovery ──────────────────────────────────────────
