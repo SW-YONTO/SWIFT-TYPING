@@ -196,6 +196,45 @@ export default function AdminPortal() {
       { name: 'Electron Desktop', value: electronCount || (isElectron ? 1 : 0), color: '#a855f7' }
     ]);
 
+    // Extract all typists across all computers/devices from Supabase telemetry
+    const typistMap = {};
+
+    localUsers.forEach(u => {
+      if (u.username) {
+        typistMap[u.username.toLowerCase()] = {
+          id: u.id || u.username,
+          username: u.username,
+          averageWPM: u.averageWPM || 0,
+          totalTests: u.totalTests || 0,
+          clientType: isElectron ? 'Desktop' : 'Web'
+        };
+      }
+    });
+
+    supabaseLogs.forEach(log => {
+      const d = log.event_data || {};
+      if (d.username && d.username !== 'Anonymous Typist') {
+        const key = d.username.toLowerCase();
+        const wpm = Number(d.wpm || d.avg_wpm) || 0;
+        
+        if (!typistMap[key]) {
+          typistMap[key] = {
+            id: key,
+            username: d.username,
+            averageWPM: wpm,
+            totalTests: d.tests_completed || 1,
+            clientType: log.client_type === 'electron' ? 'Desktop' : 'Web'
+          };
+        } else {
+          typistMap[key].averageWPM = Math.max(typistMap[key].averageWPM, wpm);
+          typistMap[key].totalTests = Math.max(typistMap[key].totalTests, d.tests_completed || 1);
+        }
+      }
+    });
+
+    const mergedLeaderboard = Object.values(typistMap);
+    setRegisteredUsersList(mergedLeaderboard);
+
     // 5. Moderation List
     try {
       if (navigator.onLine) {

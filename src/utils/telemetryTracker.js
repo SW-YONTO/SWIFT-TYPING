@@ -98,7 +98,7 @@ class TelemetryTracker {
   /**
    * Called whenever user completes a test, lesson, or game
    */
-  recordTest({ wpm = 0, accuracy = 0, timeSpent = 0, type = 'test' }) {
+  async recordTest({ wpm = 0, accuracy = 0, timeSpent = 0, type = 'test' }) {
     // 1. Update local daily accumulator
     const today = new Date().toISOString().split('T')[0];
     let session = JSON.parse(localStorage.getItem('swift_today_session') || '{}');
@@ -122,10 +122,38 @@ class TelemetryTracker {
 
     localStorage.setItem('swift_today_session', JSON.stringify(session));
 
-    // 2. Check if we should sync to server (every 3 mins max or after 3 tests)
-    const now = Date.now();
-    if (now - this.lastSyncTime > this.SYNC_INTERVAL_MS || session.testsCompleted % 3 === 0) {
-      this.flushSessionSummary();
+    // 2. Immediate live telemetry ping to Supabase so Admin Portal updates instantly across all devices
+    if (navigator.onLine) {
+      try {
+        const { clientType, osPlatform } = this.getPlatformInfo();
+        let username = 'Anonymous Typist';
+        try {
+          const currentUserId = localStorage.getItem('typing_app_current_user');
+          const users = JSON.parse(localStorage.getItem('typing_app_users') || '[]');
+          const user = users.find(u => u.id === currentUserId);
+          if (user?.username) username = user.username;
+        } catch (e) {}
+
+        const payload = {
+          device_id: this.deviceId,
+          client_type: clientType,
+          app_version: APP_VERSION,
+          os_platform: osPlatform,
+          event_type: 'test_completed',
+          event_data: {
+            username,
+            wpm: Number(wpm) || 0,
+            accuracy: Number(accuracy) || 0,
+            time_spent_seconds: Number(timeSpent) || 0,
+            type: type || 'lesson'
+          }
+        };
+
+        await supabase.from('app_telemetry').insert([payload]);
+        this.lastSyncTime = Date.now();
+      } catch (err) {
+        // Quiet fail
+      }
     }
   }
 

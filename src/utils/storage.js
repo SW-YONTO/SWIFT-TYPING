@@ -169,6 +169,16 @@ export const progressManager = {
       completedAt: new Date().toISOString()
     });
 
+    // Record anonymous telemetry stats for immediate live admin tracking
+    try {
+      telemetry.recordTest({
+        wpm: result.wpm || 0,
+        accuracy: result.accuracy || 0,
+        timeSpent: result.timeSpent || 0,
+        type: 'lesson'
+      });
+    } catch (e) {}
+
     progressManager.saveUserProgress(userId, progress);
 
     // Update user summary - EXCLUDE games from WPM/accuracy averages
