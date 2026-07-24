@@ -311,7 +311,7 @@ export default function AdminPortal() {
         let { data: dailyLogs, error: dailyErr } = await supabase
           .from('user_daily_telemetry')
           .select('*')
-          .order('last_seen', { ascending: false })
+          .order('updated_at', { ascending: false })
           .limit(500);
 
         if (!dailyErr && dailyLogs && dailyLogs.length > 0) {
@@ -322,7 +322,7 @@ export default function AdminPortal() {
             os_platform: d.os_platform,
             app_version: d.app_version,
             event_type: 'daily_summary',
-            created_at: d.last_seen || d.updated_at,
+            created_at: d.updated_at || d.last_seen,
             event_data: {
               username: d.username,
               tests_completed: d.tests_completed,
