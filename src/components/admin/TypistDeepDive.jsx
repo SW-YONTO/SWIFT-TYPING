@@ -1,9 +1,9 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { 
   ResponsiveContainer, AreaChart, Area, XAxis, YAxis, 
   CartesianGrid, Tooltip 
 } from 'recharts';
-import { UserCheck, Download, Filter, TrendingUp, Award } from 'lucide-react';
+import { UserCheck, Download, Filter, TrendingUp, Award, Sliders } from 'lucide-react';
 
 export default function TypistDeepDive({
   theme,
@@ -20,6 +20,7 @@ export default function TypistDeepDive({
 }) {
   const cardClass = `${theme.cardBg} ${theme.border} border shadow-2xl rounded-3xl transition-all duration-300`;
   const subTextClass = theme.textSecondary || 'text-gray-400';
+  const [customProgress, setCustomProgress] = useState(50);
 
   if (!selectedTypist || !typistAnalytics) {
     return (
@@ -28,11 +29,15 @@ export default function TypistDeepDive({
           <div className="w-12 h-12 mx-auto rounded-full bg-slate-800/40 flex items-center justify-center border border-slate-700/50">
             <UserCheck className={`w-6 h-6 ${subTextClass}`} />
           </div>
-          <p className={`text-base font-semibold ${subTextClass}`}>Select a typist from the left column to view 1M/3M/6M progression stats.</p>
+          <p className={`text-base font-semibold ${subTextClass}`}>Select a typist from the left column to view progression stats.</p>
         </div>
       </div>
     );
   }
+
+  // Find active filter index for sliding indicator translation
+  const ranges = ['1D', '1W', '1M', '3M', '6M'];
+  const activeIndex = ranges.indexOf(timeRange);
 
   return (
     <div className={`lg:col-span-2 ${cardClass} p-6 space-y-6`}>
@@ -55,38 +60,67 @@ export default function TypistDeepDive({
             <Download className="w-3.5 h-3.5" /> Export Recovery File
           </button>
 
-          {/* Collapsible/Expandable Timeline Filter Switcher */}
+          {/* Collapsible/Expandable Timeline Filter Switcher with Sliding indicator */}
           <div 
-            onClick={() => setIsFilterExpanded(!isFilterExpanded)}
-            className={`flex items-center gap-1.5 p-1 bg-slate-500/10 border border-slate-500/20 rounded-xl cursor-pointer transition-all duration-300 overflow-hidden ${
-              isFilterExpanded ? 'max-w-[320px]' : 'max-w-[80px]'
+            className={`relative flex items-center p-1 bg-slate-950/80 border border-slate-800 rounded-xl transition-all duration-300 overflow-hidden ${
+              isFilterExpanded ? 'w-[230px]' : 'w-[80px]'
             }`}
-            title={isFilterExpanded ? 'Click to collapse filter options' : 'Click to expand filter options'}
           >
-            <Filter className="w-3.5 h-3.5 ml-1.5 text-slate-400 flex-shrink-0" />
-            
-            {isFilterExpanded ? (
-              <div className="flex items-center gap-1">
-                {['1D', '1W', '1M', '3M', '6M'].map((range) => (
-                  <button
-                    key={range}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setTimeRange(range);
-                      setIsFilterExpanded(false);
-                    }}
-                    className={`px-2 py-0.5 rounded-lg text-xs font-bold transition cursor-pointer ${
-                      timeRange === range
-                        ? 'bg-blue-600 text-white shadow-sm'
-                        : 'text-slate-400 hover:text-slate-200'
-                    }`}
-                  >
-                    {range}
-                  </button>
-                ))}
-              </div>
-            ) : (
-              <span className="text-xs font-extrabold text-blue-400 mr-2 flex-shrink-0">{timeRange}</span>
+            {/* Filter Toggle Button */}
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                setIsFilterExpanded(!isFilterExpanded);
+              }}
+              className="p-1 hover:bg-slate-800 rounded-lg transition-colors flex-shrink-0 focus:outline-none cursor-pointer"
+              title="Toggle filter options"
+            >
+              <Filter className="w-3.5 h-3.5 text-slate-400" />
+            </button>
+
+            {/* Sliding Indicator & Options Wrapper */}
+            <div className={`relative flex items-center gap-0.5 transition-all duration-300 ${
+              isFilterExpanded ? 'opacity-100 ml-1.5' : 'opacity-0 pointer-events-none w-0'
+            }`}>
+              {isFilterExpanded && (
+                <div 
+                  className="absolute top-0 bottom-0 bg-blue-600 rounded-lg transition-all duration-300 shadow-lg shadow-blue-600/30"
+                  style={{
+                    left: `${activeIndex * 36}px`,
+                    width: '36px'
+                  }}
+                />
+              )}
+              
+              {ranges.map((range) => (
+                <button
+                  key={range}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setTimeRange(range);
+                  }}
+                  className={`w-9 py-1 rounded-lg text-xs font-black relative z-10 transition duration-300 text-center cursor-pointer ${
+                    timeRange === range
+                      ? 'text-white font-black'
+                      : 'text-slate-400 hover:text-slate-200'
+                  }`}
+                >
+                  {range}
+                </button>
+              ))}
+            </div>
+
+            {/* Collapsed active badge */}
+            {!isFilterExpanded && (
+              <span 
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setIsFilterExpanded(true);
+                }}
+                className="text-xs font-black text-blue-400 ml-1.5 mr-2 select-none cursor-pointer hover:underline"
+              >
+                {timeRange}
+              </span>
             )}
           </div>
         </div>
@@ -117,22 +151,39 @@ export default function TypistDeepDive({
 
       {/* Admin Operations Panel */}
       <div className={`p-5 border ${theme.border} rounded-2xl bg-slate-900/10 space-y-4`}>
-        <h4 className="text-xs font-bold uppercase tracking-wider text-slate-400">Admin Controls</h4>
-        <div className="flex flex-wrap items-center gap-3">
-          <button
-            onClick={() => handleUnlockLessons(50)}
-            className="px-4 py-2 border border-slate-600 hover:bg-slate-800 rounded-xl text-xs font-bold transition cursor-pointer"
-            title="Set user completed lessons progress to 50%"
-          >
-            Unlock 50% Lessons
-          </button>
-          <button
-            onClick={() => handleUnlockLessons(100)}
-            className="px-4 py-2 border border-slate-600 hover:bg-slate-800 rounded-xl text-xs font-bold transition cursor-pointer"
-            title="Set user completed lessons progress to 100%"
-          >
-            Unlock 100% Lessons
-          </button>
+        <h4 className="text-xs font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
+          <Sliders className="w-3.5 h-3.5 text-blue-500" /> Admin Controls
+        </h4>
+        <div className="flex flex-wrap items-center gap-4">
+          
+          {/* Production-Grade Adjustable Curriculum Progress Controls */}
+          <div className="flex items-center gap-3 bg-slate-850 border border-slate-700/60 p-2.5 rounded-2xl shadow-inner">
+            <div className="flex flex-col gap-0.5">
+              <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Adjust Curriculum Progress</span>
+              <div className="flex items-center gap-1.5">
+                <input
+                  type="number"
+                  min="0"
+                  max="100"
+                  value={customProgress}
+                  onChange={(e) => {
+                    const val = Math.max(0, Math.min(100, Number(e.target.value) || 0));
+                    setCustomProgress(val);
+                  }}
+                  className="w-14 text-center bg-slate-900 border border-slate-700 rounded-xl py-1 text-xs font-black text-white focus:outline-none focus:ring-2 focus:ring-blue-500 transition"
+                />
+                <span className="text-xs text-slate-300 font-black">%</span>
+              </div>
+            </div>
+            <button
+              onClick={() => handleUnlockLessons(customProgress)}
+              className="px-4 py-2 bg-blue-600 hover:bg-blue-505 text-white text-xs font-black rounded-xl transition cursor-pointer shadow-md shadow-blue-600/10 active:scale-95 border border-blue-500/20"
+              title={`Adjust typist completed lessons progress directly to ${customProgress}%`}
+            >
+              Apply Progress Update
+            </button>
+          </div>
+
           <button
             onClick={() => setCertificateUser({
               username: selectedTypist.username,
@@ -140,7 +191,7 @@ export default function TypistDeepDive({
               accuracy: typistAnalytics.avgAcc,
               date: new Date().toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' })
             })}
-            className="px-4 py-2 bg-purple-600 hover:bg-purple-500 text-white font-bold rounded-xl text-xs transition flex items-center gap-1.5 cursor-pointer"
+            className="px-4 py-3 bg-purple-650 hover:bg-purple-600 text-white font-black rounded-2xl text-xs transition flex items-center gap-1.5 cursor-pointer shadow-lg shadow-purple-600/10 active:scale-95 border border-purple-500/30"
           >
             <Award className="w-3.5 h-3.5" /> Issue Completion Certificate
           </button>
