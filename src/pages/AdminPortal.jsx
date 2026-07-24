@@ -272,24 +272,52 @@ export default function AdminPortal() {
       }
     } catch (e) {}
 
-    // Fetch unban appeals from Supabase & localStorage
-    let appeals = [];
+    // Fetch unban appeals from Supabase & localStorage with 30-day auto cleanup
+    let appealsMap = {};
+    const nowMs = Date.now();
+    const thirtyDaysMs = 30 * 24 * 60 * 60 * 1000;
+
     try {
       const localAppeals = JSON.parse(localStorage.getItem('swift_unban_appeals') || '[]');
-      appeals = [...localAppeals];
+      localAppeals.forEach(a => {
+        const key = a.id || `${a.device_id}_${a.username}_${a.created_at || ''}`;
+        const createdAtMs = a.created_at ? new Date(a.created_at).getTime() : nowMs;
+        if (nowMs - createdAtMs < thirtyDaysMs) {
+          appealsMap[key] = { ...a, id: key, is_read: a.is_read || false };
+        }
+      });
+    } catch (e) {}
+
+    try {
       if (navigator.onLine) {
-        const { data: remoteAppeals } = await supabase.from('unban_requests').select('*').order('created_at', { ascending: false });
+        const { data: remoteAppeals } = await supabase
+          .from('unban_requests')
+          .select('*')
+          .order('created_at', { ascending: false });
+
         if (remoteAppeals && remoteAppeals.length > 0) {
+          const expiredIds = [];
           remoteAppeals.forEach(ra => {
-            if (!appeals.some(a => a.device_id === ra.device_id && a.created_at === ra.created_at)) {
-              appeals.unshift(ra);
+            const key = ra.id || `${ra.device_id}_${ra.username}_${ra.created_at || ''}`;
+            const createdAtMs = ra.created_at ? new Date(ra.created_at).getTime() : nowMs;
+            
+            if (nowMs - createdAtMs > thirtyDaysMs) {
+              if (ra.id) expiredIds.push(ra.id);
+            } else {
+              appealsMap[key] = { ...ra, id: key, is_read: ra.is_read || false };
             }
           });
+
+          if (expiredIds.length > 0) {
+            supabase.from('unban_requests').delete().in('id', expiredIds).then(() => {});
+          }
         }
       }
     } catch (e) {}
 
-    setUnbanAppeals(appeals);
+    const mergedAppeals = Object.values(appealsMap);
+    localStorage.setItem('swift_unban_appeals', JSON.stringify(mergedAppeals));
+    setUnbanAppeals(mergedAppeals);
     setBannedDevices(mergedBans);
     setAuditLogs(adminAuditManager.getLogs());
     setLoading(false);
@@ -377,6 +405,41 @@ export default function AdminPortal() {
     try {
       if (navigator.onLine) {
         await supabase.from('user_moderation').delete().eq('device_id', identifier);
+      }
+    } catch (e) {}
+  };
+
+  const handleDeleteAppeal = async (appealItem) => {
+    if (!appealItem) return;
+    const targetId = appealItem.id || appealItem.device_id;
+    const devId = appealItem.device_id;
+
+    try {
+      const local = JSON.parse(localStorage.getItem('swift_unban_appeals') || '[]');
+      const filtered = local.filter(a => a.id !== targetId && a.device_id !== devId);
+      localStorage.setItem('swift_unban_appeals', JSON.stringify(filtered));
+      setUnbanAppeals(prev => prev.filter(a => a.id !== targetId && a.device_id !== devId));
+
+      if (navigator.onLine) {
+        if (appealItem.id) await supabase.from('unban_requests').delete().eq('id', appealItem.id);
+        if (devId) await supabase.from('unban_requests').delete().eq('device_id', devId);
+      }
+      setStatusMsg(`🗑️ Deleted appeal record for '${appealItem.username || devId}'.`);
+    } catch (e) {}
+  };
+
+  const handleToggleReadAppeal = async (appealItem) => {
+    if (!appealItem) return;
+    try {
+      const newReadState = !appealItem.is_read;
+      const updatedList = unbanAppeals.map(a => 
+        (a.id === appealItem.id || a.device_id === appealItem.device_id) ? { ...a, is_read: newReadState } : a
+      );
+      setUnbanAppeals(updatedList);
+      localStorage.setItem('swift_unban_appeals', JSON.stringify(updatedList));
+
+      if (navigator.onLine && appealItem.id) {
+        await supabase.from('unban_requests').update({ is_read: newReadState }).eq('id', appealItem.id);
       }
     } catch (e) {}
   };
@@ -809,6 +872,8 @@ export default function AdminPortal() {
           banReasonInput={banReasonInput} setBanReasonInput={setBanReasonInput}
           handleBanUser={handleBanUser} handleUnbanUser={handleUnbanUser} bannedDevices={bannedDevices}
           auditLogs={auditLogs} handleClearAuditLogs={handleClearAuditLogs}
+          unbanAppeals={unbanAppeals} handleDismissAppeal={handleDeleteAppeal}
+          handleDeleteAppeal={handleDeleteAppeal} handleToggleReadAppeal={handleToggleReadAppeal}
         />
       )}
 

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Ban, ShieldCheck, Mail, History, Trash2, AlertCircle, Copy, Check } from 'lucide-react';
+import { Ban, ShieldCheck, Mail, History, Trash2, AlertCircle, Copy, Check, Eye, EyeOff, Clock } from 'lucide-react';
 
 export default function AdminModeration({
   theme,
@@ -16,7 +16,9 @@ export default function AdminModeration({
   auditLogs = [],
   handleClearAuditLogs,
   unbanAppeals = [],
-  handleDismissAppeal
+  handleDismissAppeal,
+  handleDeleteAppeal,
+  handleToggleReadAppeal
 }) {
   const [activeSubTab, setActiveSubTab] = useState('moderation'); // 'moderation' | 'audit' | 'mail'
   const [copiedText, setCopiedText] = useState(false);
@@ -167,15 +169,18 @@ export default function AdminModeration({
       {/* --- SUB TAB: UNBAN APPEALS INBOX --- */}
       {activeSubTab === 'appeals' && (
         <div className={`${cardClass} p-6 space-y-4`}>
-          <div className="flex justify-between items-center pb-2 border-b border-gray-500/20">
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 pb-2 border-b border-gray-500/20">
             <div>
               <h3 className="text-base font-extrabold flex items-center gap-2">
                 <Mail className="w-5 h-5 text-amber-400" /> Unban Appeals &amp; Student Requests Inbox ({unbanAppeals.length})
               </h3>
               <p className={`text-xs ${subTextClass} mt-1`}>
-                Appeals submitted in-app or synced from Supabase database table <code>unban_requests</code>.
+                Appeals submitted in-app or synced from Supabase table <code>unban_requests</code>.
               </p>
             </div>
+            <span className="px-2.5 py-1 bg-amber-500/10 border border-amber-500/30 text-amber-400 font-extrabold text-[10px] rounded-lg flex items-center gap-1">
+              <Clock className="w-3 h-3 text-amber-400" /> 30-Day Auto Purge Active
+            </span>
           </div>
 
           {unbanAppeals.length === 0 ? (
@@ -186,55 +191,82 @@ export default function AdminModeration({
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {unbanAppeals.map((item, idx) => (
-                <div key={idx} className={`p-4 border ${theme.border} ${theme.secondary} rounded-2xl space-y-3 shadow-md`}>
-                  <div className="flex justify-between items-start">
-                    <div>
-                      <span className="px-2 py-0.5 bg-amber-500/20 text-amber-400 font-extrabold text-[10px] rounded-md uppercase">
-                        Unban Request
+              {unbanAppeals.map((item, idx) => {
+                const isRead = item.is_read;
+                return (
+                  <div key={item.id || idx} className={`p-4 border rounded-2xl space-y-3 shadow-md transition-all ${
+                    isRead 
+                      ? `${theme.cardBg} ${theme.border} opacity-80`
+                      : `bg-slate-900/90 border-amber-500/40 ring-1 ring-amber-500/20`
+                  }`}>
+                    <div className="flex justify-between items-start">
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <span className={`px-2 py-0.5 font-extrabold text-[9px] rounded-md uppercase ${
+                            isRead ? 'bg-gray-500/20 text-gray-400' : 'bg-amber-500/20 text-amber-400'
+                          }`}>
+                            {isRead ? 'Read' : '🆕 New Appeal'}
+                          </span>
+                          <h4 className="text-sm font-bold text-white flex items-center gap-1.5">
+                            <span>{item.username || 'Anonymous'}</span>
+                          </h4>
+                        </div>
+                        <p className="text-[10px] font-mono text-gray-400 mt-1">Device ID: {item.device_id}</p>
+                      </div>
+                      <span className="text-[10px] text-gray-400 font-mono">
+                        {item.created_at ? new Date(item.created_at).toLocaleString() : 'Recently'}
                       </span>
-                      <h4 className="text-sm font-bold mt-1 text-white flex items-center gap-1.5">
-                        <span>{item.username || 'Anonymous'}</span>
-                      </h4>
-                      <p className="text-[10px] font-mono text-gray-400">Device ID: {item.device_id}</p>
                     </div>
-                    <span className="text-[10px] text-gray-400 font-mono">
-                      {item.created_at ? new Date(item.created_at).toLocaleString() : 'Recently'}
-                    </span>
-                  </div>
 
-                  {item.ban_reason && (
-                    <p className="text-[11px] text-red-400 bg-red-500/10 p-2 rounded-lg border border-red-500/20">
-                      <strong>Ban Reason:</strong> {item.ban_reason}
-                    </p>
-                  )}
+                    {item.ban_reason && (
+                      <p className="text-[11px] text-red-400 bg-red-500/10 p-2 rounded-lg border border-red-500/20">
+                        <strong>Ban Reason:</strong> {item.ban_reason}
+                      </p>
+                    )}
 
-                  <div className="p-3 bg-slate-950/60 rounded-xl border border-slate-800 space-y-1">
-                    <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Appeal Message:</p>
-                    <p className="text-xs text-gray-200 italic leading-relaxed">
-                      "{item.appeal_message || item.message || 'No appeal message provided.'}"
-                    </p>
-                  </div>
+                    <div className="p-3 bg-slate-950/60 rounded-xl border border-slate-800 space-y-1">
+                      <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Appeal Message:</p>
+                      <p className="text-xs text-gray-200 italic leading-relaxed">
+                        "{item.appeal_message || item.message || 'No appeal message provided.'}"
+                      </p>
+                    </div>
 
-                  <div className="flex items-center justify-end gap-2 pt-1">
-                    <button
-                      onClick={() => {
-                        handleUnbanUser(item.device_id);
-                        if (handleDismissAppeal) handleDismissAppeal(item.device_id);
-                      }}
-                      className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl text-xs transition flex items-center gap-1 cursor-pointer shadow-sm"
-                    >
-                      <ShieldCheck className="w-3.5 h-3.5" /> Approve &amp; Unban
-                    </button>
-                    <button
-                      onClick={() => handleDismissAppeal && handleDismissAppeal(item.device_id)}
-                      className="px-3 py-1.5 bg-gray-500/20 hover:bg-gray-500/30 text-gray-300 font-semibold rounded-xl text-xs transition flex items-center gap-1 cursor-pointer"
-                    >
-                      <Trash2 className="w-3.5 h-3.5" /> Dismiss
-                    </button>
+                    <div className="flex items-center justify-between pt-1 border-t border-gray-500/10">
+                      <button
+                        onClick={() => handleToggleReadAppeal && handleToggleReadAppeal(item)}
+                        className={`px-2.5 py-1 text-[10px] font-bold rounded-lg transition flex items-center gap-1 cursor-pointer ${
+                          isRead 
+                            ? 'bg-gray-500/10 hover:bg-gray-500/20 text-gray-400 border border-gray-500/20'
+                            : 'bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 border border-amber-500/30'
+                        }`}
+                        title="Toggle Read / Unread"
+                      >
+                        {isRead ? <EyeOff className="w-3 h-3" /> : <Eye className="w-3 h-3" />}
+                        <span>{isRead ? 'Mark Unread' : 'Mark Read'}</span>
+                      </button>
+
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={() => {
+                            handleUnbanUser(item.device_id);
+                            if (handleDeleteAppeal) handleDeleteAppeal(item);
+                          }}
+                          className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl text-xs transition flex items-center gap-1 cursor-pointer shadow-sm"
+                        >
+                          <ShieldCheck className="w-3.5 h-3.5" /> Approve &amp; Unban
+                        </button>
+                        <button
+                          onClick={() => handleDeleteAppeal ? handleDeleteAppeal(item) : handleDismissAppeal && handleDismissAppeal(item.device_id)}
+                          className="px-2.5 py-1.5 bg-red-500/10 hover:bg-red-500/25 border border-red-500/30 text-red-400 font-bold rounded-xl text-xs transition flex items-center gap-1 cursor-pointer"
+                          title="Delete from Supabase DB"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" /> Delete
+                        </button>
+                      </div>
+                    </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </div>
