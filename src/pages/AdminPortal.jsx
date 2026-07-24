@@ -667,7 +667,7 @@ export default function AdminPortal() {
       </div>
 
       {statusMsg && (
-        <div className="p-3.5 bg-emerald-500/10 border border-emerald-500/30 text-emerald-600 dark:text-emerald-400 rounded-xl text-sm flex items-center gap-2">
+        <div className="p-3.5 bg-emerald-500/10 border border-emerald-500/30 text-emerald-600 rounded-xl text-sm flex items-center gap-2">
           <CheckCircle className="w-4 h-4 flex-shrink-0" /> {statusMsg}
         </div>
       )}
@@ -820,6 +820,9 @@ export default function AdminPortal() {
           {/* Telemetry log stream sub-component */}
           <TelemetryLogStream
             theme={theme}
+            isDarkMode={isDarkMode}
+            cardClass={cardClass}
+            subTextClass={subTextClass}
             telemetryLogs={telemetryLogs}
             copiedDeviceId={copiedDeviceId}
             handleCopyDeviceId={handleCopyDeviceId}
@@ -878,6 +881,10 @@ export default function AdminPortal() {
           {/* Right Column: Deep-Dive Progress Inspector (1D / 1W / 1M / 3M / 6M Charts) */}
           <TypistDeepDive
             theme={theme}
+            isDarkMode={isDarkMode}
+            cardClass={cardClass}
+            subTextClass={subTextClass}
+            inputClass={inputClass}
             selectedTypist={selectedTypist}
             typistAnalytics={typistAnalytics}
             handleExportBackup={handleExportBackup}
@@ -887,7 +894,6 @@ export default function AdminPortal() {
             setIsFilterExpanded={setIsFilterExpanded}
             handleUnlockLessons={handleUnlockLessons}
             setCertificateUser={setCertificateUser}
-            isDarkMode={isDarkMode}
           />
         </div>
       )}
