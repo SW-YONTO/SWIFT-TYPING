@@ -71,17 +71,6 @@ export default function AdminModeration({
         >
           <History className="w-3.5 h-3.5" /> Admin Audit Log ({auditLogs.length})
         </button>
-
-        <button
-          onClick={() => setActiveSubTab('mail')}
-          className={`px-4 py-2 rounded-xl text-xs font-extrabold flex items-center gap-1.5 cursor-pointer transition ${
-            activeSubTab === 'mail' 
-              ? `${theme.primary} text-white shadow-md` 
-              : `${theme.cardBg} ${theme.border} border ${subTextClass} hover:opacity-80`
-          }`}
-        >
-          <Mail className="w-3.5 h-3.5 text-emerald-500" /> Client Free Mailer Guide (F4) ✉️
-        </button>
       </div>
 
       {/* --- SUB TAB 1: BANNING & SUSPENSIONS --- */}
@@ -299,60 +288,6 @@ export default function AdminModeration({
                 )}
               </tbody>
             </table>
-          </div>
-        </div>
-      )}
-
-      {/* --- SUB TAB 3: CLIENT FREE MAILER GUIDE (F4) --- */}
-      {activeSubTab === 'mail' && (
-        <div className={`${cardClass} p-6 space-y-6`}>
-          <div className="space-y-2 border-b border-gray-500/20 pb-4">
-            <h3 className="text-lg font-black flex items-center gap-2">
-              <Mail className="w-6 h-6 text-emerald-500" /> Free Client-Side Support Email Architecture (F4)
-            </h3>
-            <p className={`text-xs ${subTextClass}`}>
-              Explaining how users send support &amp; unban request emails to admin for <strong>100% FREE</strong> without any paid backend server costs.
-            </p>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-xs">
-            {/* Method 1 */}
-            <div className={`p-4 border ${theme.border} ${theme.secondary} rounded-2xl space-y-3`}>
-              <h4 className="font-extrabold text-sm flex items-center gap-2">
-                <span>1. Standard `mailto:` URI Launcher (Zero Setup)</span>
-              </h4>
-              <p className={subTextClass}>
-                When the user clicks "Request Unban" or "Contact Support", the application opens a standard <code>mailto:</code> link. This opens the user's native email client (Gmail, Outlook, Apple Mail) with your recipient email, subject, and pre-formatted body ready to send.
-              </p>
-              <div className="p-3 bg-gray-500/10 rounded-xl space-y-2">
-                <p className="font-mono text-[11px] text-emerald-600 font-bold">Target: support@swifttyping.app</p>
-                <a
-                  href={mailtoUrl}
-                  target="_blank"
-                  rel="noreferrer"
-                  className={`inline-flex items-center gap-1.5 px-3 py-1.5 ${theme.primary} text-white font-bold rounded-lg cursor-pointer`}
-                >
-                  <Mail className="w-3.5 h-3.5" /> Test Launch `mailto:` URI
-                </a>
-              </div>
-            </div>
-
-            {/* Method 2 */}
-            <div className={`p-4 border ${theme.border} ${theme.secondary} rounded-2xl space-y-3`}>
-              <h4 className="font-extrabold text-sm flex items-center gap-2">
-                <span>2. Free Web Form API (Formspree / Web3Forms)</span>
-              </h4>
-              <p className={subTextClass}>
-                If the user does not have a default email desktop client installed, Swift Typing provides a free web modal form connected to <strong>Web3Forms / Formspree</strong> (up to 500 free submissions/month). Emails arrive directly in your personal admin inbox!
-              </p>
-              <button
-                onClick={copyMailto}
-                className="px-3 py-1.5 bg-purple-500/10 border border-purple-500/30 text-purple-600 font-bold rounded-lg flex items-center gap-1.5 cursor-pointer"
-              >
-                {copiedText ? <Check className="w-3.5 h-3.5 text-emerald-500" /> : <Copy className="w-3.5 h-3.5" />}
-                {copiedText ? 'Copied Template!' : 'Copy Support Mail Template'}
-              </button>
-            </div>
           </div>
         </div>
       )}
