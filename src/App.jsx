@@ -310,17 +310,21 @@ function BannedScreenWithModals({ banReason, currentUser }) {
 
     if (mailSuccess) {
       setAppealStatus('✅ Saved to Supabase & Email dispatched to sw.esports.offical@gmail.com!');
+      setTimeout(() => {
+        setShowAppealModal(false);
+        setAppealMessage('');
+        setAppealStatus('');
+      }, 3500);
     } else if (mailErrorMsg) {
-      setAppealStatus(`⚠️ Saved to Supabase ✅ | Mailer status: ${mailErrorMsg}`);
+      setAppealStatus(`⚠️ Saved to Supabase DB ✅ | Mailer status: ${mailErrorMsg}\n(Tip: FormSubmit sends a 1-time activation link to sw.esports.offical@gmail.com. Open your Gmail inbox & click "Activate Form" once to receive future emails!)`);
     } else {
       setAppealStatus('✅ Saved to Supabase unban_requests database.');
+      setTimeout(() => {
+        setShowAppealModal(false);
+        setAppealMessage('');
+        setAppealStatus('');
+      }, 3500);
     }
-
-    setTimeout(() => {
-      setShowAppealModal(false);
-      setAppealMessage('');
-      setAppealStatus('');
-    }, 3500);
   };
 
   const handleConfirmDeleteAccount = () => {
