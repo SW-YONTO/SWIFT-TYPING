@@ -328,21 +328,25 @@ export default function AdminPortal() {
     if (alreadyBanned) {
       handleUnbanUser(username || deviceId);
     } else {
+      const promptReason = window.prompt(`Enter ban reason for user '${username || deviceId}':`, 'Abuse of service or leaderboard cheating.');
+      if (promptReason === null) return;
+      const reason = promptReason.trim() || 'Abuse of service or leaderboard cheating.';
+
       // Local updates
-      if (username) banManager.ban(username, 'Suspended by Administrator');
-      if (deviceId) banManager.ban(deviceId, 'Suspended by Administrator');
+      if (username) banManager.ban(username, reason);
+      if (deviceId) banManager.ban(deviceId, reason);
 
       const updated = banManager.getBanned();
       setBannedDevices(updated);
-      adminAuditManager.logAction('USER_BAN', username || deviceId, 'Quick ban by Administrator');
-      setStatusMsg(`🚫 Account '${username || deviceId}' suspended successfully!`);
+      adminAuditManager.logAction('USER_BAN', username || deviceId, `Reason: ${reason}`);
+      setStatusMsg(`🚫 Account '${username || deviceId}' suspended! Reason: ${reason}`);
 
       // Supabase cloud sync
       try {
         if (navigator.onLine) {
           const records = [];
-          if (username) records.push({ device_id: username, is_banned: true, ban_reason: 'Suspended by Administrator' });
-          if (deviceId && deviceId !== username) records.push({ device_id: deviceId, is_banned: true, ban_reason: 'Suspended by Administrator' });
+          if (username) records.push({ device_id: username, is_banned: true, ban_reason: reason });
+          if (deviceId && deviceId !== username) records.push({ device_id: deviceId, is_banned: true, ban_reason: reason });
           await supabase.from('user_moderation').upsert(records);
         }
       } catch (e) {}

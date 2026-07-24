@@ -340,9 +340,34 @@ function BannedScreenWithModals({ banReason, currentUser }) {
             Your device has been banned from accessing Swift Typing cloud features.
           </p>
         </div>
-        <div className="p-4 bg-red-500/5 border border-red-500/20 rounded-2xl text-left space-y-1">
-          <p className="text-xs font-bold text-red-500 uppercase tracking-wider">Reason for Suspension:</p>
-          <p className="text-sm text-slate-300 font-medium italic">"{banReason}"</p>
+        <div className="p-5 bg-red-500/5 border border-red-500/20 rounded-2xl text-left space-y-3">
+          <div className="flex justify-between items-center pb-2 border-b border-red-500/20">
+            <div>
+              <p className="text-[10px] font-bold text-red-400 uppercase tracking-wider">Account / User Name</p>
+              <p className="text-base font-extrabold text-white">{currentUser?.username || 'Typist Account'}</p>
+            </div>
+            <span className="px-2 py-0.5 bg-red-500/20 text-red-400 font-extrabold text-[10px] rounded-md uppercase">
+              Banned 🚫
+            </span>
+          </div>
+
+          <div>
+            <p className="text-[10px] font-bold text-red-400 uppercase tracking-wider">Reason for Suspension</p>
+            <p className="text-xs text-slate-200 font-medium italic leading-relaxed mt-0.5">
+              "{banReason || 'Abuse of service or leaderboard cheating.'}"
+            </p>
+          </div>
+
+          <div className="pt-2 border-t border-red-500/20 space-y-1 font-mono text-[10px] text-slate-400">
+            <div className="flex justify-between">
+              <span>Date &amp; Timing:</span>
+              <span className="text-slate-300 font-bold">{new Date().toLocaleString()}</span>
+            </div>
+            <div className="flex justify-between">
+              <span>Device Identifier:</span>
+              <span className="text-slate-300 truncate max-w-[200px]">{telemetry.deviceId}</span>
+            </div>
+          </div>
         </div>
 
         <div className="grid grid-cols-1 gap-3">
