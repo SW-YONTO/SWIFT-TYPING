@@ -68,10 +68,8 @@ class TelemetryTracker {
     if (!navigator.onLine) {
       const isBannedLocally = localStorage.getItem('swift_device_banned') === 'true';
       if (isBannedLocally) {
-        console.log(`%c[BanCheck] User: "${username || 'Anonymous'}" | Status: BANNED (Offline Lock Enforced) 🚫`, 'color: #ef4444; font-weight: bold;');
         return true;
       }
-      console.log(`%c[BanCheck] User: "${username || 'Anonymous'}" | Status: ACTIVE (Offline) ✅`, 'color: #10b981; font-weight: bold;');
       return false;
     }
 
@@ -106,7 +104,6 @@ class TelemetryTracker {
           }
         } catch (e) {}
 
-        console.log(`%c[BanCheck] User: "${username || 'Anonymous'}" | Device: "${this.deviceId}" | Status: BANNED 🚫 | Reason: ${reason}`, 'color: #ef4444; font-weight: bold;');
         return true;
       } else {
         // ONLY clear local ban when ONLINE and Supabase confirms user is NOT banned
@@ -118,13 +115,10 @@ class TelemetryTracker {
           localStorage.setItem('swift_banned_devices', JSON.stringify(filtered));
         } catch (e) {}
 
-        console.log(`%c[BanCheck] User: "${username || 'Anonymous'}" | Device: "${this.deviceId}" | Status: ACTIVE ✅`, 'color: #10b981; font-weight: bold;');
         return false;
       }
     } catch (e) {
       const isB = localStorage.getItem('swift_device_banned') === 'true';
-      if (isB) console.log(`%c[BanCheck] User: "${username || 'Anonymous'}" | Status: BANNED (Offline Lock Fallback) 🚫`, 'color: #ef4444; font-weight: bold;');
-      else console.log(`%c[BanCheck] User: "${username || 'Anonymous'}" | Status: ACTIVE ✅`, 'color: #10b981; font-weight: bold;');
       return isB;
     }
   }

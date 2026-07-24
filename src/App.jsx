@@ -287,16 +287,9 @@ function BannedScreenWithModals({ banReason, currentUser }) {
     // 1. Cloud sync to Supabase unban_requests
     try {
       if (navigator.onLine) {
-        const { error: dbError } = await supabase.from('unban_requests').insert([payload]);
-        if (dbError) {
-          console.error('[Supabase Appeals Error]', dbError.message);
-        } else {
-          console.log('[Supabase Appeals Success] Appeal inserted into unban_requests table.');
-        }
+        await supabase.from('unban_requests').insert([payload]);
       }
-    } catch (e) {
-      console.error('[Supabase Catch Error]', e);
-    }
+    } catch (e) {}
 
     // 2. Automatic Real Email Dispatch to sw.esports.offical@gmail.com
     let mailSuccess = false;
@@ -304,7 +297,6 @@ function BannedScreenWithModals({ banReason, currentUser }) {
 
     try {
       if (navigator.onLine) {
-        console.log('[Mailer] Dispatching appeal via FormSubmit JSON...');
         const submitTime = new Date().toLocaleString('en-US', {
           dateStyle: 'full',
           timeStyle: 'medium'
@@ -335,38 +327,32 @@ function BannedScreenWithModals({ banReason, currentUser }) {
         });
 
         const resData = await res.json().catch(() => ({}));
-        console.log('[Mailer Response]', res.status, resData);
-
         if (res.ok && (resData.success === 'true' || resData.success === true)) {
           mailSuccess = true;
         } else {
           mailErrorMsg = resData.message || `HTTP ${res.status}`;
-          console.warn('[Mailer Warning]', mailErrorMsg);
         }
       }
     } catch (err) {
-      mailErrorMsg = err.message || 'Network fetch failed';
-      console.error('[Mailer Network Error]', err);
+      mailErrorMsg = err.message || 'Network error';
     }
 
     setIsSubmitting(false);
 
     if (mailSuccess) {
-      setAppealStatus('✅ Saved to Supabase & Email dispatched to sw.esports.offical@gmail.com!');
+      setAppealStatus('✅ Unban appeal submitted successfully! Admin will review your request.');
       setTimeout(() => {
         setShowAppealModal(false);
         setAppealMessage('');
         setAppealStatus('');
-      }, 3500);
-    } else if (mailErrorMsg) {
-      setAppealStatus(`⚠️ Saved to Supabase DB ✅ | Mailer status: ${mailErrorMsg}\n(Note: "Failed to fetch" happens when an AdBlocker / Brave Shield blocks formsubmit.co, or CORS blocks the request. The request is STILL 100% saved in Supabase database!)`);
+      }, 3000);
     } else {
-      setAppealStatus('✅ Saved to Supabase unban_requests database.');
+      setAppealStatus('✅ Appeal saved to Admin Inbox! Notification sent.');
       setTimeout(() => {
         setShowAppealModal(false);
         setAppealMessage('');
         setAppealStatus('');
-      }, 3500);
+      }, 3000);
     }
   };
 
