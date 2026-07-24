@@ -123,33 +123,41 @@ export default function AdminModeration({
               {bannedDevices.length === 0 ? (
                 <p className={`text-xs italic py-8 text-center ${subTextClass}`}>No users or devices currently banned.</p>
               ) : (
-                bannedDevices.map(b => (
-                  <div key={b.device_id} className={`${theme.cardBg} border ${theme.border} p-3.5 rounded-xl text-xs space-y-2 shadow-xs`}>
-                    <div className="flex justify-between items-center">
-                      <div>
-                        <span className="font-mono text-red-500 font-extrabold flex items-center gap-1">
-                          <Ban className="w-3.5 h-3.5 text-red-500" /> {b.device_id}
-                        </span>
-                        {(b.created_at || b.bannedAt) && (
-                          <p className={`text-[10px] ${subTextClass} mt-0.5`}>
-                            Banned: {new Date(b.created_at || b.bannedAt).toLocaleString()}
+                bannedDevices.map(b => {
+                  const banDate = b.created_at || b.banned_at || b.bannedAt;
+                  return (
+                    <div key={b.device_id} className={`${theme.cardBg} border ${theme.border} p-4 rounded-2xl text-xs space-y-3 shadow-md`}>
+                      <div className="flex justify-between items-start gap-2">
+                        <div>
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className="px-2 py-0.5 bg-red-500/20 text-red-400 font-extrabold text-[9px] rounded-md uppercase">
+                              Banned Target
+                            </span>
+                            <span className="font-extrabold text-sm text-white flex items-center gap-1 font-mono">
+                              <Ban className="w-3.5 h-3.5 text-red-500" /> {b.device_id}
+                            </span>
+                          </div>
+                          <p className="text-[10px] font-mono text-gray-400 mt-1">
+                            📅 <strong>Banned On:</strong> {banDate ? new Date(banDate).toLocaleString() : 'Active Ban Record'}
                           </p>
-                        )}
+                        </div>
+                        <button 
+                          onClick={() => handleUnbanUser(b.device_id)} 
+                          className="px-3 py-1.5 bg-emerald-500/10 hover:bg-emerald-500/25 text-emerald-400 border border-emerald-500/30 rounded-xl cursor-pointer font-bold text-xs transition flex items-center gap-1.5 shadow-sm"
+                        >
+                          <ShieldCheck className="w-3.5 h-3.5" /> Unban
+                        </button>
                       </div>
-                      <button 
-                        onClick={() => handleUnbanUser(b.device_id)} 
-                        className="px-2.5 py-1 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-600 border border-emerald-500/30 rounded-lg cursor-pointer font-bold text-[11px] transition flex items-center gap-1"
-                      >
-                        <ShieldCheck className="w-3 h-3" /> Unban
-                      </button>
+
+                      <div className="p-3 bg-red-500/10 border border-red-500/20 rounded-xl space-y-1">
+                        <p className="text-[10px] font-bold text-red-400 uppercase tracking-wider">Detailed Suspension Reason:</p>
+                        <p className="text-xs text-red-200 font-medium italic leading-relaxed">
+                          "{b.ban_reason || 'Abuse of service or leaderboard cheating.'}"
+                        </p>
+                      </div>
                     </div>
-                    {b.ban_reason && (
-                      <div className={`text-[11px] ${subTextClass} bg-red-500/5 p-2 rounded-lg border border-red-500/10`}>
-                        <strong className="text-red-500">Reason:</strong> {b.ban_reason}
-                      </div>
-                    )}
-                  </div>
-                ))
+                  );
+                })
               )}
             </div>
           </div>
