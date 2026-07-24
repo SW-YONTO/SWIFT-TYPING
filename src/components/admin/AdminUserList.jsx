@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { Users, Search, ArrowUpDown, Ban, Award, Download, AlertTriangle, ShieldCheck } from 'lucide-react';
+import { Users, Search, Ban, Award, Download, AlertTriangle, ShieldCheck, ShieldAlert } from 'lucide-react';
+import { banManager } from '../../utils/storage';
 
 export default function AdminUserList({
   theme,
@@ -13,17 +14,23 @@ export default function AdminUserList({
   setSearchQuery,
   handleQuickBan,
   handleIssueCertQuick,
-  handleExportBackupQuick
+  handleExportBackupQuick,
+  bannedDevices = []
 }) {
   const [sortBy, setSortBy] = useState('wpm_desc');
 
   // Filter & Sort typists
   const processedUsers = registeredUsersList
     .filter(u => u.username?.toLowerCase().includes(searchQuery.toLowerCase()))
-    .map(u => ({
-      ...u,
-      isSuspicious: (u.averageWPM || 0) > 160 || (u.totalTests > 500 && (u.averageWPM || 0) > 140)
-    }))
+    .map(u => {
+      const name = u.username?.toLowerCase();
+      const isBanned = banManager.isBanned(name) || bannedDevices.some(b => b.device_id?.toLowerCase() === name || b.device_id?.toLowerCase() === u.id?.toLowerCase());
+      return {
+        ...u,
+        isBanned,
+        isSuspicious: (u.averageWPM || 0) > 160 || (u.totalTests > 500 && (u.averageWPM || 0) > 140)
+      };
+    })
     .sort((a, b) => {
       if (sortBy === 'wpm_desc') return (b.averageWPM || 0) - (a.averageWPM || 0);
       if (sortBy === 'wpm_asc')  return (a.averageWPM || 0) - (b.averageWPM || 0);
@@ -91,10 +98,17 @@ export default function AdminUserList({
                 {/* Header row */}
                 <div className="flex justify-between items-start gap-2">
                   <div>
-                    <p className="text-sm font-bold flex items-center gap-1.5">
-                      <span className={`w-2 h-2 rounded-full ${u.isSuspicious ? 'bg-amber-500 animate-pulse' : 'bg-emerald-500'}`} />
+                    <p className="text-sm font-bold flex items-center gap-1.5 flex-wrap">
+                      <span className={`w-2 h-2 rounded-full ${u.isBanned ? 'bg-red-500 animate-pulse' : u.isSuspicious ? 'bg-amber-500 animate-pulse' : 'bg-emerald-500'}`} />
                       <span>{u.username}</span>
-                      {u.isSuspicious && (
+
+                      {u.isBanned && (
+                        <span className="px-1.5 py-0.5 bg-red-500/20 text-red-500 font-extrabold text-[9px] rounded-md flex items-center gap-0.5" title="User is suspended">
+                          <ShieldAlert className="w-2.5 h-2.5" /> Banned
+                        </span>
+                      )}
+
+                      {u.isSuspicious && !u.isBanned && (
                         <span className="px-1.5 py-0.5 bg-amber-500/20 text-amber-600 font-extrabold text-[9px] rounded-md flex items-center gap-0.5" title="Suspiciously high WPM detected">
                           <AlertTriangle className="w-2.5 h-2.5" /> Bot Suspect
                         </span>
@@ -104,20 +118,31 @@ export default function AdminUserList({
                       {u.clientType || 'Web'} • {u.totalTests || 0} tests
                     </p>
                   </div>
-                  <span className={`text-sm font-black ${u.isSuspicious ? 'text-amber-500' : theme.accent}`}>
+                  <span className={`text-sm font-black ${u.isBanned ? 'text-red-500' : u.isSuspicious ? 'text-amber-500' : theme.accent}`}>
                     {u.averageWPM || 0} <span className="text-[10px] font-normal">WPM</span>
                   </span>
                 </div>
 
                 {/* Quick Action Buttons */}
                 <div className="flex items-center gap-1.5 pt-1 border-t border-dashed border-gray-500/20" onClick={(e) => e.stopPropagation()}>
-                  <button
-                    onClick={() => handleQuickBan && handleQuickBan(u)}
-                    className="px-2 py-1 bg-red-500/10 hover:bg-red-500/25 border border-red-500/30 text-red-500 rounded-lg text-[10px] font-bold transition flex items-center gap-1 cursor-pointer"
-                    title="Quick Ban User"
-                  >
-                    <Ban className="w-3 h-3" /> Ban
-                  </button>
+                  {u.isBanned ? (
+                    <button
+                      onClick={() => handleQuickBan && handleQuickBan(u)}
+                      className="px-2 py-1 bg-emerald-500/10 hover:bg-emerald-500/25 border border-emerald-500/30 text-emerald-600 rounded-lg text-[10px] font-bold transition flex items-center gap-1 cursor-pointer"
+                      title="Unban User"
+                    >
+                      <ShieldCheck className="w-3 h-3" /> Unban
+                    </button>
+                  ) : (
+                    <button
+                      onClick={() => handleQuickBan && handleQuickBan(u)}
+                      className="px-2 py-1 bg-red-500/10 hover:bg-red-500/25 border border-red-500/30 text-red-500 rounded-lg text-[10px] font-bold transition flex items-center gap-1 cursor-pointer"
+                      title="Ban User"
+                    >
+                      <Ban className="w-3 h-3" /> Ban
+                    </button>
+                  )}
+
                   <button
                     onClick={() => handleIssueCertQuick && handleIssueCertQuick(u)}
                     className="px-2 py-1 bg-purple-500/10 hover:bg-purple-500/25 border border-purple-500/30 text-purple-600 rounded-lg text-[10px] font-bold transition flex items-center gap-1 cursor-pointer"
@@ -125,6 +150,7 @@ export default function AdminUserList({
                   >
                     <Award className="w-3 h-3" /> Cert
                   </button>
+
                   <button
                     onClick={() => handleExportBackupQuick && handleExportBackupQuick(u)}
                     className="px-2 py-1 bg-emerald-500/10 hover:bg-emerald-500/25 border border-emerald-500/30 text-emerald-600 rounded-lg text-[10px] font-bold transition flex items-center gap-1 cursor-pointer ml-auto"

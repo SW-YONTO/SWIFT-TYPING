@@ -174,7 +174,7 @@ export default function AdminPortal() {
           supabaseLogs = dailyLogs.map(d => ({
             id: d.summary_id, device_id: d.device_id, client_type: d.client_type,
             os_platform: d.os_platform, app_version: d.app_version,
-            event_type: 'daily_summary',
+            event_type: '10s_session_sync',
             created_at: d.updated_at || d.last_seen,
             event_data: { username: d.username, tests_completed: d.tests_completed, max_wpm: d.max_wpm, avg_wpm: d.avg_wpm, avg_accuracy: d.avg_accuracy, total_time_seconds: d.total_time_seconds }
           }));
@@ -644,6 +644,7 @@ export default function AdminPortal() {
             registeredUsersList={registeredUsersList} selectedTypist={selectedTypist}
             setSelectedTypist={setSelectedTypist} searchQuery={searchQuery} setSearchQuery={setSearchQuery}
             handleQuickBan={handleQuickBan} handleIssueCertQuick={handleIssueCertQuick} handleExportBackupQuick={handleExportBackupQuick}
+            bannedDevices={bannedDevices}
           />
           <TypistDeepDive
             theme={theme} isDarkMode={isDarkMode} cardClass={cardClass} subTextClass={subTextClass} inputClass={inputClass}

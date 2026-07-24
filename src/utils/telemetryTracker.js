@@ -23,7 +23,7 @@ class TelemetryTracker {
   constructor() {
     this.deviceId = getDeviceId();
     this.lastSyncTime = 0;
-    this.SYNC_INTERVAL_MS = 10 * 60 * 1000; // 10-Minute Batch Throttle as requested
+    this.SYNC_INTERVAL_MS = 10 * 1000; // 10-Second Throttle for Development testing as requested
     this.initialized = false;
   }
 

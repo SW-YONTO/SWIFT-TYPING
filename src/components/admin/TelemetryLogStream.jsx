@@ -15,11 +15,27 @@ export default function TelemetryLogStream({
   const _subText   = subTextClass || theme.textSecondary || 'text-gray-500';
 
   // Event type badge colors — adapts to dark vs. light
-  const getEventTypeColor = (type) => {
-    const palette = isDarkMode
-      ? { daily_summary: 'text-blue-400', login: 'text-emerald-400', on_startup: 'text-purple-400', history_migration: 'text-amber-400', default: 'text-gray-400' }
-      : { daily_summary: 'text-blue-600', login: 'text-emerald-600', on_startup: 'text-purple-700', history_migration: 'text-amber-600', default: 'text-gray-500' };
-    return `${palette[type] || palette.default} font-bold`;
+  const getEventTypeBadge = (type) => {
+    const raw = type || 'session_sync';
+    if (raw.includes('10s') || raw.includes('session') || raw.includes('daily_summary')) {
+      return (
+        <span className="px-2 py-0.5 bg-blue-500/15 border border-blue-500/30 text-blue-600 dark:text-blue-400 font-extrabold rounded-md text-[10px]">
+          10s Session Sync
+        </span>
+      );
+    }
+    if (raw.includes('ping')) {
+      return (
+        <span className="px-2 py-0.5 bg-emerald-500/15 border border-emerald-500/30 text-emerald-600 dark:text-emerald-400 font-extrabold rounded-md text-[10px]">
+          Daily Ping
+        </span>
+      );
+    }
+    return (
+      <span className="px-2 py-0.5 bg-purple-500/15 border border-purple-500/30 text-purple-600 dark:text-purple-400 font-extrabold rounded-md text-[10px]">
+        {raw.replace(/_/g, ' ')}
+      </span>
+    );
   };
 
   return (
@@ -74,7 +90,7 @@ export default function TelemetryLogStream({
                       )}
                     </td>
                     <td className={`p-3 whitespace-nowrap uppercase font-semibold ${_subText}`}>{version}</td>
-                    <td className={`p-3 whitespace-nowrap ${getEventTypeColor(log.event_type)}`}>{log.event_type}</td>
+                    <td className="p-3 whitespace-nowrap">{getEventTypeBadge(log.event_type)}</td>
                     <td className="p-3 whitespace-nowrap">
                       <div className="flex items-center gap-1.5">
                         <span className={`text-[11px] ${_subText}`}>{log.device_id ? log.device_id.substring(0, 12) + '...' : 'Unknown'}</span>
