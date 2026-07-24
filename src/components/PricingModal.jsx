@@ -41,13 +41,15 @@ const PricingModal = ({ isOpen, onClose }) => {
   }, [isOpen]);
 
   const applyCoupon = () => {
-    if (couponCode.trim().toUpperCase() === _gc()) {
+    const code = couponCode.trim().toUpperCase();
+    const validCoupons = ['FREEBANKAI', 'FREEFORYOU', _gc()];
+    if (validCoupons.includes(code)) {
       setCouponStatus('success');
-      setCouponMessage('✅ Coupon applied! You can now download Swift Typing for free.');
+      setCouponMessage('✅ Promo coupon applied! Full free access to Swift Typing unlocked.');
       setShowDownload(true);
     } else {
       setCouponStatus('error');
-      setCouponMessage('❌ Invalid coupon code. Please try again.');
+      setCouponMessage('❌ Invalid coupon code. Please check your promo code and try again.');
       setShowDownload(false);
     }
   };
