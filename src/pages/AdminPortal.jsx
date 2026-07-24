@@ -4,16 +4,18 @@ import { useTheme } from '../contexts/ThemeContext';
 import { userManager, progressManager } from '../utils/storage';
 import { typingLessons } from '../data/lessons';
 import { 
-  Lock, ShieldAlert, Users, Activity, 
-  CheckCircle, Ban, Monitor, Zap, Award, RefreshCw, Layers,
-  Eye, EyeOff, KeyRound, Server, UserCheck, Clock, FileText, Trophy, Copy, Check,
-  LayoutDashboard, Search, TrendingUp, Calendar, LogOut, ChevronRight, Filter, Download
+  Users, Activity, CheckCircle, Ban, Monitor, Zap, Award, RefreshCw, Layers,
+  UserCheck, Trophy, LayoutDashboard, Search, LogOut, Download
 } from 'lucide-react';
 import { 
   BarChart, Bar, XAxis, YAxis, Tooltip, 
-  ResponsiveContainer, Pie, PieChart, Cell,
-  AreaChart, Area
+  ResponsiveContainer, Pie, PieChart, Cell
 } from 'recharts';
+
+import AdminLockScreen from '../components/admin/AdminLockScreen';
+import TelemetryLogStream from '../components/admin/TelemetryLogStream';
+import CompletionCertificate from '../components/admin/CompletionCertificate';
+import TypistDeepDive from '../components/admin/TypistDeepDive';
 
 const DEFAULT_ADMIN_PASS = 'swiftadmin123';
 
@@ -580,70 +582,17 @@ export default function AdminPortal() {
   // --- 1. INSTANT UNLOCK SCREEN ---
   if (!isAuthenticated) {
     return (
-      <div className={`min-h-[82vh] flex items-center justify-center p-4 ${theme.text}`}>
-        <form 
-          onSubmit={handleLogin} 
-          className={`${cardClass} p-8 md:p-10 w-full max-w-md space-y-6 transform transition-transform ${isShaking ? 'animate-shake border-red-500/50' : ''}`}
-        >
-          {/* Header Icon & Title */}
-          <div className="text-center space-y-3">
-            <div className={`w-20 h-20 ${theme.secondary || 'bg-blue-100'} border-2 ${theme.border} ${theme.accent} rounded-3xl flex items-center justify-center mx-auto shadow-inner transform hover:scale-105 transition-transform duration-300`}>
-              <Lock className="w-10 h-10 animate-pulse" />
-            </div>
-            <h2 className="text-2xl font-extrabold tracking-tight">Swift Typing Admin Portal</h2>
-            <p className={`text-sm ${subTextClass}`}>Enter master password to unlock admin dashboard</p>
-          </div>
-
-          {/* Error Badge */}
-          {authError && (
-            <div className="p-3.5 bg-red-500/10 border border-red-500/30 text-red-500 rounded-2xl text-sm font-medium flex items-center gap-3 animate-bounce">
-              <ShieldAlert className="w-5 h-5 flex-shrink-0 text-red-500" />
-              <span>{authError}</span>
-            </div>
-          )}
-
-          {/* Password Input with Show/Hide Toggle */}
-          <div className="space-y-2">
-            <div className="flex justify-between items-center px-1">
-              <label className={`text-xs font-bold uppercase tracking-wider ${subTextClass} flex items-center gap-1.5`}>
-                <KeyRound className="w-3.5 h-3.5" /> Master Password
-              </label>
-              {passwordInput.length > 0 && (
-                <span className="text-[11px] font-mono font-semibold text-blue-500 bg-blue-500/10 px-2 py-0.5 rounded-full">
-                  {passwordInput.length} chars
-                </span>
-              )}
-            </div>
-
-            <div className="relative flex items-center">
-              <input
-                type={showPassword ? 'text' : 'password'}
-                value={passwordInput}
-                onChange={(e) => { setPasswordInput(e.target.value); if (authError) setAuthError(''); }}
-                className={`w-full ${inputClass} font-mono pr-12`}
-                placeholder="Enter password..."
-                required
-              />
-
-              <button
-                type="button"
-                onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-3.5 p-2 rounded-xl text-slate-400 hover:text-slate-200 transition-colors focus:outline-none cursor-pointer"
-                title={showPassword ? 'Hide password' : 'Show password'}
-              >
-                {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
-              </button>
-            </div>
-          </div>
-
-          <button 
-            type="submit" 
-            className={`w-full py-4 rounded-2xl ${primaryBtnClass}`}
-          >
-            Unlock Admin Dashboard
-          </button>
-        </form>
-      </div>
+      <AdminLockScreen
+        theme={theme}
+        passwordInput={passwordInput}
+        setPasswordInput={setPasswordInput}
+        showPassword={showPassword}
+        setShowPassword={setShowPassword}
+        authError={authError}
+        setAuthError={setAuthError}
+        isShaking={isShaking}
+        handleLogin={handleLogin}
+      />
     );
   }
 
@@ -832,106 +781,13 @@ export default function AdminPortal() {
             </div>
           </div>
 
-          {/* Raw Event Telemetry Logs Table */}
-          <div className={`${cardClass} p-6 space-y-4`}>
-            <div className="flex justify-between items-center">
-              <h3 className="text-lg font-bold flex items-center gap-2">
-                <Activity className={`w-5 h-5 ${theme.accent}`} /> Telemetry Log Stream ({telemetryLogs.length})
-              </h3>
-              <span className={`text-xs ${subTextClass}`}>Scrollable table • Max 500 recent events</span>
-            </div>
-            <div className={`overflow-x-auto overflow-y-auto max-h-96 border ${theme.border} rounded-xl`}>
-              <table className="w-full text-left text-xs min-w-[900px]">
-                <thead className={`sticky top-0 z-10 ${theme.secondary} ${subTextClass} uppercase font-semibold border-b ${theme.border}`}>
-                  <tr>
-                    <th className="p-3">Time</th>
-                    <th className="p-3">Device ID</th>
-                    <th className="p-3">Client</th>
-                    <th className="p-3">OS</th>
-                    <th className="p-3">Version</th>
-                    <th className="p-3">Event Type</th>
-                    <th className="p-3">Event Data</th>
-                  </tr>
-                </thead>
-                <tbody className={`divide-y ${theme.border} font-mono`}>
-                  {telemetryLogs.length === 0 ? (
-                    <tr>
-                      <td colSpan="7" className={`p-4 text-center italic ${subTextClass}`}>Local telemetry mode active. Log stream will populate as pings arrive.</td>
-                    </tr>
-                  ) : (
-                    telemetryLogs.map(log => (
-                      <tr key={log.id} className="hover:opacity-80 transition-opacity">
-                        <td className={`p-3 whitespace-nowrap ${subTextClass}`}>{new Date(log.created_at).toLocaleTimeString()}</td>
-                        <td className="p-3 font-semibold whitespace-nowrap">
-                          <div className="flex items-center gap-1.5">
-                            <span>{log.device_id ? log.device_id.substring(0, 12) + '...' : 'Unknown'}</span>
-                            {log.device_id && (
-                              <button
-                                onClick={() => handleCopyDeviceId(log.device_id)}
-                                title="Copy full device_id & fill ban input"
-                                className="p-1 hover:bg-slate-500/20 rounded transition cursor-pointer text-slate-400 hover:text-white"
-                              >
-                                {copiedDeviceId === log.device_id ? (
-                                  <Check className="w-3.5 h-3.5 text-emerald-500" />
-                                ) : (
-                                  <Copy className="w-3.5 h-3.5" />
-                                )}
-                              </button>
-                            )}
-                          </div>
-                        </td>
-                        <td className={`p-3 uppercase font-bold ${theme.accent}`}>{log.client_type}</td>
-                        <td className={`p-3 ${subTextClass}`}>{log.os_platform}</td>
-                        <td className={`p-3 ${subTextClass}`}>{log.app_version}</td>
-                        <td className="p-3 font-semibold text-emerald-500">{log.event_type}</td>
-                        <td className="p-3">
-                          {log.event_data ? (
-                            <div className="flex flex-wrap items-center gap-1.5 text-[11px] font-semibold">
-                              {log.event_data.username && (
-                                <span className="px-2 py-0.5 bg-slate-800 border border-slate-700 text-slate-300 rounded-lg">
-                                  👤 {log.event_data.username}
-                                </span>
-                              )}
-                              {log.event_data.tests_completed !== undefined && (
-                                <span className="px-2 py-0.5 bg-blue-500/10 border border-blue-500/20 text-blue-400 rounded-lg">
-                                  🏆 {log.event_data.tests_completed} tests
-                                </span>
-                              )}
-                              {log.event_data.max_wpm !== undefined && (
-                                <span className="px-2 py-0.5 bg-amber-500/10 border border-amber-500/20 text-amber-400 rounded-lg">
-                                  ⚡ Max: {log.event_data.max_wpm} WPM
-                                </span>
-                              )}
-                              {log.event_data.avg_wpm !== undefined && (
-                                <span className="px-2 py-0.5 bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 rounded-lg">
-                                  📈 Avg: {log.event_data.avg_wpm} WPM
-                                </span>
-                              )}
-                              {log.event_data.avg_accuracy !== undefined && (
-                                <span className="px-2 py-0.5 bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 rounded-lg">
-                                  🎯 Acc: {log.event_data.avg_accuracy}%
-                                </span>
-                              )}
-                              {log.event_data.total_time_seconds !== undefined && (
-                                <span className="px-2 py-0.5 bg-orange-500/10 border border-orange-500/20 text-orange-400 rounded-lg">
-                                  ⏱️ {Math.round(log.event_data.total_time_seconds / 60)} mins
-                                </span>
-                              )}
-                              {!log.event_data.username && !log.event_data.tests_completed && (
-                                <span className="text-slate-400 italic">{JSON.stringify(log.event_data)}</span>
-                              )}
-                            </div>
-                          ) : (
-                            <span className="text-slate-500 italic">No data</span>
-                          )}
-                        </td>
-                      </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
-            </div>
-          </div>
+          {/* Telemetry log stream sub-component */}
+          <TelemetryLogStream
+            theme={theme}
+            telemetryLogs={telemetryLogs}
+            copiedDeviceId={copiedDeviceId}
+            handleCopyDeviceId={handleCopyDeviceId}
+          />
         </div>
       )}
 
@@ -982,156 +838,20 @@ export default function AdminPortal() {
             </div>
           </div>
 
-          {/* Right Column: Deep-Dive Progress Inspector (1M / 3M / 6M Charts) */}
-          <div className={`lg:col-span-2 ${cardClass} p-6 space-y-6`}>
-            {selectedTypist && typistAnalytics ? (
-              <>
-                {/* Header Profile Info */}
-                <div className={`flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border-b ${theme.border} pb-4`}>
-                  <div>
-                    <h2 className="text-2xl font-black flex items-center gap-3">
-                      <UserCheck className={`w-7 h-7 ${theme.accent}`} /> {selectedTypist.username}
-                    </h2>
-                    <p className={`text-xs mt-1 ${subTextClass}`}>Deep progression telemetry inspector for user</p>
-                  </div>
-
-                  {/* Action controls (Export Recovery File & Timeline filter) */}
-                  <div className="flex flex-wrap items-center gap-3">
-                    <button
-                      onClick={handleExportBackup}
-                      className="px-3.5 py-1.5 bg-emerald-500/10 hover:bg-emerald-500/25 border border-emerald-500/30 text-emerald-500 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer"
-                      title="Generate JSON recovery backup file from daily summary telemetry"
-                    >
-                      <Download className="w-3.5 h-3.5" /> Export Recovery File
-                    </button>
-
-                    {/* Collapsible/Expandable Timeline Filter Switcher */}
-                    <div 
-                      onClick={() => setIsFilterExpanded(!isFilterExpanded)}
-                      className={`flex items-center gap-1.5 p-1 bg-slate-500/10 border border-slate-500/20 rounded-xl cursor-pointer transition-all duration-300 overflow-hidden ${
-                        isFilterExpanded ? 'max-w-[320px]' : 'max-w-[80px]'
-                      }`}
-                      title={isFilterExpanded ? 'Click to collapse filter options' : 'Click to expand filter options'}
-                    >
-                      <Filter className="w-3.5 h-3.5 ml-1.5 text-slate-400 flex-shrink-0" />
-                      
-                      {isFilterExpanded ? (
-                        <div className="flex items-center gap-1">
-                          {['1D', '1W', '1M', '3M', '6M'].map((range) => (
-                            <button
-                              key={range}
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setTimeRange(range);
-                                setIsFilterExpanded(false);
-                              }}
-                              className={`px-2 py-0.5 rounded-lg text-xs font-bold transition cursor-pointer ${
-                                timeRange === range
-                                  ? 'bg-blue-600 text-white shadow-sm'
-                                  : 'text-slate-400 hover:text-slate-200'
-                              }`}
-                            >
-                              {range}
-                            </button>
-                          ))}
-                        </div>
-                      ) : (
-                        <span className="text-xs font-extrabold text-blue-400 mr-2 flex-shrink-0">{timeRange}</span>
-                      )}
-                    </div>
-                  </div>
-                </div>
-
-                {/* Metric Summary Cards */}
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                  <div className="bg-slate-800/30 border border-slate-700/50 p-4 rounded-2xl text-center">
-                    <p className={`text-xs uppercase font-semibold ${subTextClass}`}>Peak Speed</p>
-                    <p className="text-2xl font-black mt-1 text-blue-400">{typistAnalytics.peakWpm} <span className="text-xs font-normal text-slate-400">WPM</span></p>
-                  </div>
-
-                  <div className="bg-slate-800/30 border border-slate-700/50 p-4 rounded-2xl text-center">
-                    <p className={`text-xs uppercase font-semibold ${subTextClass}`}>Avg Accuracy</p>
-                    <p className="text-2xl font-black mt-1 text-emerald-400">{typistAnalytics.avgAcc}%</p>
-                  </div>
-
-                  <div className="bg-slate-800/30 border border-slate-700/50 p-4 rounded-2xl text-center">
-                    <p className={`text-xs uppercase font-semibold ${subTextClass}`}>Lessons Done</p>
-                    <p className="text-2xl font-black mt-1 text-purple-400">{typistAnalytics.completedLessonsCount}</p>
-                  </div>
-
-                  <div className="bg-slate-800/30 border border-slate-700/50 p-4 rounded-2xl text-center">
-                    <p className={`text-xs uppercase font-semibold ${subTextClass}`}>Practice Time</p>
-                    <p className="text-2xl font-black mt-1 text-amber-400">{typistAnalytics.timeSpentMins} <span className="text-xs font-normal text-slate-400">mins</span></p>
-                  </div>
-                </div>
-                {/* Admin Operations Panel */}
-                <div className={`p-5 border ${theme.border} rounded-2xl ${theme.cardBg} space-y-4`}>
-                  <h4 className="text-xs font-bold uppercase tracking-wider text-slate-400">Admin Controls</h4>
-                  <div className="flex flex-wrap items-center gap-3">
-                    <button
-                      onClick={() => handleUnlockLessons(50)}
-                      className="px-4 py-2 border border-slate-600 hover:bg-slate-800 rounded-xl text-xs font-bold transition cursor-pointer"
-                      title="Set user completed lessons progress to 50%"
-                    >
-                      Unlock 50% Lessons
-                    </button>
-                    <button
-                      onClick={() => handleUnlockLessons(100)}
-                      className="px-4 py-2 border border-slate-600 hover:bg-slate-800 rounded-xl text-xs font-bold transition cursor-pointer"
-                      title="Set user completed lessons progress to 100%"
-                    >
-                      Unlock 100% Lessons
-                    </button>
-                    <button
-                      onClick={() => setCertificateUser({
-                        username: selectedTypist.username,
-                        wpm: typistAnalytics.peakWpm,
-                        accuracy: typistAnalytics.avgAcc,
-                        date: new Date().toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' })
-                      })}
-                      className="px-4 py-2 bg-purple-600 hover:bg-purple-500 text-white font-bold rounded-xl text-xs transition flex items-center gap-1.5 cursor-pointer"
-                    >
-                      <Award className="w-3.5 h-3.5" /> Issue Completion Certificate
-                    </button>
-                  </div>
-                </div>
-                {/* 1M / 3M / 6M WPM Progression AreaChart */}
-                <div className="space-y-3">
-                  <h3 className="text-sm font-extrabold uppercase tracking-wider flex items-center gap-2">
-                    <TrendingUp className="w-4 h-4 text-blue-500" /> {timeRange} WPM Speed Progression Timeline
-                  </h3>
-                  <div className="h-72 w-full pt-2">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <AreaChart data={typistAnalytics.dataPoints}>
-                        <defs>
-                          <linearGradient id="wpmGradient" x1="0" y1="0" x2="0" y2="1">
-                            <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.4}/>
-                            <stop offset="95%" stopColor="#3b82f6" stopOpacity={0}/>
-                          </linearGradient>
-                        </defs>
-                        <XAxis dataKey="date" stroke={isDarkMode ? '#94a3b8' : '#64748b'} fontSize={12} />
-                        <YAxis stroke={isDarkMode ? '#94a3b8' : '#64748b'} fontSize={12} />
-                        <Tooltip 
-                          contentStyle={{ 
-                            backgroundColor: isDarkMode ? '#1f2937' : '#ffffff', 
-                            borderRadius: '12px', 
-                            borderColor: isDarkMode ? '#374151' : '#e5e7eb',
-                            color: isDarkMode ? '#f9fafb' : '#111827'
-                          }} 
-                        />
-                        <Area type="monotone" dataKey="wpm" stroke="#3b82f6" strokeWidth={3} fillOpacity={1} fill="url(#wpmGradient)" />
-                      </AreaChart>
-                    </ResponsiveContainer>
-                  </div>
-                </div>
-              </>
-            ) : (
-              <div className="py-20 text-center space-y-3">
-                <Users className={`w-12 h-12 mx-auto ${subTextClass}`} />
-                <p className={`text-base font-semibold ${subTextClass}`}>Select a typist from the left column to view 1M/3M/6M progression stats.</p>
-              </div>
-            )}
-          </div>
+          {/* Right Column: Deep-Dive Progress Inspector (1D / 1W / 1M / 3M / 6M Charts) */}
+          <TypistDeepDive
+            theme={theme}
+            selectedTypist={selectedTypist}
+            typistAnalytics={typistAnalytics}
+            handleExportBackup={handleExportBackup}
+            timeRange={timeRange}
+            setTimeRange={setTimeRange}
+            isFilterExpanded={isFilterExpanded}
+            setIsFilterExpanded={setIsFilterExpanded}
+            handleUnlockLessons={handleUnlockLessons}
+            setCertificateUser={setCertificateUser}
+            isDarkMode={isDarkMode}
+          />
         </div>
       )}
 
@@ -1191,116 +911,11 @@ export default function AdminPortal() {
         </div>
       )}
 
-      {/* Certificate of Completion Modal */}
-      {certificateUser && (
-        <div className="fixed inset-0 z-50 bg-black/85 flex items-center justify-center p-4 print:p-0 print:bg-white print:static">
-          <style dangerouslySetInnerHTML={{__html: `
-            @media print {
-              body * {
-                visibility: hidden !important;
-              }
-              #cert-print-area, #cert-print-area * {
-                visibility: visible !important;
-              }
-              #cert-print-area {
-                position: absolute;
-                left: 0;
-                top: 0;
-                width: 100vw;
-                height: 100vh;
-                margin: 0;
-                padding: 2rem;
-                background: white !important;
-                color: black !important;
-                border: none !important;
-                box-shadow: none !important;
-              }
-              .print\\:hidden {
-                display: none !important;
-              }
-              .print\\:text-black {
-                color: #000000 !important;
-              }
-              .print\\:border-amber-600 {
-                border-color: #d97706 !important;
-              }
-            }
-          `}} />
-          
-          <div id="cert-print-area" className="bg-slate-900 border border-slate-700/50 rounded-3xl p-8 max-w-2xl w-full space-y-6 shadow-2xl relative print:border-none print:shadow-none print:bg-white print:text-black">
-            
-            {/* Certificate Document Border */}
-            <div className="border-4 border-double border-amber-500/60 p-8 space-y-8 text-center bg-slate-950/40 relative print:bg-transparent print:border-amber-600 print:text-black">
-              
-              {/* Corner Ornaments */}
-              <div className="absolute top-2 left-2 text-amber-500/50 font-serif text-lg">✦</div>
-              <div className="absolute top-2 right-2 text-amber-500/50 font-serif text-lg">✦</div>
-              <div className="absolute bottom-2 left-2 text-amber-500/50 font-serif text-lg">✦</div>
-              <div className="absolute bottom-2 right-2 text-amber-500/50 font-serif text-lg">✦</div>
-
-              <div className="space-y-2">
-                <Trophy className="w-12 h-12 mx-auto text-amber-500 print:text-amber-600" />
-                <h1 className="text-3xl font-serif text-amber-500 font-bold uppercase tracking-wider print:text-amber-600">Certificate of Completion</h1>
-                <p className="text-[10px] uppercase tracking-widest text-slate-400 font-mono print:text-slate-500">Swift Typing Touch Typing Academy</p>
-              </div>
-
-              <div className="space-y-4">
-                <p className="text-sm font-serif italic text-slate-300 print:text-slate-700">This prestigious award is proudly presented to</p>
-                <h2 className="text-4xl font-extrabold text-white font-serif border-b-2 border-amber-500/30 max-w-md mx-auto pb-2 print:text-black print:border-amber-600">
-                  {certificateUser.username}
-                </h2>
-                <p className="text-xs text-slate-400 max-w-md mx-auto leading-relaxed print:text-slate-600">
-                  for successfully mastering touch typing fundamentals, achieving outstanding finger muscle coordination, and completing the Touch Typing Lesson Curriculum.
-                </p>
-              </div>
-
-              {/* Stats Block */}
-              <div className="grid grid-cols-2 gap-4 max-w-sm mx-auto p-4 bg-slate-900/60 border border-slate-800 rounded-xl print:bg-slate-100 print:border-slate-300">
-                <div>
-                  <p className="text-[9px] uppercase tracking-wider text-slate-500">Peak WPM Speed</p>
-                  <p className="text-lg font-black text-blue-400">{certificateUser.wpm} WPM</p>
-                </div>
-                <div>
-                  <p className="text-[9px] uppercase tracking-wider text-slate-500">Average Accuracy</p>
-                  <p className="text-lg font-black text-emerald-400">{certificateUser.accuracy}%</p>
-                </div>
-              </div>
-
-              {/* Signatures */}
-              <div className="flex justify-between items-end pt-6 max-w-md mx-auto text-xs text-slate-400 print:text-slate-800">
-                <div className="space-y-1">
-                  <p className="font-semibold text-slate-300 italic font-serif print:text-black">Touch Typing Instructor</p>
-                  <div className="w-24 border-t border-slate-700 mx-auto print:border-slate-500"></div>
-                  <p className="text-[9px] text-slate-500">Signature</p>
-                </div>
-                <div>
-                  <p className="font-semibold text-slate-300 print:text-black">{certificateUser.date}</p>
-                  <div className="w-24 border-t border-slate-700 mx-auto print:border-slate-500"></div>
-                  <p className="text-[9px] text-slate-500">Date Issued</p>
-                </div>
-              </div>
-
-            </div>
-
-            {/* Print & Close Controls */}
-            <div className="flex justify-end gap-3 print:hidden">
-              <button
-                onClick={() => setCertificateUser(null)}
-                className="px-4 py-2 border border-slate-700 hover:bg-slate-800 text-slate-300 font-semibold rounded-xl text-xs transition cursor-pointer"
-              >
-                Close
-              </button>
-              <button
-                onClick={() => window.print()}
-                className="px-4 py-2 bg-amber-500 hover:bg-amber-600 text-slate-950 font-black rounded-xl text-xs transition flex items-center gap-1.5 cursor-pointer shadow-lg shadow-amber-500/10"
-              >
-                <Download className="w-3.5 h-3.5" /> Print / Save PDF
-              </button>
-            </div>
-
-          </div>
-        </div>
-      )}
+      {/* Completion certificate modal */}
+      <CompletionCertificate
+        certificateUser={certificateUser}
+        setCertificateUser={setCertificateUser}
+      />
     </div>
   );
 }
