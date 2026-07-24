@@ -145,7 +145,7 @@ function App() {
       <ErrorBoundary>
         <Router>
           <div className="min-h-screen transition-colors duration-300">
-            <Navigation 
+            <Navigation
               currentPage={currentPage}
               onPageChange={setCurrentPage}
               currentUser={currentUser}
@@ -153,77 +153,77 @@ function App() {
               onThemeChange={handleThemeChange}
               currentTheme={userSettings.theme}
             />
-          
-          <main className="min-h-screen pt-4">
-            <Suspense fallback={<PageLoader />}>
-              <Routes>
-                <Route path="/" element={<Navigate to="/lessons" />} />
-                <Route 
-                  path="/lessons" 
-                  element={
-                    <TypingLessons 
-                      currentUser={currentUser}
-                      settings={userSettings}
-                    />
-                  } 
-                />
-                <Route 
-                  path="/courses" 
-                  element={
-                    <TypingCourses 
-                      currentUser={currentUser}
-                      settings={userSettings}
-                    />
-                  } 
-                />
-                <Route 
-                  path="/games" 
-                  element={
-                    <TypingGames 
-                      currentUser={currentUser}
-                      settings={userSettings}
-                    />
-                  } 
-                />
-                <Route 
-                  path="/tests" 
-                  element={
-                    <TypingTests 
-                      currentUser={currentUser}
-                      settings={userSettings}
-                    />
-                  } 
-                />
-                <Route 
-                  path="/settings" 
-                  element={
-                    <Settings 
-                      currentUser={currentUser}
-                      settings={userSettings}
-                      onSettingsChange={handleSettingsChange}
-                      onUserUpdate={handleUserUpdate}
-                    />
-                  } 
-                />
-                <Route path="/results" element={<Results />} />
-                <Route path="/about" element={<About />} />
-                <Route path="/features" element={<Features />} />
-                <Route path="/pricing" element={<Pricing />} />
-                <Route path="/admin" element={<AdminPortal />} />
-                <Route path="*" element={<NotFound />} />
-              </Routes>
-            </Suspense>
-          </main>
-          
-          {currentUser && (
-            <div className="max-w-7xl mx-auto px-4 pb-4">
-              <AdBanner slot="8506280207" format="horizontal" style={{ maxHeight: '90px' }} />
-            </div>
-          )}
 
-          <UpdateToast />
-        </div>
-      </Router>
+            <main className="min-h-screen pt-4">
+              <Suspense fallback={<PageLoader />}>
+                <Routes>
+                  <Route path="/" element={<Navigate to="/lessons" />} />
+                  <Route
+                    path="/lessons"
+                    element={
+                      <TypingLessons
+                        currentUser={currentUser}
+                        settings={userSettings}
+                      />
+                    }
+                  />
+                  <Route
+                    path="/courses"
+                    element={
+                      <TypingCourses
+                        currentUser={currentUser}
+                        settings={userSettings}
+                      />
+                    }
+                  />
+                  <Route
+                    path="/games"
+                    element={
+                      <TypingGames
+                        currentUser={currentUser}
+                        settings={userSettings}
+                      />
+                    }
+                  />
+                  <Route
+                    path="/tests"
+                    element={
+                      <TypingTests
+                        currentUser={currentUser}
+                        settings={userSettings}
+                      />
+                    }
+                  />
+                  <Route
+                    path="/settings"
+                    element={
+                      <Settings
+                        currentUser={currentUser}
+                        settings={userSettings}
+                        onSettingsChange={handleSettingsChange}
+                        onUserUpdate={handleUserUpdate}
+                      />
+                    }
+                  />
+                  <Route path="/results" element={<Results />} />
+                  <Route path="/about" element={<About />} />
+                  <Route path="/features" element={<Features />} />
+                  <Route path="/pricing" element={<Pricing />} />
+                  <Route path="/admin" element={<AdminPortal />} />
+                  <Route path="*" element={<NotFound />} />
+                </Routes>
+              </Suspense>
+            </main>
+
+            {currentUser && (
+              <div className="max-w-7xl mx-auto px-4 pb-4">
+                <AdBanner slot="8506280207" format="horizontal" style={{ maxHeight: '90px' }} />
+              </div>
+            )}
+
+            <UpdateToast />
+          </div>
+        </Router>
       </ErrorBoundary>
     </ThemeProvider>
   );
@@ -235,9 +235,9 @@ export default App;
 function BannedScreenWithModals({ banReason, currentUser }) {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [showAppealModal, setShowAppealModal] = useState(false);
-  const [appealMessage, setAppealMessage]     = useState('');
-  const [isSubmitting, setIsSubmitting]       = useState(false);
-  const [appealStatus, setAppealStatus]       = useState('');
+  const [appealMessage, setAppealMessage] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [appealStatus, setAppealStatus] = useState('');
 
   const handleSendAppeal = async () => {
     if (!appealMessage.trim()) return;
@@ -258,21 +258,21 @@ function BannedScreenWithModals({ banReason, currentUser }) {
       const existingAppeals = JSON.parse(localStorage.getItem('swift_unban_appeals') || '[]');
       existingAppeals.push(payload);
       localStorage.setItem('swift_unban_appeals', JSON.stringify(existingAppeals));
-    } catch (e) {}
+    } catch (e) { }
 
     // 1. Cloud sync to Supabase unban_requests
     try {
       if (navigator.onLine) {
         await supabase.from('unban_requests').upsert([payload]);
       }
-    } catch (e) {}
+    } catch (e) { }
 
     // 2. Automatic Real Email Dispatch to sw.esports.offical@gmail.com
     try {
       if (navigator.onLine) {
-        await fetch('https://formsubmit.co/ajax/sw.esports.offical@gmail.com', {
+        await fetch('https://formsubmit.co/your@email.com/sw.esports.offical@gmail.com', {
           method: 'POST',
-          headers: { 
+          headers: {
             'Content-Type': 'application/json',
             'Accept': 'application/json'
           },
@@ -286,7 +286,7 @@ function BannedScreenWithModals({ banReason, currentUser }) {
           })
         });
       }
-    } catch (e) {}
+    } catch (e) { }
 
     setIsSubmitting(false);
     setAppealStatus('✅ Appeal saved to Supabase & email sent to sw.esports.offical@gmail.com!');
