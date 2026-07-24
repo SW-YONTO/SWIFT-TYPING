@@ -6,7 +6,7 @@ import {
   Lock, ShieldAlert, Users, Activity, 
   CheckCircle, Ban, Monitor, Zap, Award, RefreshCw, Layers,
   Eye, EyeOff, KeyRound, Server, UserCheck, Clock, FileText, Trophy, Copy, Check,
-  LayoutDashboard, Search, TrendingUp, Calendar, LogOut, ChevronRight, Filter
+  LayoutDashboard, Search, TrendingUp, Calendar, LogOut, ChevronRight, Filter, Download
 } from 'lucide-react';
 import { 
   BarChart, Bar, XAxis, YAxis, Tooltip, 
@@ -144,6 +144,103 @@ export default function AdminPortal() {
       totalTests: Math.max(selectedTypist.totalTests || 0, dataPoints.length),
       timeSpentMins: Math.round((localProg?.stats?.totalTime || (dataPoints.length * 90)) / 60)
     };
+  };
+
+  const handleExportBackup = () => {
+    if (!selectedTypist || !typistAnalytics) return;
+
+    // Filter telemetry logs for this typist
+    const username = selectedTypist.username?.toLowerCase() || '';
+    const logs = telemetryLogs.filter(
+      log => log.event_data?.username?.toLowerCase() === username
+    );
+
+    let totalTests = 0;
+    let totalTime = 0;
+    let maxWpm = 0;
+    let wpmSum = 0;
+    let accSum = 0;
+    const testResults = [];
+
+    logs.forEach(log => {
+      const data = log.event_data || {};
+      const tests = Number(data.tests_completed) || 1;
+      const wpm = Number(data.avg_wpm || data.wpm) || 0;
+      const acc = Number(data.avg_accuracy || data.accuracy) || 95;
+      const time = Number(data.total_time_seconds || data.time_spent_seconds) || (tests * 60);
+
+      totalTests += tests;
+      totalTime += time;
+      maxWpm = Math.max(maxWpm, Number(data.max_wpm || wpm) || 0);
+      wpmSum += wpm * tests;
+      accSum += acc * tests;
+
+      // Reconstruct simulated test entries for recovery
+      for (let i = 0; i < tests; i++) {
+        testResults.push({
+          wpm: wpm,
+          accuracy: acc,
+          timeSpent: Math.round(time / tests),
+          completedAt: log.created_at,
+          testTitle: `Telemetry Recovery Test ${i + 1}`,
+          type: 'test'
+        });
+      }
+    });
+
+    const avgWpm = totalTests ? Math.round(wpmSum / totalTests) : (selectedTypist.averageWPM || 0);
+    const avgAcc = totalTests ? Math.round(accSum / totalTests) : 95;
+
+    const backupData = {
+      version: '2.0.0',
+      exportDate: new Date().toISOString(),
+      user: {
+        id: selectedTypist.id || `recovered_${Date.now()}`,
+        username: selectedTypist.username,
+        avatar: selectedTypist.avatar || 'avatar1.png',
+        createdAt: new Date().toISOString(),
+        totalTests: totalTests || selectedTypist.totalTests || 0,
+        averageWPM: avgWpm,
+        averageAccuracy: avgAcc
+      },
+      progress: {
+        completedLessons: [],
+        testResults: testResults,
+        settings: {
+          theme: 'blue',
+          timeLimit: 60,
+          wordLimit: 50,
+          showVirtualHand: false
+        },
+        stats: {
+          totalTests: totalTests || selectedTypist.totalTests || 0,
+          totalTime: totalTime,
+          totalCharacters: (totalTests || selectedTypist.totalTests || 0) * avgWpm * 5,
+          bestWPM: maxWpm,
+          bestAccuracy: avgAcc
+        }
+      },
+      streak: {
+        currentStreak: 1,
+        bestStreak: 1,
+        lastActiveDate: new Date().toISOString().split('T')[0],
+        activeDates: logs.map(l => new Date(l.created_at).toISOString().split('T')[0])
+      },
+      achievements: [],
+      keyStats: {}
+    };
+
+    const dataStr = JSON.stringify(backupData, null, 2);
+    const blob = new Blob([dataStr], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `swift-typing-recovery-${selectedTypist.username}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    setStatusMsg(`💾 Successfully exported recovery file for ${selectedTypist.username}! Send this file to the user.`);
   };
 
   useEffect(() => {
@@ -790,22 +887,33 @@ export default function AdminPortal() {
                     <p className={`text-xs mt-1 ${subTextClass}`}>Deep progression telemetry inspector for user</p>
                   </div>
 
-                  {/* 1M / 3M / 6M Timeline Switcher */}
-                  <div className="flex items-center gap-1.5 p-1 bg-slate-500/10 border border-slate-500/20 rounded-xl">
-                    <Filter className="w-3.5 h-3.5 ml-2 text-slate-400" />
-                    {['1M', '3M', '6M'].map((range) => (
-                      <button
-                        key={range}
-                        onClick={() => setTimeRange(range)}
-                        className={`px-3 py-1 rounded-lg text-xs font-bold transition cursor-pointer ${
-                          timeRange === range
-                            ? 'bg-blue-600 text-white shadow-sm'
-                            : 'text-slate-400 hover:text-slate-200'
-                        }`}
-                      >
-                        {range}
-                      </button>
-                    ))}
+                  {/* Action controls (Export Recovery File & Timeline filter) */}
+                  <div className="flex flex-wrap items-center gap-3">
+                    <button
+                      onClick={handleExportBackup}
+                      className="px-3.5 py-1.5 bg-emerald-500/10 hover:bg-emerald-500/25 border border-emerald-500/30 text-emerald-500 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer"
+                      title="Generate JSON recovery backup file from daily summary telemetry"
+                    >
+                      <Download className="w-3.5 h-3.5" /> Export Recovery File
+                    </button>
+
+                    {/* 1M / 3M / 6M Timeline Switcher */}
+                    <div className="flex items-center gap-1.5 p-1 bg-slate-500/10 border border-slate-500/20 rounded-xl">
+                      <Filter className="w-3.5 h-3.5 ml-2 text-slate-400" />
+                      {['1M', '3M', '6M'].map((range) => (
+                        <button
+                          key={range}
+                          onClick={() => setTimeRange(range)}
+                          className={`px-3 py-1 rounded-lg text-xs font-bold transition cursor-pointer ${
+                            timeRange === range
+                              ? 'bg-blue-600 text-white shadow-sm'
+                              : 'text-slate-400 hover:text-slate-200'
+                          }`}
+                        >
+                          {range}
+                        </button>
+                      ))}
+                    </div>
                   </div>
                 </div>
 
