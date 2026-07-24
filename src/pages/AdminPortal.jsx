@@ -74,6 +74,42 @@ export default function AdminPortal() {
     window.location.hash = `#/admin#${tab}`;
   };
 
+  const handleSelectUser = (username) => {
+    if (!username) return;
+    setActiveTab('users');
+    window.location.hash = `#/admin#users/${username}`;
+    const found = registeredUsersList.find(
+      u => u.username?.toLowerCase() === username.toLowerCase()
+    );
+    if (found) {
+      setSelectedTypist(found);
+    }
+  };
+
+  useEffect(() => {
+    const handleHashChange = () => {
+      const hash = window.location.hash;
+      if (hash.includes('#users/') || hash.includes('/users/')) {
+        const parts = hash.split('/');
+        const username = parts[parts.length - 1];
+        if (username && registeredUsersList.length > 0) {
+          const found = registeredUsersList.find(
+            u => u.username?.toLowerCase() === username.toLowerCase()
+          );
+          if (found) {
+            setSelectedTypist(found);
+            setActiveTab('users');
+          }
+        }
+      }
+    };
+    window.addEventListener('hashchange', handleHashChange);
+    if (registeredUsersList.length > 0) {
+      handleHashChange();
+    }
+    return () => window.removeEventListener('hashchange', handleHashChange);
+  }, [registeredUsersList]);
+
   const handleCopyDeviceId = (deviceId) => {
     if (!deviceId) return;
     try {
@@ -787,6 +823,7 @@ export default function AdminPortal() {
             telemetryLogs={telemetryLogs}
             copiedDeviceId={copiedDeviceId}
             handleCopyDeviceId={handleCopyDeviceId}
+            handleSelectUser={handleSelectUser}
           />
         </div>
       )}
