@@ -49,7 +49,7 @@ class TelemetryTracker {
     const targetUser = (username || '').toLowerCase();
     const targetDev  = (this.deviceId || '').toLowerCase();
 
-    // 1. Check local banManager first (fast & offline)
+    // 1. Check local banManager first (fast & offline lock)
     try {
       const bannedList = JSON.parse(localStorage.getItem('swift_banned_devices') || '[]');
       const localFound = bannedList.find(b => {
@@ -61,16 +61,18 @@ class TelemetryTracker {
         const reason = localFound.ban_reason || 'Suspended by Administrator.';
         localStorage.setItem('swift_device_banned', 'true');
         localStorage.setItem('swift_ban_reason', reason);
-        console.log(`%c[BanCheck] User: "${username || 'Anonymous'}" | Device: "${this.deviceId}" | Status: BANNED 🚫 | Reason: ${reason}`, 'color: #ef4444; font-weight: bold;');
-        return true;
       }
     } catch (e) {}
 
+    // Enforce offline lock: Disconnecting Internet CANNOT bypass ban
     if (!navigator.onLine) {
-      const isB = localStorage.getItem('swift_device_banned') === 'true';
-      if (isB) console.log(`%c[BanCheck] User: "${username || 'Anonymous'}" | Status: BANNED (Offline) 🚫`, 'color: #ef4444; font-weight: bold;');
-      else console.log(`%c[BanCheck] User: "${username || 'Anonymous'}" | Status: ACTIVE (Offline) ✅`, 'color: #10b981; font-weight: bold;');
-      return isB;
+      const isBannedLocally = localStorage.getItem('swift_device_banned') === 'true';
+      if (isBannedLocally) {
+        console.log(`%c[BanCheck] User: "${username || 'Anonymous'}" | Status: BANNED (Offline Lock Enforced) 🚫`, 'color: #ef4444; font-weight: bold;');
+        return true;
+      }
+      console.log(`%c[BanCheck] User: "${username || 'Anonymous'}" | Status: ACTIVE (Offline) ✅`, 'color: #10b981; font-weight: bold;');
+      return false;
     }
 
     // 2. Check Supabase user_moderation (case-insensitive target matching)
@@ -92,19 +94,36 @@ class TelemetryTracker {
       if (data && data.length > 0) {
         const item = data[0];
         const reason = item.ban_reason || 'Suspended by Administrator.';
+
+        // Lock in local storage & local banManager so offline reloads stay banned
         localStorage.setItem('swift_device_banned', 'true');
         localStorage.setItem('swift_ban_reason', reason);
+        try {
+          const list = JSON.parse(localStorage.getItem('swift_banned_devices') || '[]');
+          if (!list.some(b => b.device_id?.toLowerCase() === targetUser || b.device_id?.toLowerCase() === targetDev)) {
+            list.unshift({ device_id: username || this.deviceId, is_banned: true, ban_reason: reason, banned_at: new Date().toISOString() });
+            localStorage.setItem('swift_banned_devices', JSON.stringify(list));
+          }
+        } catch (e) {}
+
         console.log(`%c[BanCheck] User: "${username || 'Anonymous'}" | Device: "${this.deviceId}" | Status: BANNED 🚫 | Reason: ${reason}`, 'color: #ef4444; font-weight: bold;');
         return true;
       } else {
+        // ONLY clear local ban when ONLINE and Supabase confirms user is NOT banned
         localStorage.setItem('swift_device_banned', 'false');
         localStorage.removeItem('swift_ban_reason');
+        try {
+          const list = JSON.parse(localStorage.getItem('swift_banned_devices') || '[]');
+          const filtered = list.filter(b => b.device_id?.toLowerCase() !== targetUser && b.device_id?.toLowerCase() !== targetDev);
+          localStorage.setItem('swift_banned_devices', JSON.stringify(filtered));
+        } catch (e) {}
+
         console.log(`%c[BanCheck] User: "${username || 'Anonymous'}" | Device: "${this.deviceId}" | Status: ACTIVE ✅`, 'color: #10b981; font-weight: bold;');
         return false;
       }
     } catch (e) {
       const isB = localStorage.getItem('swift_device_banned') === 'true';
-      if (isB) console.log(`%c[BanCheck] User: "${username || 'Anonymous'}" | Status: BANNED (Fallback) 🚫`, 'color: #ef4444; font-weight: bold;');
+      if (isB) console.log(`%c[BanCheck] User: "${username || 'Anonymous'}" | Status: BANNED (Offline Lock Fallback) 🚫`, 'color: #ef4444; font-weight: bold;');
       else console.log(`%c[BanCheck] User: "${username || 'Anonymous'}" | Status: ACTIVE ✅`, 'color: #10b981; font-weight: bold;');
       return isB;
     }
