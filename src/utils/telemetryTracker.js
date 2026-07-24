@@ -31,18 +31,8 @@ class TelemetryTracker {
     if (this.initialized) return;
     this.initialized = true;
 
-    // Track app launch
+    // Track app launch (Max 1 ping per day per user)
     this.trackLaunch();
-
-    // Listen for tab/window unload to flush remaining stats
-    if (typeof window !== 'undefined') {
-      window.addEventListener('beforeunload', () => this.flushSessionSummary());
-      document.addEventListener('visibilitychange', () => {
-        if (document.visibilityState === 'hidden') {
-          this.flushSessionSummary();
-        }
-      });
-    }
   }
 
   getPlatformInfo() {
@@ -69,14 +59,14 @@ class TelemetryTracker {
   }
 
   /**
-   * App launch ping - fires once when app loads if online
+   * App launch ping - STRICTLY max 1 ping per day per user
    */
   async trackLaunch() {
     if (!navigator.onLine) return;
 
     const today = new Date().toISOString().split('T')[0];
     const lastLaunchLogged = localStorage.getItem('swift_last_launch_date');
-    if (lastLaunchLogged === today) return; // Only 1 launch ping per day per user
+    if (lastLaunchLogged === today) return; // Zero requests if already launched today!
 
     const { clientType, osPlatform } = this.getPlatformInfo();
 
@@ -96,100 +86,42 @@ class TelemetryTracker {
   }
 
   /**
-   * Called whenever user completes a test, lesson, or game
+   * Called ONLY when user actually completes a test, lesson, or game
    */
   async recordTest({ wpm = 0, accuracy = 0, timeSpent = 0, type = 'test' }) {
-    // 1. Update local daily accumulator
-    const today = new Date().toISOString().split('T')[0];
-    let session = JSON.parse(localStorage.getItem('swift_today_session') || '{}');
-
-    if (session.date !== today) {
-      session = {
-        date: today,
-        testsCompleted: 0,
-        wpmSum: 0,
-        maxWpm: 0,
-        accuracySum: 0,
-        totalTimeSpent: 0
-      };
-    }
-
-    session.testsCompleted += 1;
-    session.wpmSum += Number(wpm) || 0;
-    session.maxWpm = Math.max(session.maxWpm || 0, Number(wpm) || 0);
-    session.accuracySum += Number(accuracy) || 0;
-    session.totalTimeSpent += Number(timeSpent) || 0;
-
-    localStorage.setItem('swift_today_session', JSON.stringify(session));
-
-    // 2. Immediate live telemetry ping to Supabase so Admin Portal updates instantly across all devices
-    if (navigator.onLine) {
-      try {
-        const { clientType, osPlatform } = this.getPlatformInfo();
-        let username = 'Anonymous Typist';
-        try {
-          const currentUserId = localStorage.getItem('typing_app_current_user');
-          const users = JSON.parse(localStorage.getItem('typing_app_users') || '[]');
-          const user = users.find(u => u.id === currentUserId);
-          if (user?.username) username = user.username;
-        } catch (e) {}
-
-        const payload = {
-          device_id: this.deviceId,
-          client_type: clientType,
-          app_version: APP_VERSION,
-          os_platform: osPlatform,
-          event_type: 'test_completed',
-          event_data: {
-            username,
-            wpm: Number(wpm) || 0,
-            accuracy: Number(accuracy) || 0,
-            time_spent_seconds: Number(timeSpent) || 0,
-            type: type || 'lesson'
-          }
-        };
-
-        await supabase.from('app_telemetry').insert([payload]);
-        this.lastSyncTime = Date.now();
-      } catch (err) {
-        // Quiet fail
-      }
-    }
-  }
-
-  /**
-   * Flushes current session summary payload to Supabase
-   */
-  async flushSessionSummary() {
     if (!navigator.onLine) return;
 
-    const session = JSON.parse(localStorage.getItem('swift_today_session') || '{}');
-    if (!session.testsCompleted) return;
-
-    const { clientType, osPlatform } = this.getPlatformInfo();
-    const avgWpm = Math.round(session.wpmSum / session.testsCompleted);
-    const avgAccuracy = Math.round(session.accuracySum / session.testsCompleted);
-
-    const payload = {
-      device_id: this.deviceId,
-      client_type: clientType,
-      app_version: APP_VERSION,
-      os_platform: osPlatform,
-      event_type: 'session_summary',
-      event_data: {
-        tests_completed: session.testsCompleted,
-        avg_wpm: avgWpm,
-        max_wpm: session.maxWpm,
-        avg_accuracy: avgAccuracy,
-        total_time_seconds: session.totalTimeSpent
-      }
-    };
+    // 5-second cooldown to prevent spamming DB requests
+    const now = Date.now();
+    if (now - this.lastSyncTime < 5000) return;
+    this.lastSyncTime = now;
 
     try {
-      const { error } = await supabase.from('app_telemetry').insert([payload]);
-      if (!error) {
-        this.lastSyncTime = Date.now();
-      }
+      const { clientType, osPlatform } = this.getPlatformInfo();
+      let username = 'Anonymous Typist';
+      try {
+        const currentUserId = localStorage.getItem('typing_app_current_user');
+        const users = JSON.parse(localStorage.getItem('typing_app_users') || '[]');
+        const user = users.find(u => u.id === currentUserId);
+        if (user?.username) username = user.username;
+      } catch (e) {}
+
+      const payload = {
+        device_id: this.deviceId,
+        client_type: clientType,
+        app_version: APP_VERSION,
+        os_platform: osPlatform,
+        event_type: 'test_completed',
+        event_data: {
+          username,
+          wpm: Number(wpm) || 0,
+          accuracy: Number(accuracy) || 0,
+          time_spent_seconds: Number(timeSpent) || 0,
+          type: type || 'lesson'
+        }
+      };
+
+      await supabase.from('app_telemetry').insert([payload]);
     } catch (err) {
       // Quiet fail
     }
