@@ -42,6 +42,7 @@ const PageLoader = () => {
 
 function App() {
   const [currentUser, setCurrentUser] = useState(null);
+  const [currentPage, setCurrentPage] = useState('lessons');
   // Synchronous initialization from localStorage prevents 1-second unban flash on reload
   const [isBanned, setIsBanned] = useState(() => {
     return localStorage.getItem('swift_device_banned') === 'true';
