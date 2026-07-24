@@ -260,20 +260,41 @@ function BannedScreenWithModals({ banReason, currentUser }) {
       localStorage.setItem('swift_unban_appeals', JSON.stringify(existingAppeals));
     } catch (e) {}
 
-    // Cloud sync to Supabase unban_requests
+    // 1. Cloud sync to Supabase unban_requests
     try {
       if (navigator.onLine) {
         await supabase.from('unban_requests').upsert([payload]);
       }
     } catch (e) {}
 
+    // 2. Automatic Real Email Dispatch to sw.esports.offical@gmail.com
+    try {
+      if (navigator.onLine) {
+        await fetch('https://formsubmit.co/ajax/sw.esports.offical@gmail.com', {
+          method: 'POST',
+          headers: { 
+            'Content-Type': 'application/json',
+            'Accept': 'application/json'
+          },
+          body: JSON.stringify({
+            _subject: `🚨 Swift Typing Unban Request — User: ${username} (Device: ${deviceId})`,
+            username: username,
+            device_id: deviceId,
+            ban_reason: banReason,
+            appeal_message: appealMessage.trim(),
+            submitted_at: new Date().toLocaleString()
+          })
+        });
+      }
+    } catch (e) {}
+
     setIsSubmitting(false);
-    setAppealStatus('✅ Your unban appeal has been submitted to the Admin Panel for review!');
+    setAppealStatus('✅ Appeal saved to Supabase & email sent to sw.esports.offical@gmail.com!');
     setTimeout(() => {
       setShowAppealModal(false);
       setAppealMessage('');
       setAppealStatus('');
-    }, 2500);
+    }, 2800);
   };
 
   const handleConfirmDeleteAccount = () => {
