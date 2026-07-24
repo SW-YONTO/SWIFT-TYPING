@@ -1506,43 +1506,10 @@ const Settings = ({ currentUser, settings, onSettingsChange, onUserUpdate }) => 
             </p>
           </div>
 
-          {/* Official Certificates Card */}
-          <div className={`${theme.cardBg} rounded-2xl p-6 border ${theme.border} shadow-lg space-y-4`}>
-            <div className="flex items-center gap-3">
-              <div className={`p-3 ${theme.mode === 'dark' ? 'bg-purple-900/40' : 'bg-purple-100'} rounded-xl`}>
-                <Award className={`w-6 h-6 ${theme.mode === 'dark' ? 'text-purple-400' : 'text-purple-600'}`} />
-              </div>
-              <div>
-                <h3 className={`font-semibold ${theme.text}`}>Official Certificate</h3>
-                <p className={`text-sm ${theme.textSecondary}`}>Download your verified completion certificate</p>
-              </div>
-            </div>
-            
-            <button
-              onClick={() => setShowCertModal(true)}
-              className="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-bold px-4 py-3 rounded-xl transition-all shadow-md cursor-pointer hover:scale-[1.02]"
-            >
-              <Award className="w-5 h-5" />
-              <span>View &amp; Download Certificate</span>
-            </button>
-            <p className={`${theme.textSecondary} text-xs text-center`}>
-              Official print-ready certificate with QR verification code
-            </p>
-          </div>
         </div>
       </div>
 
-      {/* Certificate Preview & Exporter Modal */}
-      {showCertModal && (() => {
-        const savedCerts = JSON.parse(localStorage.getItem(`swift_issued_certs_${currentUser?.id}`) || '[]');
-        const latestCert = savedCerts.length > 0 ? savedCerts[savedCerts.length - 1] : null;
-        return (
-          <CompletionCertificate
-            certificateUser={latestCert}
-            typist={currentUser}
-            onClose={() => setShowCertModal(false)}
-          />
-        );
+      {/* Certificate Preview removed — available only via Achievements Panel */}
       })()}
       
       {/* Analytics Calendar Modal */}
