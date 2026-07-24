@@ -316,6 +316,7 @@ function BannedScreenWithModals({ banReason, currentUser }) {
             _captcha: 'false',
             _template: 'table',
             _url: 'https://swift-typing.me/app#/admin',
+            message: `Unban Appeal from ${username || 'Anonymous'} | Device: ${deviceId} | Reason: ${banReason || 'N/A'} | Appeal: ${appealMessage.trim()}`,
             "Reference Code": `REF-${refCode}`,
             "1. User Name": username || 'Anonymous Typist',
             "2. Device ID": deviceId,
