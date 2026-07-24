@@ -267,28 +267,32 @@ function BannedScreenWithModals({ banReason, currentUser }) {
       }
     } catch (e) { }
 
-    // 2. Automatic Real Email Dispatch to sw.esports.offical@gmail.com with detailed logging
+    // 2. Automatic Real Email Dispatch to sw.esports.offical@gmail.com
     let mailSuccess = false;
     let mailErrorMsg = '';
 
     try {
       if (navigator.onLine) {
-        console.log('[Mailer] Dispatching appeal email to sw.esports.offical@gmail.com...');
+        console.log('[Mailer] Dispatching appeal via FormSubmit FormData...');
+        
+        const formData = new FormData();
+        formData.append('name', username);
+        formData.append('email', 'sw.esports.offical@gmail.com');
+        formData.append('_subject', `🚨 Swift Typing Unban Request — User: ${username} (${deviceId})`);
+        formData.append('_captcha', 'false');
+        formData.append('_template', 'table');
+        formData.append('username', username);
+        formData.append('device_id', deviceId);
+        formData.append('ban_reason', banReason || 'N/A');
+        formData.append('appeal_message', appealMessage.trim());
+        formData.append('submitted_at', new Date().toLocaleString());
+
         const res = await fetch('https://formsubmit.co/ajax/sw.esports.offical@gmail.com', {
           method: 'POST',
           headers: {
-            'Content-Type': 'application/json',
             'Accept': 'application/json'
           },
-          body: JSON.stringify({
-            _subject: `🚨 Swift Typing Unban Request — User: ${username} (Device: ${deviceId})`,
-            name: username,
-            email: 'sw.esports.offical@gmail.com',
-            device_id: deviceId,
-            ban_reason: banReason,
-            appeal_message: appealMessage.trim(),
-            submitted_at: new Date().toLocaleString()
-          })
+          body: formData
         });
 
         const resData = await res.json().catch(() => ({}));
