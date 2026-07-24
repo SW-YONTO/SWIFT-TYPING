@@ -42,16 +42,20 @@ const PageLoader = () => {
 
 function App() {
   const [currentUser, setCurrentUser] = useState(null);
-  const [currentPage, setCurrentPage] = useState('lessons');
-  const [isBanned, setIsBanned] = useState(false);
-  const [banReason, setBanReason] = useState('No reason specified.');
+  // Synchronous initialization from localStorage prevents 1-second unban flash on reload
+  const [isBanned, setIsBanned] = useState(() => {
+    return localStorage.getItem('swift_device_banned') === 'true';
+  });
+  const [banReason, setBanReason] = useState(() => {
+    return localStorage.getItem('swift_ban_reason') || 'No reason specified.';
+  });
   const [userSettings, setUserSettings] = useState({
     timeLimit: 60,
     wordLimit: 50,
     showVirtualHand: false
   });
 
-  // Check ban status on mount & continuously poll every 4 seconds
+  // Check ban status on mount once & poll at relaxed 10-minute interval (600,000ms) to optimize performance & API limits
   useEffect(() => {
     telemetry.init();
     const checkBan = async () => {
@@ -66,7 +70,8 @@ function App() {
     };
     checkBan();
 
-    const interval = setInterval(checkBan, 4000);
+    // 10-Minute relaxed interval (600,000 ms)
+    const interval = setInterval(checkBan, 10 * 60 * 1000);
     return () => clearInterval(interval);
   }, [currentUser]);
 
@@ -239,6 +244,26 @@ function BannedScreenWithModals({ banReason, currentUser }) {
   const [appealMessage, setAppealMessage] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [appealStatus, setAppealStatus] = useState('');
+  const [checkingStatus, setCheckingStatus] = useState(false);
+  const [checkStatusMsg, setCheckStatusMsg] = useState('');
+
+  const handleCheckUnbanStatus = async () => {
+    setCheckingStatus(true);
+    setCheckStatusMsg('Checking Supabase moderation status...');
+    const username = currentUser?.username || '';
+    const isStillBanned = await telemetry.checkBanStatus(username);
+    setCheckingStatus(false);
+
+    if (!isStillBanned) {
+      setCheckStatusMsg('🎉 Account unbanned! Reloading workspace...');
+      setTimeout(() => {
+        window.location.reload();
+      }, 1000);
+    } else {
+      setCheckStatusMsg('🚫 Account is still suspended by Administrator.');
+      setTimeout(() => setCheckStatusMsg(''), 4000);
+    }
+  };
 
   const handleSendAppeal = async () => {
     if (!appealMessage.trim()) return;
@@ -389,18 +414,28 @@ function BannedScreenWithModals({ banReason, currentUser }) {
 
         <div className="grid grid-cols-1 gap-3">
           <button
+            onClick={handleCheckUnbanStatus}
+            disabled={checkingStatus}
+            className="w-full py-3.5 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white font-bold rounded-2xl transition shadow-lg shadow-emerald-600/20 text-center text-sm cursor-pointer flex items-center justify-center gap-2"
+          >
+            {checkingStatus ? 'Checking Database...' : '🔄 Check Unban Status / Refresh'}
+          </button>
+          <button
             onClick={() => setShowAppealModal(true)}
-            className="w-full py-3.5 bg-red-600 hover:bg-red-500 text-white font-bold rounded-2xl transition shadow-lg shadow-red-600/20 text-center text-sm cursor-pointer"
+            className="w-full py-3 bg-red-600/20 hover:bg-red-600/30 text-red-300 font-bold rounded-2xl border border-red-500/30 transition text-center text-sm cursor-pointer"
           >
             Submit Unban Appeal (In-App)
           </button>
           <button
             onClick={() => setShowDeleteModal(true)}
-            className="w-full py-3.5 bg-slate-800 hover:bg-slate-700 text-slate-300 font-semibold rounded-2xl border border-slate-700 hover:border-slate-600 transition text-sm cursor-pointer"
+            className="w-full py-3 bg-slate-800 hover:bg-slate-700 text-slate-400 font-semibold rounded-2xl border border-slate-700 transition text-sm cursor-pointer"
           >
-            Delete Account & Start Fresh
+            Delete Account &amp; Start Fresh
           </button>
         </div>
+        {checkStatusMsg && (
+          <p className="text-xs font-bold text-emerald-400 animate-fadeIn">{checkStatusMsg}</p>
+        )}
         <p className="text-[10px] text-slate-500 font-mono">Device ID: {telemetry.deviceId}</p>
       </div>
 
