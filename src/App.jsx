@@ -10,6 +10,7 @@ import AdBanner from './components/AdBanner';
 
 import { ShieldAlert } from 'lucide-react';
 import { telemetry } from './utils/telemetryTracker';
+import { supabase } from './utils/supabaseClient';
 
 // Lazy-loaded page components for code splitting
 const TypingLessons = React.lazy(() => import('./pages/TypingLessons'));
