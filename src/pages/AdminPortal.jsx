@@ -208,20 +208,48 @@ export default function AdminPortal() {
     let isRemoteOnline = false;
     let remoteError = null;
 
-    // 2. Try fetching Supabase Telemetry Logs safely with timeout
+    // 2. Try fetching Supabase Daily Telemetry safely
     try {
       if (navigator.onLine) {
-        const { data: rawLogs, error } = await supabase
-          .from('app_telemetry')
+        let { data: dailyLogs, error: dailyErr } = await supabase
+          .from('user_daily_telemetry')
           .select('*')
-          .order('created_at', { ascending: false })
+          .order('last_seen', { ascending: false })
           .limit(500);
 
-        if (error) {
-          remoteError = error.message || 'Supabase query error';
-        } else if (rawLogs) {
-          supabaseLogs = rawLogs;
+        if (!dailyErr && dailyLogs && dailyLogs.length > 0) {
+          supabaseLogs = dailyLogs.map(d => ({
+            id: d.summary_id,
+            device_id: d.device_id,
+            client_type: d.client_type,
+            os_platform: d.os_platform,
+            app_version: d.app_version,
+            event_type: 'daily_summary',
+            created_at: d.last_seen || d.updated_at,
+            event_data: {
+              username: d.username,
+              tests_completed: d.tests_completed,
+              max_wpm: d.max_wpm,
+              avg_wpm: d.avg_wpm,
+              avg_accuracy: d.avg_accuracy,
+              total_time_seconds: d.total_time_seconds
+            }
+          }));
           isRemoteOnline = true;
+        } else {
+          // Fallback to app_telemetry if daily summary is empty
+          const { data: rawLogs, error } = await supabase
+            .from('app_telemetry')
+            .select('*')
+            .order('created_at', { ascending: false })
+            .limit(500);
+
+          if (error) {
+            remoteError = error.message || 'Supabase query error';
+          } else if (rawLogs) {
+            supabaseLogs = rawLogs;
+            isRemoteOnline = true;
+          }
         }
       }
     } catch (err) {
