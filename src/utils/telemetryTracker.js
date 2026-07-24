@@ -46,32 +46,41 @@ class TelemetryTracker {
   }
 
   async checkBanStatus(username = '') {
+    const targetUser = (username || '').toLowerCase();
+    const targetDev  = (this.deviceId || '').toLowerCase();
+
     // 1. Check local banManager first (fast & offline)
     try {
       const bannedList = JSON.parse(localStorage.getItem('swift_banned_devices') || '[]');
-      const targetUser = (username || '').toLowerCase();
-      const targetDev  = (this.deviceId || '').toLowerCase();
-
       const localFound = bannedList.find(b => {
         const d = (b.device_id || '').toLowerCase();
         return b.is_banned && (d === targetDev || (targetUser && d === targetUser));
       });
 
       if (localFound) {
+        const reason = localFound.ban_reason || 'Suspended by Administrator.';
         localStorage.setItem('swift_device_banned', 'true');
-        localStorage.setItem('swift_ban_reason', localFound.ban_reason || 'Suspended by Administrator.');
+        localStorage.setItem('swift_ban_reason', reason);
+        console.log(`%c[BanCheck] User: "${username || 'Anonymous'}" | Device: "${this.deviceId}" | Status: BANNED 🚫 | Reason: ${reason}`, 'color: #ef4444; font-weight: bold;');
         return true;
       }
     } catch (e) {}
 
     if (!navigator.onLine) {
-      return localStorage.getItem('swift_device_banned') === 'true';
+      const isB = localStorage.getItem('swift_device_banned') === 'true';
+      if (isB) console.log(`%c[BanCheck] User: "${username || 'Anonymous'}" | Status: BANNED (Offline) 🚫`, 'color: #ef4444; font-weight: bold;');
+      else console.log(`%c[BanCheck] User: "${username || 'Anonymous'}" | Status: ACTIVE (Offline) ✅`, 'color: #10b981; font-weight: bold;');
+      return isB;
     }
 
-    // 2. Check Supabase user_moderation for device_id OR username
+    // 2. Check Supabase user_moderation (case-insensitive target matching)
     try {
-      const targets = [this.deviceId];
-      if (username) targets.push(username);
+      const targets = Array.from(new Set([
+        this.deviceId,
+        targetDev,
+        username,
+        targetUser
+      ])).filter(Boolean);
 
       const { data } = await supabase
         .from('user_moderation')
@@ -82,16 +91,22 @@ class TelemetryTracker {
 
       if (data && data.length > 0) {
         const item = data[0];
+        const reason = item.ban_reason || 'Suspended by Administrator.';
         localStorage.setItem('swift_device_banned', 'true');
-        localStorage.setItem('swift_ban_reason', item.ban_reason || 'Suspended by Administrator.');
+        localStorage.setItem('swift_ban_reason', reason);
+        console.log(`%c[BanCheck] User: "${username || 'Anonymous'}" | Device: "${this.deviceId}" | Status: BANNED 🚫 | Reason: ${reason}`, 'color: #ef4444; font-weight: bold;');
         return true;
       } else {
         localStorage.setItem('swift_device_banned', 'false');
         localStorage.removeItem('swift_ban_reason');
+        console.log(`%c[BanCheck] User: "${username || 'Anonymous'}" | Device: "${this.deviceId}" | Status: ACTIVE ✅`, 'color: #10b981; font-weight: bold;');
         return false;
       }
     } catch (e) {
-      return localStorage.getItem('swift_device_banned') === 'true';
+      const isB = localStorage.getItem('swift_device_banned') === 'true';
+      if (isB) console.log(`%c[BanCheck] User: "${username || 'Anonymous'}" | Status: BANNED (Fallback) 🚫`, 'color: #ef4444; font-weight: bold;');
+      else console.log(`%c[BanCheck] User: "${username || 'Anonymous'}" | Status: ACTIVE ✅`, 'color: #10b981; font-weight: bold;');
+      return isB;
     }
   }
 
