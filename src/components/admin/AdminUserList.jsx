@@ -19,6 +19,7 @@ export default function AdminUserList({
   bannedDevices = []
 }) {
   const [sortBy, setSortBy] = useState('wpm_desc');
+  const [isMultiSelectActive, setIsMultiSelectActive] = useState(false);
   const [selectedUserIds, setSelectedUserIds] = useState([]);
 
   // Filter & Sort typists
@@ -40,6 +41,12 @@ export default function AdminUserList({
       if (sortBy === 'name_asc') return (a.username || '').localeCompare(b.username || '');
       return 0;
     });
+
+  const toggleMultiSelectMode = () => {
+    const nextState = !isMultiSelectActive;
+    setIsMultiSelectActive(nextState);
+    if (!nextState) setSelectedUserIds([]);
+  };
 
   const toggleSelectUser = (uKey, e) => {
     e.stopPropagation();
@@ -71,22 +78,39 @@ export default function AdminUserList({
         <h3 className="text-base font-extrabold flex items-center gap-2">
           <Users className={`w-5 h-5 ${theme.accent}`} /> Typists ({registeredUsersList.length})
         </h3>
-        {processedUsers.some(u => u.isSuspicious) && (
-          <span className="px-2 py-0.5 bg-amber-500/10 border border-amber-500/30 text-amber-600 rounded-full text-[10px] font-bold flex items-center gap-1">
-            <AlertTriangle className="w-3 h-3 text-amber-500" /> Anomaly Flagged
-          </span>
-        )}
+        
+        <div className="flex items-center gap-2">
+          {/* Multi-Select Toggle Button */}
+          <button
+            onClick={toggleMultiSelectMode}
+            className={`px-2.5 py-1 rounded-xl text-xs font-extrabold flex items-center gap-1.5 transition cursor-pointer border ${
+              isMultiSelectActive
+                ? 'bg-cyan-500/20 border-cyan-500/50 text-cyan-300 shadow-sm shadow-cyan-500/10'
+                : `${theme.border} ${theme.secondary} ${subTextClass} hover:opacity-80`
+            }`}
+            title="Toggle Multi-Select Checkboxes"
+          >
+            <CheckSquare className={`w-3.5 h-3.5 ${isMultiSelectActive ? 'text-cyan-400' : ''}`} />
+            <span>Multi-Select</span>
+          </button>
+
+          {processedUsers.some(u => u.isSuspicious) && (
+            <span className="px-2 py-0.5 bg-amber-500/10 border border-amber-500/30 text-amber-600 rounded-full text-[10px] font-bold flex items-center gap-1">
+              <AlertTriangle className="w-3 h-3 text-amber-500" /> Anomaly Flagged
+            </span>
+          )}
+        </div>
       </div>
 
-      {/* Multi-Select Bulk Toolbar */}
-      {processedUsers.length > 0 && (
-        <div className="flex items-center justify-between bg-slate-900/40 p-2 rounded-xl border border-gray-500/20 text-xs">
+      {/* Multi-Select Active Toolbar */}
+      {isMultiSelectActive && processedUsers.length > 0 && (
+        <div className="flex items-center justify-between bg-cyan-950/30 p-2 rounded-xl border border-cyan-500/30 text-xs animate-fadeIn">
           <button
             onClick={toggleSelectAll}
-            className="flex items-center gap-1.5 font-bold text-gray-300 hover:text-white transition cursor-pointer"
+            className="flex items-center gap-1.5 font-bold text-cyan-300 hover:text-white transition cursor-pointer"
           >
             {selectedUserIds.length === processedUsers.length && processedUsers.length > 0 ? (
-              <CheckSquare className="w-4 h-4 text-blue-400" />
+              <CheckSquare className="w-4 h-4 text-cyan-400" />
             ) : (
               <Square className="w-4 h-4 text-gray-500" />
             )}
@@ -148,19 +172,22 @@ export default function AdminUserList({
                     : `${theme.border} ${theme.cardBg} ${theme.text} hover:opacity-90`
                 }`}
               >
-                {/* Header row with Checkbox */}
+                {/* Header row */}
                 <div className="flex justify-between items-start gap-2">
                   <div className="flex items-start gap-2.5">
-                    <button
-                      onClick={(e) => toggleSelectUser(uKey, e)}
-                      className="mt-0.5 text-gray-400 hover:text-blue-400 transition cursor-pointer"
-                    >
-                      {isChecked ? (
-                        <CheckSquare className="w-4 h-4 text-blue-400" />
-                      ) : (
-                        <Square className="w-4 h-4 text-gray-500" />
-                      )}
-                    </button>
+                    {/* Checkbox ONLY shown when isMultiSelectActive is TRUE */}
+                    {isMultiSelectActive && (
+                      <button
+                        onClick={(e) => toggleSelectUser(uKey, e)}
+                        className="mt-0.5 text-gray-400 hover:text-cyan-400 transition cursor-pointer"
+                      >
+                        {isChecked ? (
+                          <CheckSquare className="w-4 h-4 text-cyan-400" />
+                        ) : (
+                          <Square className="w-4 h-4 text-gray-500" />
+                        )}
+                      </button>
+                    )}
                     <div>
                       <p className="text-sm font-bold flex items-center gap-1.5 flex-wrap">
                         <span className={`w-2 h-2 rounded-full ${u.isBanned ? 'bg-red-500 animate-pulse' : u.isSuspicious ? 'bg-amber-500 animate-pulse' : 'bg-emerald-500'}`} />
