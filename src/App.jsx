@@ -291,12 +291,15 @@ function BannedScreenWithModals({ banReason, currentUser }) {
           body: JSON.stringify({
             name: username,
             email: 'sw.esports.offical@gmail.com',
+            _replyto: 'sw.esports.offical@gmail.com',
             _subject: `🚨 Swift Typing Unban Request — User: ${username} (${deviceId})`,
             _captcha: 'false',
-            username: username,
-            device_id: deviceId,
-            ban_reason: banReason || 'N/A',
-            appeal_message: appealMessage.trim(),
+            _template: 'table',
+            Username: username,
+            Device_ID: deviceId,
+            Ban_Reason: banReason || 'N/A',
+            Appeal_Message: appealMessage.trim(),
+            message: `User: ${username} | Device: ${deviceId} | Reason: ${banReason || 'N/A'} | Appeal: ${appealMessage.trim()}`,
             submitted_at: new Date().toLocaleString()
           })
         });
