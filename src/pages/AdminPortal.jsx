@@ -1,9 +1,9 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { supabase } from '../utils/supabaseClient';
 import { useTheme } from '../contexts/ThemeContext';
 import { userManager, progressManager, adminAuditManager } from '../utils/storage';
 import { typingLessons } from '../data/lessons';
-import { Users, Ban, RefreshCw, LogOut, LayoutDashboard, CheckCircle, Clock } from 'lucide-react';
+import { Users, Ban, RefreshCw, LogOut, LayoutDashboard, CheckCircle, Clock, Award, X, ShieldAlert } from 'lucide-react';
 
 import AdminLockScreen     from '../components/admin/AdminLockScreen';
 import AdminOverview       from '../components/admin/AdminOverview';
@@ -24,10 +24,20 @@ export default function AdminPortal() {
   const [authError,       setAuthError]       = useState('');
   const [isShaking,       setIsShaking]       = useState(false);
 
-  // ─── Loading / Status / Auto-Refresh ───────────────────────
+  // ─── Loading / Status Toast (Floating Toast Notification) ───
   const [loading,             setLoading]             = useState(false);
-  const [statusMsg,           setStatusMsg]           = useState('');
+  const [statusMsg,           setStatusMsgState]      = useState('');
   const [autoRefreshInterval, setAutoRefreshInterval] = useState(0); // 0 = off, 30 = 30s, 60 = 1m, 300 = 5m
+
+  // Floating Toast Helper with Auto-Dismiss (3.5s)
+  const setStatusMsg = (msg) => {
+    setStatusMsgState(msg);
+    if (msg) {
+      setTimeout(() => {
+        setStatusMsgState(prev => prev === msg ? '' : prev);
+      }, 3500);
+    }
+  };
 
   // ─── Overview data ───────────────────────────────────────────
   const [stats, setStats] = useState({
@@ -52,6 +62,7 @@ export default function AdminPortal() {
     const h = window.location.hash;
     if (h.includes('#users') || h.includes('/users'))             return 'users';
     if (h.includes('#moderation') || h.includes('/moderation')) return 'moderation';
+    if (h.includes('#certificates') || h.includes('/certificates')) return 'certificates';
     return 'overview';
   };
 
@@ -138,7 +149,6 @@ export default function AdminPortal() {
   // ─── Fetch Admin Data ─────────────────────────────────────────
   async function fetchAdminData() {
     setLoading(true);
-    setStatusMsg('');
 
     const localUsers = userManager.getUsers() || [];
     setRegisteredUsersList(localUsers);
@@ -312,7 +322,29 @@ export default function AdminPortal() {
     handleExportBackup();
   };
 
-  // ─── Granular Single Lesson Toggle (E-6) ─────────────────────
+  // ─── Reset Typist Progress ──────────────────────────────────
+  const handleResetUserProgress = (username) => {
+    if (!username) return;
+    if (!window.confirm(`Are you sure you want to reset ALL lesson & test progress for '${username}'? This cannot be undone.`)) return;
+
+    const localUser = (userManager.getUsers() || []).find(u => u.username?.toLowerCase() === username.toLowerCase());
+    if (!localUser) {
+      setStatusMsg("⚠️ Profile is remote-only or not registered on this device.");
+      return;
+    }
+    const fresh = {
+      completedLessons: [],
+      testResults: [],
+      settings: { theme: 'blue', timeLimit: 60, wordLimit: 50, showVirtualHand: false },
+      stats: { totalTests: 0, totalTime: 0, totalCharacters: 0, bestWPM: 0, bestAccuracy: 0 }
+    };
+    progressManager.saveUserProgress(localUser.id, fresh);
+    adminAuditManager.logAction('PROGRESS_UPDATE', username, 'Reset all lesson & test progress to 0');
+    setStatusMsg(`🔄 Reset all progress for '${username}'.`);
+    fetchAdminData();
+  };
+
+  // ─── Granular Single Lesson Toggle ─────────────────────────
   const handleToggleSingleLesson = (username, lessonId) => {
     const localUser = (userManager.getUsers() || []).find(u => u.username?.toLowerCase() === username.toLowerCase());
     if (!localUser) {
@@ -332,7 +364,7 @@ export default function AdminPortal() {
       });
     }
     progressManager.saveUserProgress(localUser.id, progress);
-    adminAuditManager.logAction('PROGRESS_UPDATE', username, `${exists ? 'Removed' : 'Unlocked'} single lesson '${lessonId}'`);
+    adminAuditManager.logAction('PROGRESS_UPDATE', username, `${exists ? 'Locked' : 'Unlocked'} single lesson '${lessonId}'`);
     setStatusMsg(`${exists ? '🔒 Locked' : '🔓 Unlocked'} lesson '${lessonId}' for ${username}!`);
     fetchAdminData();
   };
@@ -415,6 +447,13 @@ export default function AdminPortal() {
     return [];
   };
 
+  // Check if selected typist is banned
+  const isSelectedTypistBanned = () => {
+    if (!selectedTypist) return false;
+    const name = selectedTypist.username?.toLowerCase();
+    return bannedDevices.some(b => b.device_id?.toLowerCase() === name || b.device_id?.toLowerCase() === selectedTypist.id?.toLowerCase());
+  };
+
   // ─── Export Recovery ──────────────────────────────────────────
   const handleExportBackup = () => {
     if (!selectedTypist) return;
@@ -473,14 +512,28 @@ export default function AdminPortal() {
 
   // Tab nav config
   const tabs = [
-    { id: 'overview',    label: 'Overview Dashboard',              icon: <LayoutDashboard className="w-4 h-4" />, count: null,                   activeClass: `${theme.accent} ${theme.secondary} border ${theme.border}`, },
-    { id: 'users',       label: 'Typist Profiles & Progression',   icon: <Users className="w-4 h-4" />,          count: registeredUsersList.length, activeClass: `${theme.accent} ${theme.secondary} border ${theme.border}`, },
-    { id: 'moderation',  label: 'Moderation & Audit',              icon: <Ban className="w-4 h-4 text-red-500" />, count: bannedDevices.length,  activeClass: 'text-red-500 bg-red-500/10 border border-red-500/30',      },
+    { id: 'overview',     label: 'Overview Dashboard',              icon: <LayoutDashboard className="w-4 h-4" />, count: null,                   activeClass: `${theme.accent} ${theme.secondary} border ${theme.border}`, },
+    { id: 'users',        label: 'Typist Profiles & Progression',   icon: <Users className="w-4 h-4" />,          count: registeredUsersList.length, activeClass: `${theme.accent} ${theme.secondary} border ${theme.border}`, },
+    { id: 'certificates', label: 'Certificates & Verification',     icon: <Award className="w-4 h-4 text-purple-500" />, count: null,           activeClass: 'text-purple-600 bg-purple-500/10 border border-purple-500/30', },
+    { id: 'moderation',   label: 'Moderation & Audit',              icon: <Ban className="w-4 h-4 text-red-500" />, count: bannedDevices.length,  activeClass: 'text-red-500 bg-red-500/10 border border-red-500/30',      },
   ];
 
   // ─── Main Render ──────────────────────────────────────────────
   return (
-    <div className={`min-h-screen p-4 md:p-8 max-w-7xl mx-auto space-y-8 ${theme.background} ${theme.text}`}>
+    <div className={`min-h-screen p-4 md:p-8 max-w-7xl mx-auto space-y-8 ${theme.background} ${theme.text} relative pb-20`}>
+
+      {/* Floating Toast Notification (Auto-dismisses in 3.5s) */}
+      {statusMsg && (
+        <div className="fixed bottom-6 right-6 z-50 max-w-md p-4 bg-slate-950 text-white border border-emerald-500/50 shadow-2xl rounded-2xl text-xs font-extrabold flex items-center justify-between gap-3 backdrop-blur-md animate-bounce-short">
+          <div className="flex items-center gap-2.5">
+            <CheckCircle className="w-4 h-4 text-emerald-400 flex-shrink-0" />
+            <span>{statusMsg}</span>
+          </div>
+          <button onClick={() => setStatusMsg('')} className="p-1 hover:opacity-70 text-gray-400 hover:text-white transition">
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+      )}
 
       {/* Header */}
       <div className={`flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border-b ${theme.border} pb-6`}>
@@ -519,13 +572,6 @@ export default function AdminPortal() {
           </button>
         </div>
       </div>
-
-      {/* Status Message */}
-      {statusMsg && (
-        <div className="p-3.5 bg-emerald-500/10 border border-emerald-500/30 text-emerald-600 rounded-xl text-sm flex items-center gap-2">
-          <CheckCircle className="w-4 h-4 flex-shrink-0" /> {statusMsg}
-        </div>
-      )}
 
       {/* Tab Navigation */}
       <div className={`flex items-center gap-2 border-b ${theme.border} pb-3 overflow-x-auto`}>
@@ -570,8 +616,69 @@ export default function AdminPortal() {
             handleExportBackup={handleExportBackup} timeRange={timeRange} setTimeRange={setTimeRange}
             isFilterExpanded={isFilterExpanded} setIsFilterExpanded={setIsFilterExpanded}
             handleUnlockLessons={handleUnlockLessons} handleToggleSingleLesson={handleToggleSingleLesson}
+            handleQuickBan={handleQuickBan} handleResetUserProgress={handleResetUserProgress}
             setCertificateUser={setCertificateUser} userCompletedLessons={getUserCompletedLessons()}
+            isBanned={isSelectedTypistBanned()}
           />
+        </div>
+      )}
+
+      {/* Certificates Dedicated Section */}
+      {activeTab === 'certificates' && (
+        <div className={`${cardClass} p-6 space-y-6`}>
+          <div className="flex justify-between items-center border-b ${theme.border} pb-4">
+            <div>
+              <h3 className="text-xl font-extrabold flex items-center gap-2">
+                <Award className="w-6 h-6 text-purple-500" /> Certificates &amp; Verification Center
+              </h3>
+              <p className={`text-xs mt-1 ${subTextClass}`}>Issue official Swift Typing completion certificates for students leaving school or requesting credentials.</p>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {/* Issuer Card */}
+            <div className={`p-5 border ${theme.border} ${theme.secondary} rounded-2xl space-y-4`}>
+              <h4 className="font-extrabold text-sm">Select Student &amp; Issue Certificate</h4>
+              <p className={`text-xs ${subTextClass}`}>Pick any registered typist to generate an official certificate with their peak WPM &amp; accuracy stats.</p>
+              
+              <div className="space-y-3">
+                <label className={`text-[10px] font-bold uppercase tracking-wider ${subTextClass}`}>Select Student</label>
+                <select
+                  value={selectedTypist?.username || ''}
+                  onChange={(e) => {
+                    const u = registeredUsersList.find(r => r.username === e.target.value);
+                    if (u) setSelectedTypist(u);
+                  }}
+                  className={`w-full ${inputClass} text-xs font-bold`}
+                >
+                  <option value="">-- Choose Student --</option>
+                  {registeredUsersList.map(u => (
+                    <option key={u.id} value={u.username}>{u.username} ({u.averageWPM || 0} WPM)</option>
+                  ))}
+                </select>
+
+                <button
+                  disabled={!selectedTypist}
+                  onClick={() => selectedTypist && handleIssueCertQuick(selectedTypist)}
+                  className="w-full py-3 bg-purple-600 hover:bg-purple-700 disabled:opacity-50 text-white font-extrabold rounded-xl text-xs transition cursor-pointer shadow-lg shadow-purple-600/20 active:scale-95 flex items-center justify-center gap-2"
+                >
+                  <Award className="w-4 h-4" /> Issue Certificate for {selectedTypist ? selectedTypist.username : 'Selected Student'}
+                </button>
+              </div>
+            </div>
+
+            {/* Verification Info */}
+            <div className={`p-5 border ${theme.border} ${theme.cardBg} rounded-2xl space-y-3`}>
+              <h4 className="font-extrabold text-sm flex items-center gap-2">
+                <CheckCircle className="w-4 h-4 text-emerald-500" /> Certificate Authorization Rules
+              </h4>
+              <ul className={`text-xs space-y-2 ${subTextClass}`}>
+                <li>• Admin can issue certificates at any time, even if 100% of lessons are not complete.</li>
+                <li>• Certificates feature an official Administrator signature stamp &amp; issue date.</li>
+                <li>• Certificates include the student's highest verified WPM speed &amp; average accuracy.</li>
+              </ul>
+            </div>
+          </div>
         </div>
       )}
 
