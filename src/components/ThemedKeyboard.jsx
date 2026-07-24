@@ -4,12 +4,6 @@ import { useTheme } from '../contexts/ThemeContext';
 const ThemedKeyboard = React.memo(({ activeKey }) => {
   const { theme } = useTheme();
 
-  console.log('⌨️ ThemedKeyboard render:', { 
-    activeKey, 
-    themeMode: theme?.mode,
-    themePrimary: theme?.css?.['--theme-primary']
-  });
-
   // Safely get theme colors with fallbacks - memoized
   const themeColors = useMemo(() => ({
     primaryColor: theme?.css?.['--theme-primary'] || '#3b82f6',
@@ -23,7 +17,6 @@ const ThemedKeyboard = React.memo(({ activeKey }) => {
     const isActive = keyId === activeKey;
     
     if (isActive) {
-      console.log(`🔑 Active key style for: "${keyId}"`, { fill: primaryColor });
       return {
         fill: primaryColor,
         stroke: primaryColor,

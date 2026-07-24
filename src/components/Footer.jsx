@@ -93,6 +93,9 @@ const Footer = () => {
               <Link to="/settings" className={`block ${theme.textSecondary} hover:${theme.accent} transition-colors duration-200`}>
                 Settings
               </Link>
+              <Link to="/admin" className={`block text-xs font-semibold uppercase tracking-wider text-slate-500 hover:text-blue-400 transition-colors duration-200 mt-2`}>
+                🔒 Admin Portal
+              </Link>
             </div>
           </div>
 

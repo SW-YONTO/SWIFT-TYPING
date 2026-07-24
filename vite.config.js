@@ -15,13 +15,14 @@ export default defineConfig({
     assetsDir: 'assets',
     sourcemap: false,
     copyPublicDir: true,
+    chunkSizeWarningLimit: 1200,
     rollupOptions: {
       output: {
         manualChunks: {
-          vendor: ['react', 'react-dom'],
-          router: ['react-router-dom'],
-          charts: ['chart.js', 'react-chartjs-2', 'recharts'],
-          icons: ['lucide-react', 'react-icons']
+          'vendor-core': ['react', 'react-dom', 'react-router-dom'],
+          'vendor-charts': ['recharts'],
+          'vendor-icons': ['lucide-react'],
+          'vendor-supabase': ['@supabase/supabase-js']
         }
       }
     }

@@ -6,15 +6,11 @@ import { X, Download, Check, Star, Gift, Crown, Sparkles, WifiOff, ExternalLink 
 const _ck = [70,82,69,69,66,65,78,75,65,73];
 const _gc = () => _ck.map(c => String.fromCharCode(c)).join('');
 
-// Lazy-loaded Clerk PricingTable
-const ClerkPricingTable = React.lazy(() =>
-  import('@clerk/clerk-react').then(mod => ({ default: mod.PricingTable })).catch(() => ({
-    default: () => (
-      <div className="text-center py-8 text-gray-500">
-        <p>Payment system unavailable. Visit <a href="https://swift-typing.me" className="text-blue-500 underline">swift-typing.me</a></p>
-      </div>
-    )
-  }))
+// Pricing table fallback component
+const ClerkPricingTable = () => (
+  <div className="text-center py-8 text-gray-500">
+    <p>Payment system unavailable. Visit <a href="https://swift-typing.me" target="_blank" rel="noreferrer" className="text-blue-500 underline font-semibold">swift-typing.me</a></p>
+  </div>
 );
 
 const PricingModal = ({ isOpen, onClose }) => {

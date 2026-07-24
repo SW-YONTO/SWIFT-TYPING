@@ -1,3 +1,5 @@
+import { telemetry } from './telemetryTracker';
+
 // Local storage utilities for multi-user support
 export const STORAGE_KEYS = {
   USERS: 'typing_app_users',
@@ -197,6 +199,16 @@ export const progressManager = {
       ...testResult,
       completedAt: new Date().toISOString()
     });
+
+    // Record anonymous telemetry stats
+    try {
+      telemetry.recordTest({
+        wpm: testResult.wpm || 0,
+        accuracy: testResult.accuracy || 0,
+        timeSpent: testResult.timeSpent || 0,
+        type: testResult.type || 'test'
+      });
+    } catch (e) {}
 
     // Update stats
     progress.stats.totalTests += 1;

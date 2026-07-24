@@ -8,6 +8,8 @@ import Navigation from './components/Navigation';
 import UpdateToast from './components/UpdateToast';
 import AdBanner from './components/AdBanner';
 
+import { telemetry } from './utils/telemetryTracker';
+
 // Lazy-loaded page components for code splitting
 const TypingLessons = React.lazy(() => import('./pages/TypingLessons'));
 const TypingCourses = React.lazy(() => import('./pages/TypingCourses'));
@@ -18,6 +20,7 @@ const Results = React.lazy(() => import('./pages/Results'));
 const About = React.lazy(() => import('./pages/About'));
 const Features = React.lazy(() => import('./pages/Features'));
 const Pricing = React.lazy(() => import('./pages/Pricing'));
+const AdminPortal = React.lazy(() => import('./pages/AdminPortal'));
 const NotFound = React.lazy(() => import('./pages/NotFound'));
 
 // Loading fallback component
@@ -45,6 +48,9 @@ function App() {
   });
 
   useEffect(() => {
+    // Initialize anonymous telemetry tracking
+    telemetry.init();
+
     // Try to load current user on app start
     const user = userManager.getCurrentUser();
     if (user) {
@@ -170,6 +176,7 @@ function App() {
                 <Route path="/about" element={<About />} />
                 <Route path="/features" element={<Features />} />
                 <Route path="/pricing" element={<Pricing />} />
+                <Route path="/admin" element={<AdminPortal />} />
                 <Route path="*" element={<NotFound />} />
               </Routes>
             </Suspense>

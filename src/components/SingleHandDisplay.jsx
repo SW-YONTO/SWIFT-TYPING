@@ -21,49 +21,33 @@ const SingleHandDisplay = React.memo(({ activeKey, settings = {} }) => {
     const aspectRatio = viewportWidth / viewportHeight;
     const dpr = window.devicePixelRatio || 1;
 
-    console.log('📱 Screen Info:', {
-      width: viewportWidth,
-      height: viewportHeight,
-      aspectRatio: aspectRatio.toFixed(2),
-      dpr: dpr,
-      classification: aspectRatio > 1.7 ? 'wide' : aspectRatio > 1.5 ? 'standard' : 'square'
-    });
-
     let styles = {
       width: '150%',
       height: '100%',
-      bottom: '35%', // Changed default from 15% to 35%
+      bottom: '35%',
       left: '56%'
     };
 
-    // Adjust based on viewport height (your main issue)
     if (viewportHeight <= 720) {
-      // 720p or smaller screens
       styles.height = '85%';
-      styles.bottom = '40%'; // Changed from 20% to 40%
+      styles.bottom = '40%';
       styles.left = '58%';
     } else if (viewportHeight <= 900) {
-      // Medium height screens
       styles.height = '95%';
-      styles.bottom = '38%'; // Changed from 18% to 38%
+      styles.bottom = '38%';
     } else if (viewportHeight >= 1080) {
-      // 1080p or larger screens
       styles.height = '115%';
-      styles.bottom = '35%'; // Changed from 15% to 35%
+      styles.bottom = '35%';
     }
 
-    // Adjust based on aspect ratio
     if (aspectRatio < 1.4) {
-      // Very square screens (4:3 or similar)
       styles.height = '85%';
-      styles.bottom = '42%'; // Changed from 22% to 42%
+      styles.bottom = '42%';
     } else if (aspectRatio > 1.8) {
-      // Very wide screens (21:9 or similar)
       styles.left = '54%';
       styles.width = '140%';
     }
 
-    // Adjust for very small or large screens
     if (viewportWidth < 1366) {
       styles.width = '140%';
       styles.left = '54%';
@@ -75,31 +59,17 @@ const SingleHandDisplay = React.memo(({ activeKey, settings = {} }) => {
   // Get final styles (responsive + user overrides)
   const getFinalStyles = useMemo(() => {
     const baseStyles = calculateResponsiveStyles;
-    
-    // Apply user overrides if set
     const finalStyles = { ...baseStyles };
     
     if (settings.handPositionHeight && settings.handPositionHeight !== 'auto') {
       finalStyles.height = settings.handPositionHeight;
     }
-    
     if (settings.handPositionBottom && settings.handPositionBottom !== 'auto') {
       finalStyles.bottom = settings.handPositionBottom;
     }
-    
     if (settings.handPositionLeft && settings.handPositionLeft !== 'auto') {
       finalStyles.left = settings.handPositionLeft;
     }
-    
-    console.log('👋 Hand Positioning:', {
-      responsive: baseStyles,
-      userOverrides: {
-        height: settings.handPositionHeight,
-        bottom: settings.handPositionBottom,
-        left: settings.handPositionLeft
-      },
-      final: finalStyles
-    });
     
     return finalStyles;
   }, [calculateResponsiveStyles, settings.handPositionHeight, settings.handPositionBottom, settings.handPositionLeft]);
