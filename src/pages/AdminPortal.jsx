@@ -5,7 +5,7 @@ import { userManager, progressManager } from '../utils/storage';
 import { 
   Lock, ShieldAlert, Users, Activity, 
   CheckCircle, Ban, Monitor, Zap, Award, RefreshCw, Layers,
-  Eye, EyeOff, KeyRound, Server, UserCheck, Clock, FileText, Trophy
+  Eye, EyeOff, KeyRound, Server, UserCheck, Clock, FileText, Trophy, Copy, Check
 } from 'lucide-react';
 import { 
   BarChart, Bar, XAxis, YAxis, Tooltip, 
@@ -44,6 +44,18 @@ export default function AdminPortal() {
   const [bannedDevices, setBannedDevices] = useState([]);
   const [banInput, setBanInput] = useState('');
   const [statusMsg, setStatusMsg] = useState('');
+  const [copiedDeviceId, setCopiedDeviceId] = useState(null);
+
+  const handleCopyDeviceId = (deviceId) => {
+    if (!deviceId) return;
+    try {
+      navigator.clipboard.writeText(deviceId);
+    } catch (e) {}
+    setBanInput(deviceId);
+    setCopiedDeviceId(deviceId);
+    setStatusMsg(`📋 Copied device ID (${deviceId}) & filled ban field!`);
+    setTimeout(() => setCopiedDeviceId(null), 2500);
+  };
 
   useEffect(() => {
     const savedAuth = sessionStorage.getItem('swift_admin_auth');
@@ -572,12 +584,15 @@ export default function AdminPortal() {
 
       {/* Raw Event Telemetry Logs Table */}
       <div className={`${cardClass} p-6 space-y-4`}>
-        <h3 className="text-lg font-bold flex items-center gap-2">
-          <Activity className={`w-5 h-5 ${theme.accent}`} /> Telemetry Log Stream ({telemetryLogs.length})
-        </h3>
-        <div className="overflow-x-auto">
+        <div className="flex justify-between items-center">
+          <h3 className="text-lg font-bold flex items-center gap-2">
+            <Activity className={`w-5 h-5 ${theme.accent}`} /> Telemetry Log Stream ({telemetryLogs.length})
+          </h3>
+          <span className={`text-xs ${subTextClass}`}>Scrollable table • Max 500 recent events</span>
+        </div>
+        <div className={`overflow-x-auto overflow-y-auto max-h-96 border ${theme.border} rounded-xl`}>
           <table className="w-full text-left text-xs">
-            <thead className={`${theme.secondary} ${subTextClass} uppercase font-semibold`}>
+            <thead className={`sticky top-0 z-10 ${theme.secondary} ${subTextClass} uppercase font-semibold border-b ${theme.border}`}>
               <tr>
                 <th className="p-3">Time</th>
                 <th className="p-3">Device ID</th>
@@ -594,15 +609,34 @@ export default function AdminPortal() {
                   <td colSpan="7" className={`p-4 text-center italic ${subTextClass}`}>Local telemetry mode active. Log stream will populate as pings arrive.</td>
                 </tr>
               ) : (
-                telemetryLogs.slice(0, 50).map(log => (
+                telemetryLogs.map(log => (
                   <tr key={log.id} className="hover:opacity-80 transition-opacity">
-                    <td className={`p-3 ${subTextClass}`}>{new Date(log.created_at).toLocaleTimeString()}</td>
-                    <td className="p-3 font-semibold">{log.device_id ? log.device_id.substring(0, 10) + '...' : 'Unknown'}</td>
+                    <td className={`p-3 whitespace-nowrap ${subTextClass}`}>{new Date(log.created_at).toLocaleTimeString()}</td>
+                    <td className="p-3 font-semibold whitespace-nowrap">
+                      <div className="flex items-center gap-1.5">
+                        <span>{log.device_id ? log.device_id.substring(0, 12) + '...' : 'Unknown'}</span>
+                        {log.device_id && (
+                          <button
+                            onClick={() => handleCopyDeviceId(log.device_id)}
+                            title="Copy full device_id & fill ban input"
+                            className="p-1 hover:bg-slate-500/20 rounded transition cursor-pointer text-slate-400 hover:text-white"
+                          >
+                            {copiedDeviceId === log.device_id ? (
+                              <Check className="w-3.5 h-3.5 text-emerald-500" />
+                            ) : (
+                              <Copy className="w-3.5 h-3.5" />
+                            )}
+                          </button>
+                        )}
+                      </div>
+                    </td>
                     <td className={`p-3 uppercase font-bold ${theme.accent}`}>{log.client_type}</td>
                     <td className={`p-3 ${subTextClass}`}>{log.os_platform}</td>
                     <td className={`p-3 ${subTextClass}`}>{log.app_version}</td>
                     <td className="p-3 font-semibold text-emerald-500">{log.event_type}</td>
-                    <td className={`p-3 truncate max-w-xs ${subTextClass}`}>{JSON.stringify(log.event_data)}</td>
+                    <td className={`p-3 max-w-sm truncate ${subTextClass}`} title={JSON.stringify(log.event_data)}>
+                      {JSON.stringify(log.event_data)}
+                    </td>
                   </tr>
                 ))
               )}
