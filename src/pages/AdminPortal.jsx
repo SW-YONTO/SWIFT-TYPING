@@ -57,9 +57,10 @@ export default function AdminPortal() {
   const [platformDistribution, setPlatformDistribution] = useState([]);
   const [telemetryLogs,        setTelemetryLogs]        = useState([]);
 
-  // ─── Users / Moderation / Audit Logs ────────────────────────
+  // ─── Users / Moderation / Audit Logs / Appeals ─────────────
   const [registeredUsersList, setRegisteredUsersList] = useState([]);
   const [bannedDevices,       setBannedDevices]       = useState([]);
+  const [unbanAppeals,        setUnbanAppeals]        = useState([]);
   const [banInput,            setBanInput]            = useState('');
   const [banReasonInput,      setBanReasonInput]      = useState('Abuse of service or leaderboard cheating.');
   const [copiedDeviceId,      setCopiedDeviceId]      = useState(null);
@@ -269,6 +270,24 @@ export default function AdminPortal() {
       }
     } catch (e) {}
 
+    // Fetch unban appeals from Supabase & localStorage
+    let appeals = [];
+    try {
+      const localAppeals = JSON.parse(localStorage.getItem('swift_unban_appeals') || '[]');
+      appeals = [...localAppeals];
+      if (navigator.onLine) {
+        const { data: remoteAppeals } = await supabase.from('unban_requests').select('*').order('created_at', { ascending: false });
+        if (remoteAppeals && remoteAppeals.length > 0) {
+          remoteAppeals.forEach(ra => {
+            if (!appeals.some(a => a.device_id === ra.device_id && a.created_at === ra.created_at)) {
+              appeals.unshift(ra);
+            }
+          });
+        }
+      }
+    } catch (e) {}
+
+    setUnbanAppeals(appeals);
     setBannedDevices(mergedBans);
     setAuditLogs(adminAuditManager.getLogs());
     setLoading(false);
@@ -350,7 +369,36 @@ export default function AdminPortal() {
   const handleClearAuditLogs = () => {
     adminAuditManager.clearLogs();
     setAuditLogs([]);
-    setStatusMsg('Audit logs cleared.');
+    setStatusMsg('🧹 Admin audit log cleared.');
+  };
+
+  const handleDeleteUser = (userOrUsers) => {
+    const targets = Array.isArray(userOrUsers) ? userOrUsers : [userOrUsers];
+    if (targets.length === 0) return;
+
+    const names = targets.map(t => typeof t === 'string' ? t : (t.username || t.id)).join(', ');
+    if (!confirm(`Are you sure you want to PERMANENTLY delete typist(s): ${names}? This will clear all saved progress and user data.`)) {
+      return;
+    }
+
+    try {
+      let users = JSON.parse(localStorage.getItem('typing_app_users') || '[]');
+      targets.forEach(t => {
+        const username = typeof t === 'string' ? t : t.username;
+        const id = typeof t === 'object' ? t.id : null;
+
+        users = users.filter(u => (username ? u.username?.toLowerCase() !== username.toLowerCase() : true) && (id ? u.id !== id : true));
+        if (id) localStorage.removeItem(`typing_app_user_progress_${id}`);
+        adminAuditManager.logAction('USER_DELETE', username || id || 'unknown', 'Deleted user profile & progress');
+      });
+
+      localStorage.setItem('typing_app_users', JSON.stringify(users));
+      setStatusMsg(`🗑️ Successfully deleted ${targets.length} typist profile(s)!`);
+      fetchAdminData();
+      if (selectedTypist && targets.some(t => (t.username || t) === selectedTypist.username)) {
+        setSelectedTypist(null);
+      }
+    } catch (e) {}
   };
 
   const handleCopyDeviceId = (deviceId) => {
@@ -664,6 +712,7 @@ export default function AdminPortal() {
             registeredUsersList={registeredUsersList} selectedTypist={selectedTypist}
             setSelectedTypist={setSelectedTypist} searchQuery={searchQuery} setSearchQuery={setSearchQuery}
             handleQuickBan={handleQuickBan} handleIssueCertQuick={handleIssueCertQuick} handleExportBackupQuick={handleExportBackupQuick}
+            handleDeleteUser={handleDeleteUser}
             bannedDevices={bannedDevices}
           />
           <TypistDeepDive
@@ -718,7 +767,7 @@ export default function AdminPortal() {
                   onClick={() => selectedTypist && handleIssueCertQuick(selectedTypist)}
                   className="w-full py-3 bg-purple-600 hover:bg-purple-700 disabled:opacity-50 text-white font-extrabold rounded-xl text-xs transition cursor-pointer shadow-lg shadow-purple-600/20 active:scale-95 flex items-center justify-center gap-2"
                 >
-                  <Award className="w-4 h-4" /> Issue Certificate for {selectedTypist ? selectedTypist.username : 'Selected Student'}
+                  <Award className="w-4 h-4" /> Issue Official Certificate
                 </button>
               </div>
             </div>

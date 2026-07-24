@@ -267,10 +267,14 @@ function BannedScreenWithModals({ banReason, currentUser }) {
       }
     } catch (e) { }
 
-    // 2. Automatic Real Email Dispatch to sw.esports.offical@gmail.com
+    // 2. Automatic Real Email Dispatch to sw.esports.offical@gmail.com with detailed logging
+    let mailSuccess = false;
+    let mailErrorMsg = '';
+
     try {
       if (navigator.onLine) {
-        await fetch('https://formsubmit.co/ajax/sw.esports.offical@gmail.com', {
+        console.log('[Mailer] Dispatching appeal email to sw.esports.offical@gmail.com...');
+        const res = await fetch('https://formsubmit.co/ajax/sw.esports.offical@gmail.com', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -278,23 +282,45 @@ function BannedScreenWithModals({ banReason, currentUser }) {
           },
           body: JSON.stringify({
             _subject: `🚨 Swift Typing Unban Request — User: ${username} (Device: ${deviceId})`,
-            username: username,
+            name: username,
+            email: 'sw.esports.offical@gmail.com',
             device_id: deviceId,
             ban_reason: banReason,
             appeal_message: appealMessage.trim(),
             submitted_at: new Date().toLocaleString()
           })
         });
+
+        const resData = await res.json().catch(() => ({}));
+        console.log('[Mailer Response]', res.status, resData);
+
+        if (res.ok && (resData.success === 'true' || resData.success === true)) {
+          mailSuccess = true;
+        } else {
+          mailErrorMsg = resData.message || `HTTP ${res.status}`;
+          console.warn('[Mailer Warning]', mailErrorMsg);
+        }
       }
-    } catch (e) { }
+    } catch (err) {
+      mailErrorMsg = err.message || 'Network dispatch failed';
+      console.error('[Mailer Network Error]', err);
+    }
 
     setIsSubmitting(false);
-    setAppealStatus('✅ Appeal saved to Supabase & email sent to sw.esports.offical@gmail.com!');
+
+    if (mailSuccess) {
+      setAppealStatus('✅ Saved to Supabase & Email dispatched to sw.esports.offical@gmail.com!');
+    } else if (mailErrorMsg) {
+      setAppealStatus(`⚠️ Saved to Supabase ✅ | Mailer status: ${mailErrorMsg}`);
+    } else {
+      setAppealStatus('✅ Saved to Supabase unban_requests database.');
+    }
+
     setTimeout(() => {
       setShowAppealModal(false);
       setAppealMessage('');
       setAppealStatus('');
-    }, 2800);
+    }, 3500);
   };
 
   const handleConfirmDeleteAccount = () => {
