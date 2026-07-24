@@ -291,7 +291,8 @@ export default function AdminPortal() {
   };
 
   const handleQuickBan = (user) => {
-    const target = user.username || user.id;
+    // Target exact Device ID if available to protect innocent users with duplicate usernames
+    const target = user.deviceId || user.device_id || user.username || user.id;
     if (!target) return;
 
     const alreadyBanned = banManager.isBanned(target);
