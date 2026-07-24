@@ -55,11 +55,18 @@ function App() {
     showVirtualHand: false
   });
 
-  // Check ban status on mount once & poll at relaxed 10-minute interval (600,000ms) to optimize performance & API limits
+  // Load current user and check ban status on initial app mount
   useEffect(() => {
     telemetry.init();
+    const user = userManager.getCurrentUser();
+    if (user) {
+      setCurrentUser(user);
+      loadUserSettings(user.id);
+    }
+
     const checkBan = async () => {
-      const username = currentUser?.username || '';
+      const activeUser = user || userManager.getCurrentUser();
+      const username = activeUser?.username || '';
       const banned = await telemetry.checkBanStatus(username);
       if (banned) {
         setIsBanned(true);
@@ -68,20 +75,10 @@ function App() {
         setIsBanned(false);
       }
     };
-    checkBan();
 
-    // 10-Minute relaxed interval (600,000 ms)
+    checkBan();
     const interval = setInterval(checkBan, 10 * 60 * 1000);
     return () => clearInterval(interval);
-  }, [currentUser]);
-
-  // Try to load current user on app start
-  useEffect(() => {
-    const user = userManager.getCurrentUser();
-    if (user) {
-      setCurrentUser(user);
-      loadUserSettings(user.id);
-    }
   }, []);
 
   const loadUserSettings = (userId) => {
@@ -414,7 +411,7 @@ function BannedScreenWithModals({ banReason, currentUser }) {
             </div>
             <div className="flex justify-between">
               <span>Device Identifier:</span>
-              <span className="text-slate-300 truncate max-w-[200px]">{telemetry.deviceId}</span>
+              <span className="text-slate-300 truncate max-w-[200px]">{telemetry?.deviceId || localStorage.getItem('swift_device_id') || 'DEV_LOCAL'}</span>
             </div>
           </div>
         </div>
@@ -443,7 +440,7 @@ function BannedScreenWithModals({ banReason, currentUser }) {
         {checkStatusMsg && (
           <p className="text-xs font-bold text-emerald-400 animate-fadeIn">{checkStatusMsg}</p>
         )}
-        <p className="text-[10px] text-slate-500 font-mono">Device ID: {telemetry.deviceId}</p>
+        <p className="text-[10px] text-slate-500 font-mono">Device ID: {telemetry?.deviceId || localStorage.getItem('swift_device_id') || 'DEV_LOCAL'}</p>
       </div>
 
       {/* ─── Custom Account Deletion Modal (Replaces browser confirm) ─── */}
