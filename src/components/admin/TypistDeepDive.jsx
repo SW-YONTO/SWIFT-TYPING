@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   ResponsiveContainer, AreaChart, Area, XAxis, YAxis, 
   CartesianGrid, Tooltip 
@@ -6,9 +6,10 @@ import {
 import { 
   UserCheck, Download, Filter, TrendingUp, Award, Sliders, 
   Zap, Target, Trophy, Clock, CheckCircle2, Lock, Unlock, PlayCircle, 
-  ChevronDown, ChevronUp, Layers, Ban, RotateCcw, ShieldAlert, ShieldCheck
+  ChevronDown, ChevronUp, Layers, Ban, RotateCcw, ShieldAlert, ShieldCheck, Eye, AlertTriangle, Trash2
 } from 'lucide-react';
 import { typingLessons } from '../../data/lessons';
+import { supabase } from '../../utils/supabaseClient';
 
 export default function TypistDeepDive({
   theme,
@@ -29,11 +30,39 @@ export default function TypistDeepDive({
   handleResetUserProgress,
   setCertificateUser,
   userCompletedLessons = [],
-  isBanned = false
+  isBanned = false,
+  handleIssueCertQuick,
+  whitelistedAnomalies = [],
+  handleToggleAnomalyWhitelist
 }) {
   const [customProgress, setCustomProgress] = useState(50);
+  const [showCertDropdown, setShowCertDropdown] = useState(false);
   const [isCurriculumSectionExpanded, setIsCurriculumSectionExpanded] = useState(false); // Section folded by default
   const [expandedUnits, setExpandedUnits] = useState({}); // Unit cards folded by default
+  const [hasIssuedCert, setHasIssuedCert] = useState(false);
+
+  useEffect(() => {
+    if (!selectedTypist?.username) {
+      setHasIssuedCert(false);
+      return;
+    }
+    const checkCert = async () => {
+      try {
+        if (navigator.onLine) {
+          const { data, error } = await supabase
+            .from('issued_certificates')
+            .select('id')
+            .eq('username', selectedTypist.username);
+          if (!error && data && data.length > 0) {
+            setHasIssuedCert(true);
+            return;
+          }
+        }
+      } catch (e) {}
+      setHasIssuedCert(false);
+    };
+    checkCert();
+  }, [selectedTypist?.username]);
 
   const _cardClass  = cardClass || `${theme.cardBg} ${theme.border} border shadow-2xl rounded-3xl transition-all duration-300`;
   const _subText    = subTextClass || theme.textSecondary || 'text-gray-500';
@@ -167,17 +196,96 @@ export default function TypistDeepDive({
             <Ban className="w-3.5 h-3.5" /> {isBanned ? 'Unban Typist Account' : 'Suspend / Ban Typist'}
           </button>
 
-          <button
-            onClick={() => setCertificateUser({
-              username: selectedTypist.username,
-              wpm: typistAnalytics.peakWpm,
-              totalTime: (typistAnalytics.timeSpentMins || 240) * 60,
-              date: new Date().toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' })
-            })}
-            className="px-3 py-1.5 bg-purple-600 hover:bg-purple-700 text-white font-bold rounded-xl text-xs transition flex items-center gap-1.5 cursor-pointer shadow-sm active:scale-95"
-          >
-            <Award className="w-3.5 h-3.5" /> Issue Certificate
-          </button>
+          {selectedTypist && ((selectedTypist.averageWPM || 0) > 160 || (selectedTypist.totalTests > 500 && (selectedTypist.averageWPM || 0) > 140)) && (
+            <button
+              onClick={() => handleToggleAnomalyWhitelist && handleToggleAnomalyWhitelist(selectedTypist.username)}
+              className={`px-3 py-1.5 border rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer active:scale-95 ${
+                whitelistedAnomalies.includes(selectedTypist.username?.toLowerCase())
+                  ? 'bg-amber-500/10 hover:bg-amber-500/25 border-amber-500/30 text-amber-600'
+                  : 'bg-emerald-500/10 hover:bg-emerald-500/25 border-emerald-500/30 text-emerald-600'
+              }`}
+            >
+              {whitelistedAnomalies.includes(selectedTypist.username?.toLowerCase()) ? (
+                <>
+                  <AlertTriangle className="w-3.5 h-3.5 text-amber-500" /> Re-flag Typist
+                </>
+              ) : (
+                <>
+                  <ShieldCheck className="w-3.5 h-3.5 text-emerald-500" /> Unflag Typist
+                </>
+              )}
+            </button>
+          )}
+
+          <div className="relative">
+            <button
+              onClick={() => setShowCertDropdown(!showCertDropdown)}
+              className="px-3 py-1.5 bg-purple-600 hover:bg-purple-700 text-white font-bold rounded-xl text-xs transition flex items-center gap-1.5 cursor-pointer shadow-sm active:scale-95"
+            >
+              <Award className="w-3.5 h-3.5" /> Certificate Options <ChevronDown className="w-3.5 h-3.5" />
+            </button>
+            
+            {showCertDropdown && (
+              <div className="absolute left-0 bottom-full mb-2 z-20 bg-slate-900 border border-slate-800 rounded-xl shadow-2xl p-1.5 space-y-1 w-48 animate-fadeIn">
+                <button
+                  onClick={() => {
+                    setCertificateUser({
+                      username: selectedTypist.username,
+                      wpm: typistAnalytics.peakWpm,
+                      totalTime: (typistAnalytics.timeSpentMins || 240) * 60,
+                      date: new Date().toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' }),
+                      isPreview: true
+                    });
+                    setShowCertDropdown(false);
+                  }}
+                  className="w-full text-left px-3 py-2 text-slate-300 hover:text-white hover:bg-slate-800 rounded-lg text-xs font-bold transition flex items-center gap-2 cursor-pointer"
+                >
+                  <Eye className="w-4 h-4 text-cyan-400" /> Preview Layout
+                </button>
+                <button
+                  onClick={() => {
+                    handleIssueCertQuick && handleIssueCertQuick(selectedTypist);
+                    setHasIssuedCert(true);
+                    setShowCertDropdown(false);
+                  }}
+                  className="w-full text-left px-3 py-2 text-slate-300 hover:text-white hover:bg-slate-800 rounded-lg text-xs font-bold transition flex items-center gap-2 cursor-pointer"
+                >
+                  <Award className="w-4 h-4 text-purple-400" /> Issue &amp; Notify
+                </button>
+                {hasIssuedCert && (
+                  <button
+                    onClick={async () => {
+                      if (confirm(`Are you sure you want to revoke the certificate for "${selectedTypist.username}"?`)) {
+                        try {
+                          if (navigator.onLine) {
+                            const { error } = await supabase
+                              .from('issued_certificates')
+                              .delete()
+                              .eq('username', selectedTypist.username);
+                            
+                            if (!error) {
+                              setHasIssuedCert(false);
+                              alert(`🎓 Certificate for "${selectedTypist.username}" has been revoked successfully.`);
+                            } else {
+                              alert(`Error: ${error.message}`);
+                            }
+                          } else {
+                            alert("Cannot revoke certificate offline.");
+                          }
+                        } catch (e) {
+                          alert(`Error: ${e.message}`);
+                        }
+                      }
+                      setShowCertDropdown(false);
+                    }}
+                    className="w-full text-left px-3 py-2 text-red-400 hover:text-red-300 hover:bg-red-950/20 border-t border-slate-800/80 rounded-lg text-xs font-bold transition flex items-center gap-2 cursor-pointer mt-1 pt-1.5"
+                  >
+                    <Trash2 className="w-4 h-4 text-red-400" /> Revoke Certificate
+                  </button>
+                )}
+              </div>
+            )}
+          </div>
 
           <button
             onClick={handleExportBackup}

@@ -1341,7 +1341,7 @@ const Settings = ({ currentUser, settings, onSettingsChange, onUserUpdate }) => 
                 <div className="flex items-center justify-between">
                   <span className={`${theme.textSecondary} text-xs font-semibold uppercase tracking-wider`}>Updates</span>
                   {!isElectron && (
-                    <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-green-100 dark:bg-green-950 text-green-700 dark:text-green-400">
+                    <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold ${theme.primary} text-white`}>
                       Web (Auto-updated)
                     </span>
                   )}
@@ -1510,7 +1510,6 @@ const Settings = ({ currentUser, settings, onSettingsChange, onUserUpdate }) => 
       </div>
 
       {/* Certificate Preview removed — available only via Achievements Panel */}
-      })()}
       
       {/* Analytics Calendar Modal */}
       {showAnalytics && (

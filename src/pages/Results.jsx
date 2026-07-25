@@ -191,21 +191,30 @@ const Results = () => {
     return "Great job! Keep practicing to maintain your skills";
   };
 
-  // Determine chart colors based on theme
+  // Helper to safely parse hex color to rgb numbers
+  const getRgbFromHex = (hexStr) => {
+    if (!hexStr) return '59, 130, 246';
+    const cleanHex = hexStr.replace('#', '').trim();
+    if (cleanHex.length === 3) {
+      const r = parseInt(cleanHex[0] + cleanHex[0], 16);
+      const g = parseInt(cleanHex[1] + cleanHex[1], 16);
+      const b = parseInt(cleanHex[2] + cleanHex[2], 16);
+      return `${r}, ${g}, ${b}`;
+    } else if (cleanHex.length === 6) {
+      const r = parseInt(cleanHex.substring(0, 2), 16);
+      const g = parseInt(cleanHex.substring(2, 4), 16);
+      const b = parseInt(cleanHex.substring(4, 6), 16);
+      return `${r}, ${g}, ${b}`;
+    }
+    return '59, 130, 246';
+  };
+
+  // Determine chart colors dynamically based on theme
   const isDark = theme.mode === 'dark';
-  let chartBorder = isDark ? '#60a5fa' : '#3b82f6'; // default blue
-  let chartBg = isDark ? 'rgba(96, 165, 250, 0.1)' : 'rgba(59, 130, 246, 0.1)';
-  
-  if (theme.primary.includes('green')) {
-    chartBorder = isDark ? '#4ade80' : '#22c55e';
-    chartBg = isDark ? 'rgba(74, 222, 128, 0.1)' : 'rgba(34, 197, 94, 0.1)';
-  } else if (theme.primary.includes('orange')) {
-    chartBorder = isDark ? '#fb923c' : '#ea580c'; // using darker orange for light theme
-    chartBg = isDark ? 'rgba(251, 146, 60, 0.1)' : 'rgba(234, 88, 12, 0.1)';
-  } else if (theme.primary.includes('purple')) {
-    chartBorder = isDark ? '#c084fc' : '#a855f7';
-    chartBg = isDark ? 'rgba(192, 132, 252, 0.1)' : 'rgba(168, 85, 247, 0.1)';
-  }
+  const primaryHex = theme.css?.['--theme-primary'] || (isDark ? '#60a5fa' : '#3b82f6');
+  const chartBorder = primaryHex;
+  const rgbValues = getRgbFromHex(primaryHex);
+  const chartBg = `rgba(${rgbValues}, 0.1)`;
 
   // Prepare chart data with proper background
   const chartData = {

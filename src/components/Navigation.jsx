@@ -17,8 +17,9 @@ const Navigation = ({ currentUser, onLogout, onThemeChange }) => {
   const userButtonRef = useRef(null);
 
   // Get theme items for keyboard navigation
-  const lightThemes = Object.entries(themes).filter(([, t]) => t.mode === 'light');
-  const darkThemes = Object.entries(themes).filter(([, t]) => t.mode === 'dark');
+  const coreKeys = ['blue', 'green', 'orange', 'darkBlue', 'darkGreen', 'darkPurple'];
+  const lightThemes = Object.entries(themes).filter(([key, t]) => t.mode === 'light' && coreKeys.includes(key));
+  const darkThemes = Object.entries(themes).filter(([key, t]) => t.mode === 'dark' && coreKeys.includes(key));
   const allThemes = [...lightThemes, ...darkThemes];
 
   // Handle keyboard navigation for theme dropdown
@@ -109,7 +110,7 @@ const Navigation = ({ currentUser, onLogout, onThemeChange }) => {
 
 
   return (
-    <nav className={`${theme.navbar} shadow-lg ${theme.navBorder} border-b sticky top-0 z-50`}>
+    <nav className={`${themeKey === 'iyami' ? 'bg-[#282828]/80 backdrop-blur-md border-b border-[#3d3d3d]/80' : `${theme.navbar} ${theme.navBorder} border-b`} shadow-lg sticky top-0 z-50`}>
       <div className="max-w-7xl mx-auto px-4">
         <div className="flex justify-between items-center h-14">
           {/* Logo */}

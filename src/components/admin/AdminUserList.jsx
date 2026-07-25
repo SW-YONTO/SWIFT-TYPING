@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Users, Search, Ban, Trash2, Download, AlertTriangle, ShieldCheck, ShieldAlert, CheckSquare, Square } from 'lucide-react';
+import { Users, Search, Ban, Trash2, Download, AlertTriangle, ShieldCheck, ShieldAlert, CheckSquare, Square, Award } from 'lucide-react';
 import { banManager } from '../../utils/storage';
 import CustomDropdown from '../common/CustomDropdown';
 
@@ -14,9 +14,11 @@ export default function AdminUserList({
   searchQuery,
   setSearchQuery,
   handleQuickBan,
+  handleIssueCertQuick,
   handleExportBackupQuick,
   handleDeleteUser,
-  bannedDevices = []
+  bannedDevices = [],
+  whitelistedAnomalies = []
 }) {
   const [sortBy, setSortBy] = useState('wpm_desc');
   const [isMultiSelectActive, setIsMultiSelectActive] = useState(false);
@@ -31,7 +33,7 @@ export default function AdminUserList({
       return {
         ...u,
         isBanned,
-        isSuspicious: (u.averageWPM || 0) > 160 || (u.totalTests > 500 && (u.averageWPM || 0) > 140)
+        isSuspicious: ((u.averageWPM || 0) > 160 || (u.totalTests > 500 && (u.averageWPM || 0) > 140)) && !whitelistedAnomalies.includes(name)
       };
     })
     .sort((a, b) => {
@@ -94,11 +96,6 @@ export default function AdminUserList({
             <span>Multi-Select</span>
           </button>
 
-          {processedUsers.some(u => u.isSuspicious) && (
-            <span className="px-2 py-0.5 bg-amber-500/10 border border-amber-500/30 text-amber-600 rounded-full text-[10px] font-bold flex items-center gap-1">
-              <AlertTriangle className="w-3 h-3 text-amber-500" /> Anomaly Flagged
-            </span>
-          )}
         </div>
       </div>
 
@@ -241,6 +238,14 @@ export default function AdminUserList({
                     title="Delete User Account"
                   >
                     <Trash2 className="w-3 h-3" /> Delete
+                  </button>
+
+                  <button
+                    onClick={() => handleIssueCertQuick && handleIssueCertQuick(u)}
+                    className="px-2 py-1 bg-purple-500/10 hover:bg-purple-500/25 border border-purple-500/30 text-purple-600 rounded-lg text-[10px] font-bold transition flex items-center gap-1 cursor-pointer"
+                    title="Issue Certificate &amp; Notify"
+                  >
+                    <Award className="w-3 h-3" /> Issue Cert
                   </button>
 
                   <button

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Trophy, Download, Zap, Award, ShieldCheck, CheckCircle2 } from 'lucide-react';
 import { progressManager } from '../../utils/storage';
 
@@ -11,6 +11,7 @@ export default function CompletionCertificate({
   const [certTheme, setCertTheme] = useState('darkBlue'); // 'darkBlue' | 'light'
   
   const user = certificateUser || typist;
+  
   const handleClose = () => {
     if (setCertificateUser) setCertificateUser(null);
     if (onClose) onClose();
@@ -22,6 +23,14 @@ export default function CompletionCertificate({
   const avgWPM = user.averageWPM || user.wpm || user.bestWPM || 75;
   const dateStr = user.date || new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
   const certId = user.id || `CERT-${username.substring(0, 4).toUpperCase()}-${Math.floor(100000 + Math.random() * 900000)}`;
+
+  useEffect(() => {
+    const originalTitle = document.title;
+    document.title = `swift typing (${username})`;
+    return () => {
+      document.title = originalTitle;
+    };
+  }, [username]);
 
   // Retrieve total practice time spent (default to 4 hours if none exists)
   let totalTime = user.totalTime || user.total_time || 14400; 
@@ -65,21 +74,21 @@ export default function CompletionCertificate({
     },
     light: {
       bg: 'bg-white',
-      outerBorder: 'border-slate-400/80',
-      innerBorder: 'border-slate-300 bg-slate-50/20',
-      accentText: 'text-slate-800',
-      mainHeading: 'from-slate-900 via-slate-700 to-slate-850',
-      recipientName: 'text-slate-900 font-bold',
-      descriptionText: 'text-slate-600',
+      outerBorder: 'border-sky-200',
+      innerBorder: 'border-sky-100 bg-sky-50/20',
+      accentText: 'text-sky-600 font-semibold',
+      mainHeading: 'from-sky-950 via-blue-900 to-sky-950',
+      recipientName: 'text-sky-950 font-bold',
+      descriptionText: 'text-slate-600 font-medium',
       bodyText: 'text-slate-800',
-      metaLabel: 'text-slate-400',
-      metaValue: 'text-slate-900',
-      verifiedBadge: 'bg-emerald-500/5 border-emerald-500/20 text-emerald-600',
-      watermarkColor: 'text-slate-300/10',
-      cornerOrnament: 'text-slate-400/50',
-      lineSeparator: 'border-slate-200',
+      metaLabel: 'text-sky-900/70 font-bold',
+      metaValue: 'text-sky-950 font-extrabold',
+      verifiedBadge: 'bg-sky-500/5 border-sky-500/20 text-sky-600',
+      watermarkColor: 'text-sky-500/12', // Increased opacity from 5% to 12%
+      cornerOrnament: 'text-sky-400/40',
+      lineSeparator: 'border-sky-100',
       signatureColor: 'text-slate-800',
-      signatureUnderline: 'border-slate-350'
+      signatureUnderline: 'border-sky-200'
     }
   }[certTheme];
 
@@ -90,7 +99,7 @@ export default function CompletionCertificate({
       <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
       <link href="https://fonts.googleapis.com/css2?family=Alex+Brush&family=Allura&family=Cinzel:wght@400;500;600;700;800&family=Great+Vibes&family=Montserrat:wght@300;400;500;600&display=swap" rel="stylesheet" />
 
-      <div className="fixed inset-0 z-50 bg-black/90 backdrop-blur-md flex items-center justify-center p-4 print:p-0 print:bg-white print:static animate-fadeIn overflow-y-auto">
+      <div className="fixed inset-0 z-50 bg-black/90 backdrop-blur-md flex items-start justify-center p-4 py-8 print:p-0 print:bg-white print:static animate-fadeIn overflow-y-auto print-modal-overlay">
         <style dangerouslySetInnerHTML={{__html: `
           @page {
             size: landscape;
@@ -109,14 +118,31 @@ export default function CompletionCertificate({
             body * {
               visibility: hidden !important;
             }
-            #cert-print-area, #cert-print-area * {
+            .print-modal-overlay,
+            .print-modal-overlay * {
               visibility: visible !important;
             }
-            #cert-print-area {
-              position: absolute;
+            /* Force the modal to cover the entire page with solid white canvas */
+            .print-modal-overlay {
+              position: fixed !important;
               left: 0 !important;
               top: 0 !important;
-              transform: none !important;
+              width: 297mm !important;
+              height: 210mm !important;
+              z-index: 99999999 !important;
+              background: white !important;
+              margin: 0 !important;
+              padding: 0 !important;
+              overflow: hidden !important;
+              display: flex !important;
+              align-items: center !important;
+              justify-content: center !important;
+            }
+            /* Print-only layout overrides for the certificate frame */
+            #cert-print-area {
+              position: absolute !important;
+              left: 0 !important;
+              top: 0 !important;
               width: 297mm !important;
               height: 210mm !important;
               margin: 0 !important;
@@ -177,7 +203,13 @@ export default function CompletionCertificate({
 
             {/* Faded Lightning Bolt Pattern Background Watermark */}
             <div className={`absolute inset-0 flex items-center justify-center pointer-events-none ${themeStyles.watermarkColor} select-none`}>
-              <Zap className="w-[450px] h-[450px] transform -rotate-12 stroke-[1.2]" />
+              {user.isPreview ? (
+                <div className="text-[6rem] sm:text-[8rem] font-black uppercase tracking-[0.25em] transform -rotate-12 text-amber-500/[0.04] select-none font-sans">
+                  Preview
+                </div>
+              ) : (
+                <Zap className="w-[450px] h-[450px] transform -rotate-12 stroke-[1.2]" />
+              )}
             </div>
 
             {/* Inner Border Frame */}
@@ -262,9 +294,15 @@ export default function CompletionCertificate({
 
                 {/* Central Verified Credential Text */}
                 <div className="text-center w-1/3 pb-1">
-                  <span className={`text-[9px] uppercase tracking-widest font-semibold border px-2 py-0.5 rounded-full ${themeStyles.verifiedBadge}`}>
-                    ✓ Verified Credential
-                  </span>
+                  {user.isPreview ? (
+                    <span className="text-[9px] uppercase tracking-widest font-extrabold border border-amber-500/40 bg-amber-500/10 text-amber-500 px-2 py-0.5 rounded-full">
+                      ⚠️ Preview Only
+                    </span>
+                  ) : (
+                    <span className={`text-[9px] uppercase tracking-widest font-semibold border px-2 py-0.5 rounded-full ${themeStyles.verifiedBadge}`}>
+                      ✓ Verified Credential
+                    </span>
+                  )}
                 </div>
 
                 {/* Lead Moderator Signature */}

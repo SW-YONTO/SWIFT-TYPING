@@ -4,6 +4,7 @@ import { achievementManager, ACHIEVEMENTS, LEVELS } from '../utils/achievements'
 import { useTheme } from '../contexts/ThemeContext';
 import CompletionCertificate from './admin/CompletionCertificate';
 import { userManager } from '../utils/storage';
+import { supabase } from '../utils/supabaseClient';
 
 const AchievementsPanel = ({ userId, isOpen, onClose }) => {
   const { theme } = useTheme();
@@ -12,6 +13,7 @@ const AchievementsPanel = ({ userId, isOpen, onClose }) => {
   const [userData, setUserData] = useState({ totalXP: 0, level: 1, unlockedAchievements: [] });
   const [xpProgress, setXpProgress] = useState({ current: 0, required: 100, percentage: 0 });
   const [showCertModal, setShowCertModal] = useState(false);
+  const [latestCert, setLatestCert] = useState(null);
 
   useEffect(() => {
     if (userId && isOpen) {
@@ -26,6 +28,50 @@ const AchievementsPanel = ({ userId, isOpen, onClose }) => {
       
       // Mark new achievements as viewed
       achievementManager.markAchievementsViewed(userId);
+
+      // Verify certificate status with Supabase to enforce revocation
+      const checkCertsStatus = async () => {
+        const savedCerts = JSON.parse(localStorage.getItem(`swift_issued_certs_${userId}`) || '[]');
+        let activeCert = savedCerts.length > 0 ? savedCerts[savedCerts.length - 1] : null;
+
+        if (navigator.onLine) {
+          try {
+            const user = (userManager.getUsers() || []).find(u => u.id === userId);
+            if (user?.username) {
+              const { data, error } = await supabase
+                .from('issued_certificates')
+                .select('*')
+                .eq('username', user.username)
+                .order('issued_at', { ascending: false });
+
+              if (!error) {
+                if (data && data.length > 0) {
+                  const formatted = data.map(c => {
+                    const dateVal = c.issued_at 
+                      ? new Date(c.issued_at).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })
+                      : new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+                    return {
+                      id: c.id,
+                      username: c.username,
+                      wpm: c.wpm,
+                      totalTime: c.total_time,
+                      date: dateVal
+                    };
+                  });
+                  localStorage.setItem(`swift_issued_certs_${userId}`, JSON.stringify(formatted));
+                  activeCert = formatted[formatted.length - 1];
+                } else {
+                  localStorage.removeItem(`swift_issued_certs_${userId}`);
+                  activeCert = null;
+                }
+              }
+            }
+          } catch (e) {}
+        }
+        setLatestCert(activeCert);
+      };
+
+      checkCertsStatus();
     }
   }, [userId, isOpen]);
 
@@ -148,6 +194,29 @@ const AchievementsPanel = ({ userId, isOpen, onClose }) => {
 
         {/* Achievements Grid */}
         <div className="p-6 overflow-y-auto max-h-[50vh]">
+          {/* Certificate Banner (if issued) */}
+          {latestCert && (
+            <div className={`p-5 rounded-2xl border-2 border-dashed ${theme.mode === 'dark' ? 'bg-purple-950/20 border-purple-500/30' : 'bg-purple-50/50 border-purple-300/60'} flex flex-col sm:flex-row items-center justify-between gap-4 mb-5 animate-fadeIn`}>
+              <div className="flex items-center gap-3.5 text-center sm:text-left flex-col sm:flex-row">
+                <div className={`p-3.5 ${theme.secondary} rounded-2xl ${theme.accent} flex items-center justify-center shadow-sm`}>
+                  <Award className="w-8 h-8" />
+                </div>
+                <div>
+                  <h3 className={`font-black text-base ${theme.text}`}>Certificate Unlocked!</h3>
+                  <p className={`text-xs ${theme.textSecondary} mt-0.5`}>
+                    Issued on {latestCert.date} with a speed of <strong className={theme.accent}>{latestCert.wpm} WPM</strong>.
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setShowCertModal(true)}
+                className={`w-full sm:w-auto px-5 py-2.5 ${theme.primary} ${theme.primaryHover} text-white font-extrabold rounded-xl text-xs transition shadow-lg hover:scale-[1.02] cursor-pointer flex items-center justify-center gap-2`}
+              >
+                <Award className="w-4 h-4" /> Download Certificate
+              </button>
+            </div>
+          )}
+
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {filteredAchievements.map(achievement => (
               <div
@@ -189,17 +258,9 @@ const AchievementsPanel = ({ userId, isOpen, onClose }) => {
                         +{achievement.xp} XP
                       </span>
                       {achievement.unlocked && (
-                        <>
-                          <span className={`text-xs ${theme.mode === 'dark' ? 'text-green-400' : 'text-green-600'}`}>
-                            ✓ Unlocked
-                          </span>
-                          <button
-                            onClick={() => setShowCertModal(true)}
-                            className="ml-auto px-2 py-1 bg-purple-500/10 hover:bg-purple-500/25 border border-purple-500/30 text-purple-500 text-[10px] font-bold rounded-lg transition flex items-center gap-1 cursor-pointer"
-                          >
-                            <Award className="w-3 h-3" /> Certificate
-                          </button>
-                        </>
+                        <span className={`text-xs ${theme.mode === 'dark' ? 'text-green-400' : 'text-green-600'}`}>
+                          ✓ Unlocked
+                        </span>
                       )}
                     </div>
                   </div>

@@ -3,7 +3,7 @@ import { supabase } from '../utils/supabaseClient';
 import { useTheme } from '../contexts/ThemeContext';
 import { userManager, progressManager, adminAuditManager, banManager } from '../utils/storage';
 import { typingLessons } from '../data/lessons';
-import { Users, Ban, RefreshCw, LogOut, LayoutDashboard, CheckCircle, Clock, Award, X } from 'lucide-react';
+import { Users, Ban, RefreshCw, LogOut, LayoutDashboard, CheckCircle, Clock, Award, X, Eye, ChevronDown } from 'lucide-react';
 
 import AdminLockScreen     from '../components/admin/AdminLockScreen';
 import AdminOverview       from '../components/admin/AdminOverview';
@@ -60,6 +60,13 @@ export default function AdminPortal() {
   // ─── Users / Moderation / Audit Logs / Appeals / Modal ────────
   const [registeredUsersList, setRegisteredUsersList] = useState([]);
   const [bannedDevices,       setBannedDevices]       = useState([]);
+  const [whitelistedAnomalies, setWhitelistedAnomalies] = useState(() => {
+    try {
+      return JSON.parse(localStorage.getItem('swift_whitelisted_anomalies') || '[]');
+    } catch (e) {
+      return [];
+    }
+  });
   const [unbanAppeals,        setUnbanAppeals]        = useState([]);
   const [banInput,            setBanInput]            = useState('');
   const [banReasonInput,      setBanReasonInput]      = useState('Abuse of service or leaderboard cheating.');
@@ -83,6 +90,7 @@ export default function AdminPortal() {
   const [isFilterExpanded,  setIsFilterExpanded]  = useState(false);
   const [searchQuery,       setSearchQuery]       = useState('');
   const [certificateUser,   setCertificateUser]   = useState(null);
+  const [showCertDropdown,  setShowCertDropdown]  = useState(false);
 
   // ─── Theme styling helpers ───────────────────────────
   const cardClass    = `${theme.cardBg} ${theme.border} border shadow-xl rounded-3xl transition-all duration-300`;
@@ -492,7 +500,7 @@ export default function AdminPortal() {
   };
 
   // ─── Quick Cert & Export ─────────────────────────────────────
-  const handleIssueCertQuick = async (user) => {
+  const handlePreviewCert = (user) => {
     const certWpm = user.averageWPM || 60;
     const certDate = new Date().toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' });
 
@@ -512,8 +520,28 @@ export default function AdminPortal() {
       username: user.username,
       wpm: certWpm,
       totalTime: totalTime,
-      date: certDate
+      date: certDate,
+      isPreview: true
     });
+    setStatusMsg(`👁️ Previewing certificate for "${user.username}" (${certWpm} WPM).`);
+  };
+
+  const handleIssueCertQuick = async (user) => {
+    const certWpm = user.averageWPM || 60;
+    const certDate = new Date().toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' });
+
+    let totalTime = 14400; // default 4 hours
+    try {
+      const localUser = (userManager.getUsers() || []).find(u => u.username?.toLowerCase() === user.username?.toLowerCase());
+      if (localUser) {
+        const prog = progressManager.getUserProgress(localUser.id);
+        if (prog?.stats?.totalTime) {
+          totalTime = prog.stats.totalTime;
+        }
+      }
+    } catch (e) {}
+
+    setSelectedTypist(user);
     adminAuditManager.logAction('CERTIFICATE_ISSUED', user.username, `WPM: ${certWpm}`);
 
     // Sync to Supabase so client gets toast notification
@@ -534,6 +562,17 @@ export default function AdminPortal() {
   const handleExportBackupQuick = (user) => {
     setSelectedTypist(user);
     handleExportBackup();
+  };
+
+  const handleToggleAnomalyWhitelist = (username) => {
+    if (!username) return;
+    const name = username.toLowerCase();
+    setWhitelistedAnomalies(prev => {
+      const next = prev.includes(name) ? prev.filter(n => n !== name) : [...prev, name];
+      localStorage.setItem('swift_whitelisted_anomalies', JSON.stringify(next));
+      return next;
+    });
+    setStatusMsg(`Updated anomaly flag for "${username}".`);
   };
 
   // ─── Reset Typist Progress ──────────────────────────────────
@@ -811,6 +850,7 @@ export default function AdminPortal() {
           telemetryLogs={telemetryLogs} copiedDeviceId={copiedDeviceId}
           handleCopyDeviceId={handleCopyDeviceId} handleSelectUser={handleSelectUser}
           loading={loading} registeredUsersList={registeredUsersList}
+          whitelistedAnomalies={whitelistedAnomalies}
         />
       )}
 
@@ -823,6 +863,7 @@ export default function AdminPortal() {
             handleQuickBan={handleQuickBan} handleIssueCertQuick={handleIssueCertQuick} handleExportBackupQuick={handleExportBackupQuick}
             handleDeleteUser={handleDeleteUser}
             bannedDevices={bannedDevices}
+            whitelistedAnomalies={whitelistedAnomalies}
           />
           <TypistDeepDive
             theme={theme} isDarkMode={isDarkMode} cardClass={cardClass} subTextClass={subTextClass} inputClass={inputClass}
@@ -832,7 +873,9 @@ export default function AdminPortal() {
             handleUnlockLessons={handleUnlockLessons} handleToggleSingleLesson={handleToggleSingleLesson}
             handleQuickBan={handleQuickBan} handleResetUserProgress={handleResetUserProgress}
             setCertificateUser={setCertificateUser} userCompletedLessons={getUserCompletedLessons()}
-            isBanned={isSelectedTypistBanned()}
+            isBanned={isSelectedTypistBanned()} handleIssueCertQuick={handleIssueCertQuick}
+            whitelistedAnomalies={whitelistedAnomalies}
+            handleToggleAnomalyWhitelist={handleToggleAnomalyWhitelist}
           />
         </div>
       )}
@@ -840,7 +883,7 @@ export default function AdminPortal() {
       {/* Certificates Dedicated Section */}
       {activeTab === 'certificates' && (
         <div className={`${cardClass} p-6 space-y-6`}>
-          <div className="flex justify-between items-center border-b ${theme.border} pb-4">
+          <div className={`flex justify-between items-center border-b ${theme.border} pb-4`}>
             <div>
               <h3 className="text-xl font-extrabold flex items-center gap-2">
                 <Award className="w-6 h-6 text-purple-500" /> Certificates &amp; Verification Center
@@ -871,13 +914,38 @@ export default function AdminPortal() {
                   ))}
                 </select>
 
-                <button
-                  disabled={!selectedTypist}
-                  onClick={() => selectedTypist && handleIssueCertQuick(selectedTypist)}
-                  className="w-full py-3 bg-purple-600 hover:bg-purple-700 disabled:opacity-50 text-white font-extrabold rounded-xl text-xs transition cursor-pointer shadow-lg shadow-purple-600/20 active:scale-95 flex items-center justify-center gap-2"
-                >
-                  <Award className="w-4 h-4" /> Issue Official Certificate
-                </button>
+                <div className="relative pt-1">
+                  <button
+                    disabled={!selectedTypist}
+                    onClick={() => setShowCertDropdown(!showCertDropdown)}
+                    className="w-full py-3 bg-purple-600 hover:bg-purple-700 disabled:opacity-50 text-white font-extrabold rounded-xl text-xs transition cursor-pointer shadow-lg shadow-purple-600/20 active:scale-95 flex items-center justify-center gap-2"
+                  >
+                    <Award className="w-4 h-4" /> Certificate Actions <ChevronDown className="w-4 h-4" />
+                  </button>
+                  
+                  {showCertDropdown && selectedTypist && (
+                    <div className="absolute left-0 right-0 mt-2 z-20 bg-slate-900 border border-slate-800 rounded-xl shadow-2xl p-1.5 space-y-1">
+                      <button
+                        onClick={() => {
+                          handlePreviewCert(selectedTypist);
+                          setShowCertDropdown(false);
+                        }}
+                        className="w-full text-left px-3 py-2.5 text-slate-300 hover:text-white hover:bg-slate-800 rounded-lg text-xs font-bold transition flex items-center gap-2 cursor-pointer"
+                      >
+                        <Eye className="w-4 h-4 text-cyan-400" /> Preview Layout (View Only)
+                      </button>
+                      <button
+                        onClick={() => {
+                          handleIssueCertQuick(selectedTypist);
+                          setShowCertDropdown(false);
+                        }}
+                        className="w-full text-left px-3 py-2.5 text-slate-300 hover:text-white hover:bg-slate-800 rounded-lg text-xs font-bold transition flex items-center gap-2 cursor-pointer"
+                      >
+                        <Award className="w-4 h-4 text-purple-400" /> Issue &amp; Send Notification
+                      </button>
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
 

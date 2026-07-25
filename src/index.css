@@ -1,5 +1,22 @@
 @import "tailwindcss";
 
+/* Fix white-on-white icon/text visibility for Iyami theme */
+[data-theme="iyami"] .bg-white.text-white,
+[data-theme="iyami"] .bg-\[\#ffffff\].text-white,
+[data-theme="iyami"] .bg-zinc-200.text-white,
+[data-theme="iyami"] .bg-zinc-200.text-zinc-100,
+[data-theme="iyami"] .bg-zinc-200.text-zinc-200,
+[data-theme="iyami"] .bg-zinc-200.text-zinc-50,
+[data-theme="iyami"] .bg-white .text-white,
+[data-theme="iyami"] .bg-\[\#ffffff\] .text-white,
+[data-theme="iyami"] .bg-zinc-200 .text-white,
+[data-theme="iyami"] .bg-zinc-200 .text-zinc-100,
+[data-theme="iyami"] .bg-zinc-200 .text-zinc-200,
+[data-theme="iyami"] .bg-zinc-200 .text-zinc-50 {
+  color: #000000 !important;
+}
+
+
 /* Base styles for the typing application */
 * {
   box-sizing: border-box;

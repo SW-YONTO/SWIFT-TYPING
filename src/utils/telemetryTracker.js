@@ -23,7 +23,7 @@ class TelemetryTracker {
   constructor() {
     this.deviceId = getDeviceId();
     this.lastSyncTime = 0;
-    this.SYNC_INTERVAL_MS = 5 * 60 * 1000; // 5-Minute Session Throttle as requested
+    this.SYNC_INTERVAL_MS = import.meta.env.DEV ? 5 * 1000 : 5 * 60 * 1000; // 5 seconds in development, 5 minutes in production
     this.initialized = false;
   }
 

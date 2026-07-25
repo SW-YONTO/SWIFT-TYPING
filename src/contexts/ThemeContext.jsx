@@ -43,7 +43,8 @@ export const ThemeProvider = ({ children, theme = 'blue', settings = {} }) => {
       const lightThemeMap = {
         'darkBlue': 'blue',
         'darkGreen': 'green',
-        'darkPurple': 'orange'
+        'darkPurple': 'orange',
+        'iyami': 'blue'
       };
       newTheme = lightThemeMap[currentThemeKey] || 'blue';
     } else {
@@ -81,16 +82,10 @@ export const ThemeProvider = ({ children, theme = 'blue', settings = {} }) => {
     const body = document.body;
     body.className = `${currentTheme.background} ${currentTheme.text} transition-colors duration-300`;
     
-    // Force inline styles for Electron compatibility
-    if (currentTheme.mode === 'dark') {
-      body.style.backgroundColor = '#111827 !important';
-      body.style.color = '#f9fafb !important';
-    } else {
-      const bgColor = currentTheme.css['--theme-background'];
-      const textColor = currentTheme.css['--theme-text'];
-      body.style.backgroundColor = `${bgColor} !important`;
-      body.style.color = `${textColor} !important`;
-    }
+    const bgColor = currentTheme.css['--theme-background'];
+    const textColor = currentTheme.css['--theme-text'];
+    body.style.setProperty('background-color', bgColor, 'important');
+    body.style.setProperty('color', textColor, 'important');
     
     // Add a data attribute for easy theme detection
     body.setAttribute('data-theme', currentThemeKey);

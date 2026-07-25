@@ -19,7 +19,8 @@ export default function AdminOverview({
   handleCopyDeviceId,
   handleSelectUser,
   loading = false,
-  registeredUsersList = []
+  registeredUsersList = [],
+  whitelistedAnomalies = []
 }) {
   const chartStroke   = isDarkMode ? '#94a3b8' : '#64748b';
   const tooltipBg     = isDarkMode ? '#1f2937' : '#ffffff';
@@ -29,7 +30,8 @@ export default function AdminOverview({
 
   // Anomaly Detection (B7)
   const suspiciousUsers = registeredUsersList.filter(
-    u => (u.averageWPM || 0) > 160 || (u.totalTests > 500 && (u.averageWPM || 0) > 140)
+    u => ((u.averageWPM || 0) > 160 || (u.totalTests > 500 && (u.averageWPM || 0) > 140)) && 
+         !whitelistedAnomalies.includes(u.username?.toLowerCase())
   );
 
   const metricCards = [

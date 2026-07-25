@@ -45,7 +45,7 @@ function App() {
   const [currentUser, setCurrentUser] = useState(null);
   const [currentPage, setCurrentPage] = useState('lessons');
   const [newCertificate, setNewCertificate] = useState(null);
-  const [showActiveCertModal, setShowActiveCertModal] = useState(false);
+  const [viewingCertificate, setViewingCertificate] = useState(null);
   // Synchronous initialization from localStorage prevents 1-second unban flash on reload
   const [isBanned, setIsBanned] = useState(() => {
     return localStorage.getItem('swift_device_banned') === 'true';
@@ -81,8 +81,42 @@ function App() {
     };
 
     checkBan();
+    
+    // Fallback worst-case checker: 10 minutes interval
     const interval = setInterval(checkBan, 10 * 60 * 1000);
-    return () => clearInterval(interval);
+
+    // Supabase Realtime subscription for instant ban updates without polling
+    const activeUser = user || userManager.getCurrentUser();
+    const username = activeUser?.username?.toLowerCase() || '';
+    const deviceId = telemetry.deviceId?.toLowerCase() || '';
+
+    const channel = supabase
+      .channel('public:user_moderation')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'user_moderation' },
+        (payload) => {
+          if (payload.eventType === 'INSERT' || payload.eventType === 'UPDATE') {
+            const record = payload.new;
+            const recordDevId = record.device_id?.toLowerCase();
+            if (recordDevId && (recordDevId === username || recordDevId === deviceId)) {
+              if (record.is_banned) {
+                const reason = record.ban_reason || 'Suspended by Administrator.';
+                localStorage.setItem('swift_device_banned', 'true');
+                localStorage.setItem('swift_ban_reason', reason);
+                setIsBanned(true);
+                setBanReason(reason);
+              }
+            }
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      clearInterval(interval);
+      supabase.removeChannel(channel);
+    };
   }, []);
 
   // Check for new certificates from Supabase periodically
@@ -142,9 +176,9 @@ function App() {
     return () => clearInterval(interval);
   }, [currentUser]);
 
-  const handleDismissCertToast = async () => {
-    if (!newCertificate) return;
-    const certId = newCertificate.id;
+  const handleDismissCertToast = async (cert = newCertificate) => {
+    if (!cert) return;
+    const certId = cert.id;
     setNewCertificate(null);
 
     // Call Supabase background sync to mark as seen
@@ -303,54 +337,83 @@ function App() {
 
             <UpdateToast />
 
-            {/* New Certificate Issued Toast */}
-            {newCertificate && (
-              <div className="fixed bottom-20 right-6 z-50 max-w-sm w-full p-4 bg-slate-905 bg-slate-900/95 border border-amber-500/40 shadow-2xl rounded-2xl text-white flex flex-col gap-3 backdrop-blur-md animate-fadeIn">
-                <div className="flex items-start gap-3">
-                  <div className="p-2.5 bg-amber-500/10 rounded-xl text-amber-400">
-                    <Award className="w-5 h-5" />
-                  </div>
-                  <div className="flex-1 space-y-1">
-                    <h4 className="font-bold text-xs uppercase tracking-wider text-amber-400">Certificate Awarded</h4>
-                    <p className="text-[11px] text-slate-300 leading-normal">
-                      An official Certificate of Mastery has been issued to you by the Academy.
-                    </p>
-                  </div>
-                  <button onClick={handleDismissCertToast} className="p-1 hover:opacity-70 text-slate-400 hover:text-white transition">
-                    <X className="w-4 h-4" />
-                  </button>
-                </div>
-                <div className="flex gap-2">
-                  <button 
-                    onClick={() => {
-                      setShowActiveCertModal(true);
-                      handleDismissCertToast();
-                    }}
-                    className="flex-1 py-1.5 bg-gradient-to-r from-amber-600 to-amber-500 hover:from-amber-500 hover:to-amber-400 text-slate-950 text-[10px] font-black rounded-lg transition"
-                  >
-                    View &amp; Download
-                  </button>
-                  <button 
-                    onClick={handleDismissCertToast}
-                    className="px-3 py-1.5 border border-slate-700 hover:bg-slate-800 text-slate-300 text-[10px] font-bold rounded-lg transition"
-                  >
-                    Dismiss
-                  </button>
-                </div>
-              </div>
-            )}
-
-            {/* Certificate Preview Modal */}
-            {showActiveCertModal && newCertificate && (
-              <CompletionCertificate
-                certificateUser={newCertificate}
-                onClose={() => setShowActiveCertModal(false)}
-              />
-            )}
+            {/* Theme-based Certificate Toast and Modal Notifier */}
+            <CertificateNotifier
+              newCertificate={newCertificate}
+              setNewCertificate={setNewCertificate}
+              handleDismissCertToast={handleDismissCertToast}
+              viewingCertificate={viewingCertificate}
+              setViewingCertificate={setViewingCertificate}
+            />
           </div>
         </Router>
       </ErrorBoundary>
     </ThemeProvider>
+  );
+}
+
+// ─── Theme-based Certificate Toast & Modal Notifier Component ──────
+function CertificateNotifier({
+  newCertificate,
+  setNewCertificate,
+  handleDismissCertToast,
+  viewingCertificate,
+  setViewingCertificate
+}) {
+  const { theme, isDarkMode } = useTheme();
+
+  if (!newCertificate && !viewingCertificate) return null;
+
+  return (
+    <>
+      {/* Dynamic Theme-based Toast Notification */}
+      {newCertificate && (
+        <div className={`fixed top-20 right-6 z-50 max-w-sm w-full p-4 ${theme.cardBg} border ${theme.border} shadow-2xl rounded-2xl ${theme.text} flex flex-col gap-3 backdrop-blur-md animate-fadeIn`}>
+          <div className="flex items-start gap-3">
+            <div className={`p-2.5 ${theme.secondary} rounded-xl ${theme.accent} flex items-center justify-center`}>
+              <Award className="w-5 h-5" />
+            </div>
+            <div className="flex-1 space-y-1">
+              <h4 className={`font-extrabold text-xs uppercase tracking-wider ${theme.accent}`}>Certificate Awarded</h4>
+              <p className={`text-[11px] ${theme.textSecondary} leading-normal`}>
+                An official Certificate of Mastery has been issued to you by the Academy.
+              </p>
+            </div>
+            <button 
+              onClick={() => handleDismissCertToast(newCertificate)} 
+              className={`p-1 hover:opacity-70 ${theme.textSecondary} hover:${theme.text} transition cursor-pointer`}
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+          <div className="flex gap-2">
+            <button 
+              onClick={() => {
+                setViewingCertificate(newCertificate);
+                handleDismissCertToast(newCertificate);
+              }}
+              className={`flex-1 py-1.5 ${theme.primary} ${theme.primaryHover} text-white text-[10px] font-black rounded-lg transition shadow-md hover:scale-[1.02] cursor-pointer`}
+            >
+              View &amp; Download
+            </button>
+            <button 
+              onClick={() => handleDismissCertToast(newCertificate)}
+              className={`px-3 py-1.5 border ${theme.border} hover:${theme.secondary} ${theme.textSecondary} text-[10px] font-bold rounded-lg transition hover:scale-[1.02] cursor-pointer`}
+            >
+              Dismiss
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Certificate Presentation Modal */}
+      {viewingCertificate && (
+        <CompletionCertificate
+          certificateUser={viewingCertificate}
+          onClose={() => setViewingCertificate(null)}
+        />
+      )}
+    </>
   );
 }
 
