@@ -63,22 +63,34 @@ function App() {
   // Load current user and check ban status on initial app mount
   useEffect(() => {
     telemetry.init();
+    
+    // Ensure initial user exists so referral links & pricing work immediately without blocking on login screen
+    let user = userManager.getCurrentUser();
+    if (!user) {
+      const users = userManager.getUsers();
+      if (users.length > 0) {
+        user = users[0];
+      } else {
+        user = userManager.addUser('Guest Typist', 'avatar1.png');
+      }
+      userManager.setCurrentUser(user.id);
+    }
+
+    setCurrentUser(user);
+    if (user) {
+      loadUserSettings(user.id);
+    }
 
     // Auto-navigate to /pricing if referral code is in URL search/hash
     try {
-      const searchParams = new URLSearchParams(window.location.search);
-      const hash = window.location.hash;
-      const hasCode = searchParams.has('code') || searchParams.has('coupon') || searchParams.has('ref') || hash.includes('code=') || hash.includes('coupon=') || hash.includes('ref=');
+      const fullUrl = window.location.href;
+      const hasCode = /[?&](code|coupon|ref)=/i.test(fullUrl);
       if (hasCode && !window.location.hash.includes('/pricing')) {
-        const queryStr = window.location.search || (hash.includes('?') ? hash.substring(hash.indexOf('?')) : '');
-        window.location.hash = '#/pricing' + queryStr;
+        const match = fullUrl.match(/([?&](code|coupon|ref)=[^&/#]+)/i);
+        const paramStr = match ? '?' + match[1] : '';
+        window.location.hash = '#/pricing' + paramStr;
       }
     } catch (e) {}
-    const user = userManager.getCurrentUser();
-    if (user) {
-      setCurrentUser(user);
-      loadUserSettings(user.id);
-    }
 
     const checkBan = async () => {
       const activeUser = user || userManager.getCurrentUser();

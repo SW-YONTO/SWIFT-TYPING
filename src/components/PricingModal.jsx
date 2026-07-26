@@ -43,16 +43,18 @@ const PricingModal = ({ isOpen, onClose }) => {
   const [copiedLink, setCopiedLink] = useState(false);
 
   const applyCoupon = (codeToApply) => {
-    const code = (typeof codeToApply === 'string' ? codeToApply : couponCode).trim().toUpperCase();
-    const validCoupons = ['FREEBANKAI', 'FREEFORU', 'FREEFORYOU', 'SWIFTFREE', 'FREEPRO', 'FREEACCESS', _gc()];
-    if (validCoupons.includes(code)) {
+    let rawCode = (typeof codeToApply === 'string' && codeToApply.trim()) ? codeToApply : couponCode;
+    const code = rawCode.trim().toUpperCase().replace(/[^A-Z0-9]/g, '');
+    const validCoupons = ['FREEBANKAI', 'FREEFORU', 'FREEFORYOU', 'SWIFTFREE', 'FREEPRO', 'FREEACCESS', 'FREE', _gc()];
+    
+    if (code && validCoupons.includes(code)) {
       setCouponCode(code);
       setCouponStatus('success');
       setCouponMessage(`✅ Promo coupon "${code}" applied! Full free access to Swift Typing unlocked.`);
       setShowDownload(true);
-    } else {
+    } else if (code) {
       setCouponStatus('error');
-      setCouponMessage('❌ Invalid coupon code. Please check your promo code and try again.');
+      setCouponMessage(`❌ Invalid coupon code "${code}". Please check your promo code and try again.`);
       setShowDownload(false);
     }
   };
@@ -61,17 +63,11 @@ const PricingModal = ({ isOpen, onClose }) => {
   useEffect(() => {
     if (!isOpen) return;
     try {
-      const searchParams = new URLSearchParams(window.location.search);
-      let codeFromUrl = searchParams.get('code') || searchParams.get('coupon') || searchParams.get('ref');
-      
-      if (!codeFromUrl && window.location.hash.includes('?')) {
-        const qIndex = window.location.hash.indexOf('?');
-        const hashParams = new URLSearchParams(window.location.hash.substring(qIndex));
-        codeFromUrl = hashParams.get('code') || hashParams.get('coupon') || hashParams.get('ref');
-      }
-
-      if (codeFromUrl) {
-        applyCoupon(codeFromUrl);
+      const fullUrl = window.location.href;
+      const match = fullUrl.match(/[?&](code|coupon|ref)=([^&/#]+)/i);
+      if (match && match[2]) {
+        const urlCode = decodeURIComponent(match[2]);
+        applyCoupon(urlCode);
       }
     } catch (e) {
       console.error('Error parsing referral code from URL:', e);
