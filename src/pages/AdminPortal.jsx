@@ -3,7 +3,7 @@ import { supabase } from '../utils/supabaseClient';
 import { useTheme } from '../contexts/ThemeContext';
 import { userManager, progressManager, adminAuditManager, banManager } from '../utils/storage';
 import { typingLessons } from '../data/lessons';
-import { Users, Ban, RefreshCw, LogOut, LayoutDashboard, CheckCircle, Clock, Award, X, Eye, ChevronDown } from 'lucide-react';
+import { Users, Ban, RefreshCw, LogOut, LayoutDashboard, CheckCircle, Clock, Award, X, Eye, ChevronDown, Trash2, AlertTriangle } from 'lucide-react';
 
 import AdminLockScreen     from '../components/admin/AdminLockScreen';
 import AdminOverview       from '../components/admin/AdminOverview';
@@ -71,6 +71,7 @@ export default function AdminPortal() {
   const [banInput,            setBanInput]            = useState('');
   const [banReasonInput,      setBanReasonInput]      = useState('Abuse of service or leaderboard cheating.');
   const [pendingBanUser,      setPendingBanUser]      = useState(null);
+  const [pendingDeleteTargets, setPendingDeleteTargets] = useState(null);
   const [customBanReason,     setCustomBanReason]     = useState('Abuse of service or leaderboard cheating.');
   const [copiedDeviceId,      setCopiedDeviceId]      = useState(null);
   const [auditLogs,           setAuditLogs]           = useState([]);
@@ -464,30 +465,69 @@ export default function AdminPortal() {
   const handleDeleteUser = (userOrUsers) => {
     const targets = Array.isArray(userOrUsers) ? userOrUsers : [userOrUsers];
     if (targets.length === 0) return;
+    setPendingDeleteTargets(targets);
+  };
 
-    const names = targets.map(t => typeof t === 'string' ? t : (t.username || t.id)).join(', ');
-    if (!confirm(`Are you sure you want to PERMANENTLY delete typist(s): ${names}? This will clear all saved progress and user data.`)) {
-      return;
-    }
+  const confirmDeleteUser = async () => {
+    if (!pendingDeleteTargets || pendingDeleteTargets.length === 0) return;
+    const targets = pendingDeleteTargets;
+    setPendingDeleteTargets(null);
 
     try {
-      let users = JSON.parse(localStorage.getItem('typing_app_users') || '[]');
+      setLoading(true);
+
+      // 1. Remove from Local Storage (typing_app_users & user progress)
+      let localUsers = JSON.parse(localStorage.getItem('typing_app_users') || '[]');
       targets.forEach(t => {
         const username = typeof t === 'string' ? t : t.username;
         const id = typeof t === 'object' ? t.id : null;
 
-        users = users.filter(u => (username ? u.username?.toLowerCase() !== username.toLowerCase() : true) && (id ? u.id !== id : true));
-        if (id) localStorage.removeItem(`typing_app_user_progress_${id}`);
-        adminAuditManager.logAction('USER_DELETE', username || id || 'unknown', 'Deleted user profile & progress');
-      });
+        localUsers = localUsers.filter(u => 
+          (username ? u.username?.toLowerCase() !== username.toLowerCase() : true) && 
+          (id ? u.id !== id : true)
+        );
 
-      localStorage.setItem('typing_app_users', JSON.stringify(users));
-      setStatusMsg(`🗑️ Successfully deleted ${targets.length} typist profile(s)!`);
-      fetchAdminData();
-      if (selectedTypist && targets.some(t => (t.username || t) === selectedTypist.username)) {
+        if (id) localStorage.removeItem(`typing_app_user_progress_${id}`);
+        const found = (JSON.parse(localStorage.getItem('typing_app_users') || '[]')).find(u => u.username?.toLowerCase() === username?.toLowerCase());
+        if (found?.id) localStorage.removeItem(`typing_app_user_progress_${found.id}`);
+      });
+      localStorage.setItem('typing_app_users', JSON.stringify(localUsers));
+
+      // 2. Remove from Supabase Cloud Database tables
+      for (const t of targets) {
+        const username = typeof t === 'string' ? t : t.username;
+        const deviceId = typeof t === 'object' ? (t.deviceId || t.device_id || t.id) : t;
+
+        adminAuditManager.logAction('USER_DELETE', username || deviceId || 'unknown', 'Deleted user profile from local & cloud');
+
+        if (navigator.onLine) {
+          if (username) {
+            await supabase.from('user_daily_telemetry').delete().ilike('username', username);
+            await supabase.from('app_telemetry').delete().eq('device_id', username);
+            await supabase.from('user_moderation').delete().ilike('device_id', username);
+            await supabase.from('issued_certificates').delete().ilike('username', username);
+            await supabase.from('unban_requests').delete().ilike('username', username);
+          }
+          if (deviceId && deviceId.toLowerCase() !== username?.toLowerCase()) {
+            await supabase.from('user_daily_telemetry').delete().ilike('device_id', deviceId);
+            await supabase.from('app_telemetry').delete().eq('device_id', deviceId);
+            await supabase.from('user_moderation').delete().ilike('device_id', deviceId);
+            await supabase.from('unban_requests').delete().ilike('device_id', deviceId);
+          }
+        }
+      }
+
+      setStatusMsg(`🗑️ Successfully deleted ${targets.length} typist(s) from local & cloud database!`);
+      if (selectedTypist && targets.some(t => (t.username || t)?.toLowerCase() === selectedTypist.username?.toLowerCase())) {
         setSelectedTypist(null);
       }
-    } catch (e) {}
+      await fetchAdminData();
+    } catch (e) {
+      console.error('Failed to delete user records:', e);
+      setStatusMsg(`❌ Failed to delete user records: ${e.message}`);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleCopyDeviceId = (deviceId) => {
@@ -575,16 +615,31 @@ export default function AdminPortal() {
     setStatusMsg(`Updated anomaly flag for "${username}".`);
   };
 
+  // Helper to ensure a local profile & progress record exists for any typist (local or remote)
+  const getOrCreateLocalUser = (username) => {
+    if (!username) return null;
+    let users = userManager.getUsers() || [];
+    let found = users.find(u => u.username?.toLowerCase() === username.toLowerCase());
+    if (!found) {
+      found = {
+        id: 'usr_' + Date.now() + '_' + Math.random().toString(36).substring(2, 6),
+        username: username,
+        createdAt: new Date().toISOString(),
+        averageWPM: selectedTypist?.averageWPM || 0,
+        totalTests: selectedTypist?.totalTests || 0
+      };
+      users.push(found);
+      localStorage.setItem('typing_app_users', JSON.stringify(users));
+    }
+    return found;
+  };
+
   // ─── Reset Typist Progress ──────────────────────────────────
   const handleResetUserProgress = (username) => {
     if (!username) return;
     if (!window.confirm(`Are you sure you want to reset ALL lesson & test progress for '${username}'? This cannot be undone.`)) return;
 
-    const localUser = (userManager.getUsers() || []).find(u => u.username?.toLowerCase() === username.toLowerCase());
-    if (!localUser) {
-      setStatusMsg("⚠️ Profile is remote-only or not registered on this device.");
-      return;
-    }
+    const localUser = getOrCreateLocalUser(username);
     const fresh = {
       completedLessons: [],
       testResults: [],
@@ -599,11 +654,8 @@ export default function AdminPortal() {
 
   // ─── Granular Single Lesson Toggle ─────────────────────────
   const handleToggleSingleLesson = (username, lessonId) => {
-    const localUser = (userManager.getUsers() || []).find(u => u.username?.toLowerCase() === username.toLowerCase());
-    if (!localUser) {
-      setStatusMsg("⚠️ Profile is remote-only or not registered on this device.");
-      return;
-    }
+    if (!username) return;
+    const localUser = getOrCreateLocalUser(username);
     const progress = progressManager.getUserProgress(localUser.id);
     const exists = progress.completedLessons.some(l => l.lessonId === lessonId);
     if (exists) {
@@ -623,40 +675,76 @@ export default function AdminPortal() {
   };
 
   // ─── Progress / Bulk Unlock ────────────────────────────────────
-  const handleUnlockLessons = (percentage) => {
-    if (!selectedTypist) return;
-    const localUser = (userManager.getUsers() || []).find(u => u.username?.toLowerCase() === selectedTypist.username?.toLowerCase());
-    if (!localUser) { setStatusMsg('⚠️ Cannot change progress: typist profile is remote-only on this device.'); return; }
+  const handleUnlockLessons = async (percentage) => {
+    if (!selectedTypist || !selectedTypist.username) return;
+    const localUser = getOrCreateLocalUser(selectedTypist.username);
 
     const flatLessons = [];
-    Object.values(typingLessons).forEach(unit => unit.lessons.forEach(l => flatLessons.push({
-      lessonId: l.id,
-      wpm: 55 + Math.floor(Math.random() * 25),
-      accuracy: 94 + Math.floor(Math.random() * 5),
-      completedAt: new Date().toISOString()
-    })));
+    Object.values(typingLessons).forEach(unit => unit.lessons.forEach(l => {
+      flatLessons.push(l.id);
+    }));
+
     const unlockCount = Math.ceil(flatLessons.length * (percentage / 100));
     const progress = progressManager.getUserProgress(localUser.id);
-    progress.completedLessons = flatLessons.slice(0, unlockCount);
-    progress.stats.totalTests  = Math.max(progress.stats.totalTests, unlockCount);
-    progress.stats.totalTime   = Math.max(progress.stats.totalTime, unlockCount * 90);
-    progress.stats.bestWPM     = Math.max(progress.stats.bestWPM, 75);
+
+    // Preserve existing real stats (do NOT overwrite WPM, accuracy, or practice time with random numbers)
+    const existingWpm = progress.stats?.bestWPM || selectedTypist.averageWPM || 60;
+    const existingAcc = selectedTypist.avgAcc || 95;
+
+    const newCompletedLessons = flatLessons.slice(0, unlockCount).map(lessonId => {
+      const found = (progress.completedLessons || []).find(c => c.lessonId === lessonId);
+      return found || {
+        lessonId,
+        wpm: existingWpm,
+        accuracy: existingAcc,
+        completedAt: new Date().toISOString()
+      };
+    });
+
+    progress.completedLessons = newCompletedLessons;
     progressManager.saveUserProgress(localUser.id, progress);
+
+    // Sync to Supabase cloud table user_daily_telemetry with completed_lessons payload so remote client updates
+    try {
+      if (navigator.onLine) {
+        const today = new Date().toISOString().split('T')[0];
+        const summaryId = `admin_sync_${selectedTypist.username.toLowerCase()}_${today}`;
+        await supabase.from('user_daily_telemetry').upsert([{
+          summary_id: summaryId,
+          device_id: selectedTypist.id || selectedTypist.username,
+          username: selectedTypist.username,
+          client_type: selectedTypist.clientType?.toLowerCase() || 'web',
+          os_platform: 'web',
+          app_version: '3.26.9',
+          date: today,
+          last_seen: new Date().toISOString(),
+          tests_completed: Math.max(progress.stats?.totalTests || 0, unlockCount),
+          max_wpm: existingWpm,
+          avg_wpm: existingWpm,
+          avg_accuracy: existingAcc,
+          total_time_seconds: progress.stats?.totalTime || (unlockCount * 90),
+          completed_lessons: newCompletedLessons.map(l => l.lessonId),
+          updated_at: new Date().toISOString()
+        }], { onConflict: 'summary_id' });
+      }
+    } catch (e) {
+      console.error('Failed to sync admin progress to Supabase:', e);
+    }
 
     adminAuditManager.logAction('PROGRESS_UPDATE', selectedTypist.username, `Bulk progress set to ${percentage}% (${unlockCount} lessons)`);
     setStatusMsg(`🔓 Unlocked ${percentage}% (${unlockCount}/${flatLessons.length}) lessons for ${selectedTypist.username}!`);
-    fetchAdminData();
+    await fetchAdminData();
   };
 
   // ─── Deep Analytics for selected typist ──────────────────────
   const getTypistAnalytics = () => {
-    if (!selectedTypist) return null;
+    if (!selectedTypist || !selectedTypist.username) return null;
     const username = selectedTypist.username?.toLowerCase() || '';
     const typistLogs = telemetryLogs.filter(l => l.event_data?.username?.toLowerCase() === username);
 
     let localProg = null;
     try {
-      const u = (userManager.getUsers() || []).find(lu => lu.username?.toLowerCase() === username);
+      const u = getOrCreateLocalUser(selectedTypist.username);
       if (u) localProg = progressManager.getUserProgress(u.id);
     } catch {}
 
@@ -689,9 +777,9 @@ export default function AdminPortal() {
 
   // Get completed lessons list for selected user
   const getUserCompletedLessons = () => {
-    if (!selectedTypist) return [];
+    if (!selectedTypist || !selectedTypist.username) return [];
     try {
-      const u = (userManager.getUsers() || []).find(lu => lu.username?.toLowerCase() === selectedTypist.username?.toLowerCase());
+      const u = getOrCreateLocalUser(selectedTypist.username);
       if (u) {
         const prog = progressManager.getUserProgress(u.id);
         return prog?.completedLessons || [];
@@ -1051,6 +1139,59 @@ export default function AdminPortal() {
                 className="py-2.5 px-4 bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-500 hover:to-rose-500 text-white font-extrabold rounded-xl text-xs transition shadow-lg shadow-red-600/20 cursor-pointer flex items-center justify-center gap-1.5"
               >
                 <Ban className="w-3.5 h-3.5" /> Confirm Ban
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ─── Custom Delete Confirmation Modal ─── */}
+      {pendingDeleteTargets && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-fadeIn">
+          <div className={`${cardClass} p-6 max-w-md w-full space-y-5 shadow-2xl relative border-red-500/40 text-center`}>
+            
+            {/* Close Button */}
+            <button
+              onClick={() => setPendingDeleteTargets(null)}
+              className="absolute top-4 right-4 p-2 rounded-full hover:bg-slate-800 text-gray-400 hover:text-white transition cursor-pointer"
+            >
+              <X className="w-5 h-5" />
+            </button>
+
+            {/* Trash Icon */}
+            <div className="w-14 h-14 rounded-full bg-red-500/15 border border-red-500/30 flex items-center justify-center mx-auto text-red-500 animate-pulse">
+              <Trash2 className="w-7 h-7" />
+            </div>
+
+            <div className="space-y-2">
+              <span className="px-2.5 py-0.5 bg-red-500/20 text-red-400 font-extrabold text-[10px] rounded-md uppercase tracking-wider">
+                Permanent Data Deletion
+              </span>
+              <h3 className="text-xl font-extrabold text-white">Delete Typist Profile?</h3>
+              <p className={`text-xs ${subTextClass} leading-relaxed`}>
+                Are you sure you want to permanently delete:
+              </p>
+              <div className="p-3 rounded-2xl bg-red-500/10 border border-red-500/25 text-red-400 font-mono font-bold text-sm break-all">
+                {pendingDeleteTargets.map(t => typeof t === 'string' ? t : (t.username || t.id)).join(', ')}
+              </div>
+              <p className={`text-[11px] ${subTextClass} italic pt-1`}>
+                This will permanently remove all local browser progress and cloud database telemetry records. This action cannot be undone.
+              </p>
+            </div>
+
+            {/* Action Buttons */}
+            <div className="grid grid-cols-2 gap-3 pt-2">
+              <button
+                onClick={() => setPendingDeleteTargets(null)}
+                className={`py-2.5 px-4 ${theme.secondary} ${theme.text} font-bold rounded-xl text-xs transition cursor-pointer border ${theme.border}`}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={confirmDeleteUser}
+                className="py-2.5 px-4 bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-500 hover:to-rose-500 text-white font-extrabold rounded-xl text-xs transition shadow-lg shadow-red-600/30 cursor-pointer flex items-center justify-center gap-1.5 active:scale-95"
+              >
+                <Trash2 className="w-3.5 h-3.5" /> Yes, Delete User
               </button>
             </div>
           </div>

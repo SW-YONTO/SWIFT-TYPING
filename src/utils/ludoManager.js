@@ -226,16 +226,27 @@ class LudoManager {
     // 1. Presence
     this.roomChannel.on('presence', { event: 'sync' }, async () => {
       const state = this.roomChannel.presenceState();
-      const players = Object.values(state).flat();
+      let players = Object.values(state).flat();
+      
+      // Always guarantee local user is included in players list
+      const localUserData = this.getUserData();
+      if (localUserData && localUserData.userId) {
+        const found = players.some(p => (p.userId || p.user_id) === localUserData.userId);
+        if (!found) {
+          players = [localUserData, ...players];
+        }
+      }
+
       const time = new Date().toLocaleTimeString('en-US', { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit', fractionalSecondDigits: 3 });
       console.log(`%c[LUDO ${time}] [PRESENCE] Online players (${players.length}): ${players.map(p => `${p.username || p.user_id} (${p.color || 'no-color'})`).join(', ')}`, 'color: #10b981; font-weight: bold;');
+      
       if (this.onPlayersUpdate) this.onPlayersUpdate(players);
 
-      if (this.isHost && players.length > 0) {
+      if (this.isHost) {
         try {
           await supabase
             .from('ludo_rooms')
-            .update({ player_count: players.length, updated_at: new Date().toISOString() })
+            .update({ player_count: Math.max(1, players.length), updated_at: new Date().toISOString() })
             .eq('room_code', this.roomCode);
         } catch (e) {
           console.warn('DB player count update error:', e);
@@ -302,7 +313,17 @@ class LudoManager {
 
     await this.roomChannel.subscribe(async (status) => {
       if (status === 'SUBSCRIBED') {
-        await this.roomChannel.track(this.getUserData());
+        const userData = this.getUserData();
+        await this.roomChannel.track(userData);
+
+        if (this.onPlayersUpdate) {
+          const state = this.roomChannel.presenceState();
+          let players = Object.values(state).flat();
+          if (!players.some(p => (p.userId || p.user_id) === userData.userId)) {
+            players = [userData, ...players];
+          }
+          this.onPlayersUpdate(players);
+        }
 
         // Fetch latest DB state immediately after subscribing
         const dbState = await this.fetchGameState();

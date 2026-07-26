@@ -3,7 +3,7 @@ import { useTheme } from '../../../contexts/ThemeContext';
 import { ludoManager } from '../../../utils/ludoManager';
 import { createGame } from './ludoEngine';
 import LudoChat from './LudoChat';
-import { Users, Copy, Check, LogIn, Plus, Crown, Loader2, Dice1, RefreshCw, Bot, Brain, Zap, Shield, X } from 'lucide-react';
+import { Users, Copy, Check, LogIn, Plus, Crown, Loader2, Dice1, RefreshCw, Bot, Brain, Zap, Shield, X, WifiOff } from 'lucide-react';
 
 import { getAvatarPath } from '../../../utils/image';
 
@@ -17,6 +17,9 @@ const LudoLobby = ({ currentUser, onGameStart, onLeave, urlRoomCode, onRoomJoine
   const [activeRooms, setActiveRooms] = useState({});
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+
+  // Offline No Internet Modal State
+  const [showOfflineModal, setShowOfflineModal] = useState(false);
 
   // Robot / AI Bot Config State
   const [showBotModal, setShowBotModal] = useState(false);
@@ -50,9 +53,16 @@ const LudoLobby = ({ currentUser, onGameStart, onLeave, urlRoomCode, onRoomJoine
   }, [urlRoomCode]);
 
   const handleCreateRoom = async () => {
+    if (!navigator.onLine) {
+      setShowOfflineModal(true);
+      return;
+    }
     setLoading(true);
     setError('');
     try {
+      const selfData = ludoManager.getUserData();
+      if (selfData) setPlayers([selfData]);
+
       const code = await ludoManager.createRoom({
         onPlayersUpdate: (updatedPlayers) => {
           setPlayers(updatedPlayers);
@@ -73,6 +83,10 @@ const LudoLobby = ({ currentUser, onGameStart, onLeave, urlRoomCode, onRoomJoine
   };
 
   const handleJoinRoom = async (codeToJoin) => {
+    if (!navigator.onLine) {
+      setShowOfflineModal(true);
+      return;
+    }
     const targetCode = (codeToJoin || joinCode).trim();
     if (!targetCode) {
       setError('Please enter a room code');
@@ -82,6 +96,9 @@ const LudoLobby = ({ currentUser, onGameStart, onLeave, urlRoomCode, onRoomJoine
     setLoading(true);
     setError('');
     try {
+      const selfData = ludoManager.getUserData();
+      if (selfData) setPlayers([selfData]);
+
       await ludoManager.joinRoom(targetCode, {
         onPlayersUpdate: (updatedPlayers) => {
           setPlayers(updatedPlayers);
@@ -584,6 +601,64 @@ const LudoLobby = ({ currentUser, onGameStart, onLeave, urlRoomCode, onRoomJoine
             >
               🎮 LAUNCH PASS & PLAY MATCH
             </button>
+          </div>
+        </div>
+      )}
+
+      {/* ─── NO INTERNET / OFFLINE MULTIPLAYER DIALOG ─── */}
+      {showOfflineModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-fade-in">
+          <div className={`${theme.cardBg} border ${theme.border} rounded-3xl p-6 max-w-md w-full shadow-2xl space-y-6 text-center relative`}>
+            
+            {/* Close Button */}
+            <button
+              onClick={() => setShowOfflineModal(false)}
+              className="absolute top-4 right-4 p-2 rounded-full hover:bg-slate-200 dark:hover:bg-slate-800 text-gray-400 hover:text-white transition-colors cursor-pointer"
+            >
+              <X className="w-5 h-5" />
+            </button>
+
+            {/* Offline Icon & Title */}
+            <div className="w-16 h-16 rounded-full bg-amber-500/10 border border-amber-500/30 flex items-center justify-center mx-auto text-amber-500 animate-pulse">
+              <WifiOff className="w-8 h-8" />
+            </div>
+
+            <div className="space-y-2">
+              <h3 className={`text-xl font-black ${theme.text}`}>You Are Not Connected to the Internet</h3>
+              <p className={`text-xs ${theme.textSecondary} leading-relaxed`}>
+                Online multiplayer requires an active internet connection to sync room state. You can play against smart AI Robots offline or play Pass &amp; Play locally!
+              </p>
+            </div>
+
+            {/* Offline Fallback Action Buttons */}
+            <div className="flex flex-col gap-3">
+              <button
+                onClick={() => {
+                  setShowOfflineModal(false);
+                  setShowBotModal(true);
+                }}
+                className="w-full py-3.5 rounded-2xl bg-gradient-to-r from-emerald-500 via-teal-500 to-cyan-500 text-white font-black text-sm shadow-xl hover:shadow-cyan-500/25 transition-all cursor-pointer flex items-center justify-center gap-2 active:scale-95"
+              >
+                <Bot className="w-4 h-4 text-white" /> 🤖 Play with Bot
+              </button>
+
+              <button
+                onClick={() => {
+                  setShowOfflineModal(false);
+                  setShowLocalModal(true);
+                }}
+                className="w-full py-3 rounded-2xl bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 text-white font-bold text-xs shadow-md transition-all cursor-pointer flex items-center justify-center gap-2 active:scale-95"
+              >
+                <Users className="w-4 h-4 text-white" /> 🎮 Pass &amp; Play (Same Device)
+              </button>
+
+              <button
+                onClick={() => setShowOfflineModal(false)}
+                className={`w-full py-2.5 rounded-xl border ${theme.border} ${theme.secondary} ${theme.text} font-semibold text-xs hover:opacity-80 transition-all cursor-pointer`}
+              >
+                Cancel
+              </button>
+            </div>
           </div>
         </div>
       )}

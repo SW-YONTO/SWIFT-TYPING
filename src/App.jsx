@@ -9,7 +9,7 @@ import UpdateToast from './components/UpdateToast';
 import AdBanner from './components/AdBanner';
 import CompletionCertificate from './components/admin/CompletionCertificate';
 
-import { ShieldAlert, Award, X } from 'lucide-react';
+import { ShieldAlert, Award, X, LogOut } from 'lucide-react';
 import { telemetry } from './utils/telemetryTracker';
 import { supabase } from './utils/supabaseClient';
 
@@ -198,6 +198,75 @@ function App() {
     const interval = setInterval(checkNewCertificates, 5 * 60 * 1000); // Check every 5 minutes
     return () => clearInterval(interval);
   }, [currentUser]);
+
+  // Sync remote admin progress updates from Supabase to client local storage
+  useEffect(() => {
+    if (!currentUser || !currentUser.username) return;
+
+    const syncRemoteProgress = async () => {
+      try {
+        if (navigator.onLine) {
+          const targetName = currentUser.username.toLowerCase();
+          const { data, error } = await supabase
+            .from('user_daily_telemetry')
+            .select('*')
+            .ilike('username', targetName)
+            .order('updated_at', { ascending: false })
+            .limit(10);
+
+          if (!error && data && data.length > 0) {
+            const localProgress = progressManager.getUserProgress(currentUser.id);
+            let updated = false;
+
+            data.forEach(row => {
+              if (row.completed_lessons && Array.isArray(row.completed_lessons)) {
+                row.completed_lessons.forEach(lessonId => {
+                  if (!localProgress.completedLessons.some(l => l.lessonId === lessonId)) {
+                    localProgress.completedLessons.push({
+                      lessonId,
+                      wpm: row.max_wpm || row.avg_wpm || 60,
+                      accuracy: row.avg_accuracy || 95,
+                      completedAt: row.updated_at || new Date().toISOString()
+                    });
+                    updated = true;
+                  }
+                });
+              }
+            });
+
+            if (updated) {
+              progressManager.saveUserProgress(currentUser.id, localProgress);
+              setCurrentUser(prev => ({ ...prev }));
+            }
+          }
+        }
+      } catch (e) {
+        console.error('Failed to sync remote progress:', e);
+      }
+    };
+
+    syncRemoteProgress();
+    const interval = setInterval(syncRemoteProgress, 15 * 1000); // Check every 15s
+
+    // Realtime listener for instant progress sync from Admin
+    const channel = supabase
+      .channel('public:user_daily_telemetry_progress')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'user_daily_telemetry' },
+        (payload) => {
+          if (payload.new && payload.new.username?.toLowerCase() === currentUser.username.toLowerCase()) {
+            syncRemoteProgress();
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      clearInterval(interval);
+      supabase.removeChannel(channel);
+    };
+  }, [currentUser?.id, currentUser?.username]);
 
   const handleDismissCertToast = async (cert = newCertificate) => {
     if (!cert) return;
@@ -586,6 +655,13 @@ function BannedScreenWithModals({ banReason, currentUser }) {
     window.location.reload();
   };
 
+  const handleSwitchAccount = () => {
+    userManager.setCurrentUser(null);
+    localStorage.setItem('swift_device_banned', 'false');
+    localStorage.removeItem('swift_ban_reason');
+    window.location.reload();
+  };
+
   return (
     <div className="min-h-screen bg-slate-950 flex items-center justify-center p-4 relative">
       <div className="max-w-md w-full bg-slate-900 border border-red-500/30 rounded-3xl p-8 space-y-6 shadow-2xl text-center">
@@ -604,9 +680,18 @@ function BannedScreenWithModals({ banReason, currentUser }) {
               <p className="text-[10px] font-bold text-red-400 uppercase tracking-wider">Account / User Name</p>
               <p className="text-base font-extrabold text-white">{currentUser?.username || 'Typist Account'}</p>
             </div>
-            <span className="px-2 py-0.5 bg-red-500/20 text-red-400 font-extrabold text-[10px] rounded-md uppercase">
-              Banned 🚫
-            </span>
+            <div className="flex items-center gap-2">
+              <span className="px-2 py-0.5 bg-red-500/20 text-red-400 font-extrabold text-[10px] rounded-md uppercase">
+                Banned 🚫
+              </span>
+              <button
+                onClick={handleSwitchAccount}
+                className="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-300 font-bold text-[11px] rounded-lg transition cursor-pointer flex items-center gap-1.5 active:scale-95"
+                title="Log out and switch to another account"
+              >
+                <LogOut className="w-3.5 h-3.5 text-slate-400" /> Log Out
+              </button>
+            </div>
           </div>
 
           <div>
@@ -636,12 +721,21 @@ function BannedScreenWithModals({ banReason, currentUser }) {
           >
             {checkingStatus ? 'Checking Database...' : '🔄 Check Unban Status / Refresh'}
           </button>
+
+          <button
+            onClick={handleSwitchAccount}
+            className="w-full py-3 bg-blue-600/20 hover:bg-blue-600/30 text-blue-300 font-bold rounded-2xl border border-blue-500/30 transition text-center text-sm cursor-pointer flex items-center justify-center gap-2"
+          >
+            <LogOut className="w-4 h-4 text-blue-400" /> Log Out &amp; Switch Account
+          </button>
+
           <button
             onClick={() => setShowAppealModal(true)}
             className="w-full py-3 bg-red-600/20 hover:bg-red-600/30 text-red-300 font-bold rounded-2xl border border-red-500/30 transition text-center text-sm cursor-pointer"
           >
             Submit Unban Appeal (In-App)
           </button>
+
           <button
             onClick={() => setShowDeleteModal(true)}
             className="w-full py-3 bg-slate-800 hover:bg-slate-700 text-slate-400 font-semibold rounded-2xl border border-slate-700 transition text-sm cursor-pointer"

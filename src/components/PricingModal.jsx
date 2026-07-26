@@ -192,7 +192,7 @@ const PricingModal = ({ isOpen, onClose }) => {
                 </p>
                 <div className="flex flex-wrap gap-3">
                   <a 
-                    href="https://github.com/SW-YONTO/SWIFT-TYPING/releases/download/v3.26.8/Swift-Typing-Setup-3.26.8.exe" 
+                    href="https://github.com/SW-YONTO/SWIFT-TYPING/releases/download/v3.26.9/Swift-Typing-Setup-3.26.9.exe" 
                     target="_blank" 
                     rel="noopener noreferrer" 
                     className="inline-flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-green-500 to-emerald-600 text-white rounded-lg text-sm font-semibold hover:shadow-lg transition-all"

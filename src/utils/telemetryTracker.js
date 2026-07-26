@@ -1,6 +1,6 @@
 import { supabase } from './supabaseClient';
 
-const APP_VERSION = '3.26.8'; // Swift Typing Version
+const APP_VERSION = '3.26.9'; // Swift Typing Version
 
 /**
  * Anonymous persistent device identifier
@@ -23,7 +23,7 @@ class TelemetryTracker {
   constructor() {
     this.deviceId = getDeviceId();
     this.lastSyncTime = 0;
-    this.SYNC_INTERVAL_MS = import.meta.env.DEV ? 5 * 1000 : 5 * 60 * 1000; // 5 seconds in development, 5 minutes in production
+    this.SYNC_INTERVAL_MS = import.meta.env.DEV ? 10 * 1000 : 10 * 60 * 1000; // 10 seconds in development, 10 minutes in production
     this.initialized = false;
   }
 

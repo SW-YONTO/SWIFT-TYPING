@@ -64,6 +64,14 @@ export default function TypistDeepDive({
     checkCert();
   }, [selectedTypist?.username]);
 
+  useEffect(() => {
+    if (typistAnalytics && typistAnalytics.completedLessonsCount !== undefined) {
+      const totalLessons = 50;
+      const currentPct = Math.min(100, Math.round((typistAnalytics.completedLessonsCount / totalLessons) * 100));
+      setCustomProgress(currentPct);
+    }
+  }, [selectedTypist?.username, typistAnalytics?.completedLessonsCount]);
+
   const _cardClass  = cardClass || `${theme.cardBg} ${theme.border} border shadow-2xl rounded-3xl transition-all duration-300`;
   const _subText    = subTextClass || theme.textSecondary || 'text-gray-500';
 

@@ -12,7 +12,7 @@ export default function TelemetryLogStream({
   handleSelectUser
 }) {
   const _cardClass = cardClass || `${theme.cardBg} ${theme.border} border shadow-2xl rounded-3xl transition-all duration-300`;
-  const _subText   = subTextClass || theme.textSecondary || 'text-gray-500';
+  const _subText = subTextClass || theme.textSecondary || 'text-gray-500';
 
   // Event type badge colors — adapts to dark vs. light
   const getEventTypeBadge = (type) => {
@@ -20,7 +20,7 @@ export default function TelemetryLogStream({
     if (raw.includes('10s') || raw.includes('session') || raw.includes('daily_summary')) {
       return (
         <span className="px-2 py-0.5 bg-blue-500/15 border border-blue-500/30 text-blue-600 dark:text-blue-400 font-extrabold rounded-md text-[10px]">
-          10s Session Sync
+          Session Sync
         </span>
       );
     }
@@ -71,7 +71,7 @@ export default function TelemetryLogStream({
               telemetryLogs.map(log => {
                 const data = log.event_data || {};
                 const client = log.client_type === 'electron' ? 'desk' : 'web';
-                const version = `${client} ${log.app_version || '3.26.8'}`;
+                const version = `${client} ${log.app_version || '3.26.9'}`;
 
                 return (
                   <tr key={log.id} className={`hover:${theme.secondary} transition-colors`}>
