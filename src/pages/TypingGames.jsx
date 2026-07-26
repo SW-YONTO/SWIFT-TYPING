@@ -1,6 +1,7 @@
 import React, { useState, useEffect, Suspense } from 'react';
-import { Gamepad2, Wind, Box, ArrowLeft, Trophy, Star, Clock, Car, Loader2, Mountain, AlertTriangle, Swords, Shield, WifiOff } from 'lucide-react';
+import { Gamepad2, Wind, Box, ArrowLeft, Trophy, Star, Clock, Car, Loader2, Mountain, AlertTriangle, Swords, Shield, WifiOff, Dice1 } from 'lucide-react';
 import { useTheme } from '../contexts/ThemeContext';
+import { useNavigate, useParams } from 'react-router-dom';
 
 // Lazy load game components for better performance
 const BalloonGame = React.lazy(() => import('../components/games/BalloonGame'));
@@ -10,6 +11,7 @@ const KeyboardJumpGame = React.lazy(() => import('../components/games/KeyboardJu
 const SwiftArenaGame = React.lazy(() => import('../components/games/SwiftArenaGame'));
 const WordDefenderGame = React.lazy(() => import('../components/games/WordDefenderGame'));
 const SliceTypeGame = React.lazy(() => import('../components/games/SliceTypeGame'));
+const LudoGame = React.lazy(() => import('../components/games/LudoGame'));
 
 // Loading fallback component
 const GameLoadingFallback = ({ theme }) => (
@@ -28,12 +30,15 @@ import keyboardJumpImg from '../assets/games/keyboard-jump.png';
 import swiftArenaImg from '../assets/games/swift-arena.png';
 import wordDefenderImg from '../assets/games/word-defender.png';
 import sliceTypeImg from '../assets/games/slice-type.png';
+import ludoImg from '../assets/games/ludo.png';
 
 const TypingGames = ({ currentUser }) => {
-  const [selectedGame, setSelectedGame] = useState(null);
   const [showExitConfirm, setShowExitConfirm] = useState(false);
   const [isOnline, setIsOnline] = useState(navigator.onLine);
   const { theme } = useTheme();
+  const navigate = useNavigate();
+  const { gameId } = useParams();
+  const selectedGame = gameId || null;
 
   useEffect(() => {
     const handleOnline = () => setIsOnline(true);
@@ -48,7 +53,7 @@ const TypingGames = ({ currentUser }) => {
 
   const games = [
     {
-      id: 'balloon',
+      id: 'balloon-pop',
       title: 'Balloon Pop',
       description: 'Pop balloons by typing the words before they float away! Words rise from the bottom - type them before they escape at the top.',
       icon: Wind,
@@ -61,7 +66,7 @@ const TypingGames = ({ currentUser }) => {
       type: 'single'
     },
     {
-      id: 'container',
+      id: 'word-crusher',
       title: 'Word Crusher',
       description: 'Blocks with words fall into a container - type them to destroy before the container overflows! Speed up as you progress.',
       icon: Box,
@@ -74,7 +79,7 @@ const TypingGames = ({ currentUser }) => {
       type: 'single'
     },
     {
-      id: 'racer',
+      id: 'word-racer',
       title: 'Word Racer',
       description: 'Race against AI opponents! Type words to accelerate your car and cross the finish line first. The faster you type, the faster you go!',
       icon: Car,
@@ -100,7 +105,7 @@ const TypingGames = ({ currentUser }) => {
       type: 'single'
     },
     {
-      id: 'arena',
+      id: 'swift-arena',
       title: 'Swift Arena',
       description: 'Compete against other players in real-time typing battles! First to type the sentence correctly wins!',
       icon: Swords,
@@ -113,7 +118,7 @@ const TypingGames = ({ currentUser }) => {
       type: 'multi'
     },
     {
-      id: 'defender',
+      id: 'word-defender',
       title: 'Word Defender',
       description: 'Defend your base from falling data fragments! Lock onto words by typing their first letter and destroy them with your lasers before they breach your shields.',
       icon: Shield,
@@ -137,12 +142,26 @@ const TypingGames = ({ currentUser }) => {
       difficulty: 'Medium',
       avgTime: '2-4 min',
       type: 'single'
+    },
+    {
+      id: 'ludo',
+      title: 'Ludo',
+      description: 'Classic board game with friends! Create a room, invite players, roll dice, and race your tokens home. Chat with emojis while you play!',
+      icon: Dice1,
+      image: ludoImg,
+      color: 'from-amber-500 to-orange-600',
+      bgColor: 'bg-amber-100 dark:bg-amber-900/30',
+      shadowColor: 'hover:shadow-amber-500/25 dark:hover:shadow-amber-500/15 hover:border-amber-500/40',
+      difficulty: 'Easy',
+      avgTime: '10-20 min',
+      type: 'multi',
+      isBeta: true
     }
   ];
 
-  // Handle game selection
-  const handleGameSelect = (gameId) => {
-    setSelectedGame(gameId);
+  // Handle game selection — navigate to /games/:gameId URL
+  const handleGameSelect = (id) => {
+    navigate(`/games/${id}`);
   };
 
   // Handle back to games list
@@ -152,25 +171,29 @@ const TypingGames = ({ currentUser }) => {
 
   // Render selected game
   if (selectedGame) {
+    const isLudo = selectedGame === 'ludo';
     return (
-      <div className="p-6">
-        <div className="max-w-4xl mx-auto">
-          <button
-            onClick={handleBackToGames}
-            className={`flex items-center gap-2 mb-4 px-4 py-2 rounded-lg ${theme.secondary} ${theme.text} hover:opacity-80 transition-opacity cursor-pointer`}
-          >
-            <ArrowLeft className="w-4 h-4" />
-            Back to Games
-          </button>
+      <div className={isLudo ? "px-[30px] py-4" : "p-6"}>
+        <div className={isLudo ? "w-full max-w-none" : "max-w-4xl mx-auto"}>
+          {!isLudo && (
+            <button
+              onClick={handleBackToGames}
+              className={`flex items-center gap-2 mb-4 px-4 py-2 rounded-lg ${theme.secondary} ${theme.text} hover:opacity-80 transition-opacity cursor-pointer`}
+            >
+              <ArrowLeft className="w-4 h-4" />
+              Back to Games
+            </button>
+          )}
           
           <Suspense fallback={<GameLoadingFallback theme={theme} />}>
-            {selectedGame === 'balloon' && <BalloonGame currentUser={currentUser} />}
-            {selectedGame === 'container' && <BlockContainerGame currentUser={currentUser} />}
-            {selectedGame === 'racer' && <WordRacerGame currentUser={currentUser} />}
-            {selectedGame === 'keyboard-jump' && <KeyboardJumpGame currentUser={currentUser} />}
-            {selectedGame === 'arena' && <SwiftArenaGame currentUser={currentUser} />}
-            {selectedGame === 'defender' && <WordDefenderGame currentUser={currentUser} />}
-            {selectedGame === 'slice-type' && <SliceTypeGame currentUser={currentUser} />}
+             {selectedGame === 'balloon-pop' && <BalloonGame currentUser={currentUser} />}
+             {selectedGame === 'word-crusher' && <BlockContainerGame currentUser={currentUser} />}
+             {selectedGame === 'word-racer' && <WordRacerGame currentUser={currentUser} />}
+             {selectedGame === 'keyboard-jump' && <KeyboardJumpGame currentUser={currentUser} />}
+             {selectedGame === 'swift-arena' && <SwiftArenaGame currentUser={currentUser} />}
+             {selectedGame === 'word-defender' && <WordDefenderGame currentUser={currentUser} />}
+             {selectedGame === 'slice-type' && <SliceTypeGame currentUser={currentUser} />}
+             {selectedGame === 'ludo' && <LudoGame currentUser={currentUser} />}
           </Suspense>
         </div>
 
@@ -195,7 +218,7 @@ const TypingGames = ({ currentUser }) => {
                 <button
                   onClick={() => {
                     setShowExitConfirm(false);
-                    setSelectedGame(null);
+                    navigate('/games');
                   }}
                   className="flex-1 py-3 rounded-lg bg-red-600 hover:bg-red-700 text-white font-semibold active:scale-95 transition-all cursor-pointer"
                 >
@@ -308,7 +331,12 @@ const TypingGames = ({ currentUser }) => {
                     </div>
                   </div>
                   <div className="p-6">
-                    <h2 className={`text-xl font-bold ${theme.text} mb-2`}>{game.title}</h2>
+                    <div className="flex items-center gap-2 mb-2">
+                      <h2 className={`text-xl font-bold ${theme.text}`}>{game.title}</h2>
+                      {game.isBeta && (
+                        <span className="px-2 py-0.5 rounded-full bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 text-[10px] font-bold uppercase tracking-wider animate-pulse">Beta</span>
+                      )}
+                    </div>
                     <p className={`${theme.textSecondary} text-sm mb-4`}>{game.description}</p>
                     <div className="flex items-center gap-4 mb-4">
                       <div className="flex items-center gap-1">

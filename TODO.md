@@ -1,14 +1,5 @@
 # Swift Typing — Application Growth & Feature Roadmap (TODO.md)
 
-## 📜 1. Shareable Speed Certificates & Social Cards (Viral Referral Engine)
-- [ ] **100% Lesson Completion Certificate**:
-  - Automatically generate a downloadable PDF/PNG certificate when a user completes 100% of typing lessons.
-  - Certificate includes: Student Name, Completion Date, Average WPM, Accuracy, and official Swift Typing Verification Seal.
-- [ ] **Viral Social Share Cards**:
-  - 1-Click "Share My WPM" card generator for X (Twitter), LinkedIn, and WhatsApp.
-  - Visual summary card featuring peak WPM badge, typing rank, and link: `https://swift-typing.me`.
-
----
 
 ## 🎁 2. Promotional Coupon Codes & Email Campaigns
 - [x] **Added New Promo Coupon Codes**:
@@ -39,3 +30,6 @@ Since standard typing races can be intense, add casual multi-player / co-op part
   - *"WPM Speed Test App"*
 - [ ] **Targeted Landing Pages**:
   - Create landing pages for `/downloads/windows-typing-software` and `/tools/wpm-test`.
+
+
+fix foucs and puase icon in light blue theme 

@@ -82,6 +82,14 @@ export const ThemeProvider = ({ children, theme = 'blue', settings = {} }) => {
     const body = document.body;
     body.className = `${currentTheme.background} ${currentTheme.text} transition-colors duration-300`;
     
+    if (isDarkMode) {
+      root.classList.add('dark');
+      body.classList.add('dark');
+    } else {
+      root.classList.remove('dark');
+      body.classList.remove('dark');
+    }
+    
     const bgColor = currentTheme.css['--theme-background'];
     const textColor = currentTheme.css['--theme-text'];
     body.style.setProperty('background-color', bgColor, 'important');
@@ -97,7 +105,7 @@ export const ThemeProvider = ({ children, theme = 'blue', settings = {} }) => {
         root.style.removeProperty(property);
       });
     };
-  }, [currentTheme, currentThemeKey]);
+  }, [currentTheme, currentThemeKey, isDarkMode]);
 
   return (
     <ThemeContext.Provider value={{ 

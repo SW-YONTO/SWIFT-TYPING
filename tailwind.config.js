@@ -41,6 +41,7 @@ export default {
         'slide-up': 'slideUp 0.3s ease-out',
         'pulse-slow': 'pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite',
         'bounce-subtle': 'bounceSubtle 2s infinite',
+        'float-up': 'floatUp 2s ease-out forwards',
       },
       keyframes: {
         fadeIn: {
@@ -54,6 +55,11 @@ export default {
         bounceSubtle: {
           '0%, 100%': { transform: 'translateY(0)' },
           '50%': { transform: 'translateY(-5px)' },
+        },
+        floatUp: {
+          '0%': { transform: 'translateY(0)', opacity: '1' },
+          '70%': { opacity: '1' },
+          '100%': { transform: 'translateY(-60px)', opacity: '0' },
         }
       },
       boxShadow: {

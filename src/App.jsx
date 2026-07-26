@@ -18,6 +18,7 @@ const TypingLessons = React.lazy(() => import('./pages/TypingLessons'));
 const TypingCourses = React.lazy(() => import('./pages/TypingCourses'));
 const TypingTests = React.lazy(() => import('./pages/TypingTests'));
 const TypingGames = React.lazy(() => import('./pages/TypingGames'));
+const LudoGame = React.lazy(() => import('./components/games/LudoGame'));
 const Settings = React.lazy(() => import('./pages/Settings'));
 const Results = React.lazy(() => import('./pages/Results'));
 const About = React.lazy(() => import('./pages/About'));
@@ -292,6 +293,15 @@ function App() {
                   />
                   <Route
                     path="/games"
+                    element={
+                      <TypingGames
+                        currentUser={currentUser}
+                        settings={userSettings}
+                      />
+                    }
+                  />
+                  <Route
+                    path="/games/:gameId"
                     element={
                       <TypingGames
                         currentUser={currentUser}
