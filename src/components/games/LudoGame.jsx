@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useTheme } from '../../contexts/ThemeContext';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { ludoManager } from '../../utils/ludoManager';
-import { rollDice, applyDiceRoll, getValidMoves, applyMove, skipTurn, handlePlayerResign, createGame, SAFE_POSITIONS, START_POSITIONS, getNextStepTokenState, calculatePlayerRankings } from './ludo/ludoEngine';
+import { rollDice, applyDiceRoll, getValidMoves, applyMove, skipTurn, handlePlayerResign, createGame, SAFE_POSITIONS, START_POSITIONS, getNextStepTokenState, calculatePlayerRankings, evaluateBestBotMove } from './ludo/ludoEngine';
 import LudoLobby from './ludo/LudoLobby';
 import LudoBoard from './ludo/LudoBoard';
 import { Trophy, RotateCcw, Home, Sword, Crown } from 'lucide-react';
@@ -434,32 +434,10 @@ const LudoGame = ({ currentUser }) => {
           const skippedState = skipTurn(gameState);
           setGameState(skippedState);
         } else {
-          // Smart AI Decision: Capture > Finish > Move Out > Furthest Token
-          let bestMove = moves[0];
+          const diff = currentPlayer.botDifficulty || botDifficulty || 'medium';
+          const bestMove = evaluateBestBotMove(gameState, moves, diff);
 
-          for (const m of moves) {
-            let createsCapture = false;
-            if (m.destState === 'active' && !SAFE_POSITIONS.includes(m.destPosition)) {
-              Object.values(gameState.players).forEach(p => {
-                if (p.id !== currentPlayer.id) {
-                  p.tokens.forEach(tok => {
-                    if (tok.state === 'active' && tok.position === m.destPosition) {
-                      createsCapture = true;
-                    }
-                  });
-                }
-              });
-            }
-            if (createsCapture) {
-              bestMove = m;
-              break;
-            }
-            if (m.destState === 'finished') {
-              bestMove = m;
-            }
-          }
-
-          logLudo('BOT_MOVE', `${currentPlayer.username} executing move for token #${bestMove.tokenId}`, bestMove);
+          logLudo('BOT_MOVE', `${currentPlayer.username} (${diff}) executing move for token #${bestMove.tokenId}`, bestMove);
 
           const movedState = applyMove(gameState, bestMove);
           animateTokenMove(currentPlayer.id, bestMove.tokenId, movedState, gameMode === 'online');
@@ -642,16 +620,32 @@ const LudoGame = ({ currentUser }) => {
     setSearchParams({}, { replace: true });
   }, [setSearchParams]);
 
+  const [botDifficulty, setBotDifficulty] = useState('medium');
+
   // 11. Offline Bot & Local Play Modes
-  const handleStartBotGame = useCallback(() => {
+  const handleStartBotGame = useCallback((botCount = 3, difficulty = 'medium') => {
     setGameMode('bots');
-    const playerIds = [currentUser?.id || 'player1', 'bot1', 'bot2', 'bot3'];
+    setBotDifficulty(difficulty);
+
+    const BOT_NAMES = ['CyberBot', 'RoboPulse', 'MechaOmega', 'NeuraBot'];
+    const totalPlayers = Math.min(4, Math.max(2, botCount + 1));
+    const playerIds = [currentUser?.id || 'player1'];
     const playerInfos = [
-      { id: currentUser?.id || 'player1', username: currentUser?.username || 'You', avatar: currentUser?.avatar || 'avatar1.png' },
-      { id: 'bot1', username: 'Bot Alpha', avatar: 'bot', isBot: true },
-      { id: 'bot2', username: 'Bot Beta', avatar: 'bot', isBot: true },
-      { id: 'bot3', username: 'Bot Gamma', avatar: 'bot', isBot: true },
+      { id: currentUser?.id || 'player1', username: currentUser?.username || 'You', avatar: currentUser?.avatar || 'avatar1.png' }
     ];
+
+    for (let i = 1; i < totalPlayers; i++) {
+      const bId = `bot_${i}`;
+      playerIds.push(bId);
+      playerInfos.push({
+        id: bId,
+        username: `${BOT_NAMES[i - 1]} (${difficulty.toUpperCase()})`,
+        avatar: 'bot',
+        isBot: true,
+        botDifficulty: difficulty
+      });
+    }
+
     const initialGameState = createGame(playerIds, playerInfos);
     setCountdown(3);
     setGameState(initialGameState);

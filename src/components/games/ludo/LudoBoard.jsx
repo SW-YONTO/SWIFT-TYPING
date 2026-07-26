@@ -12,7 +12,7 @@ import {
   PLAYER_COLORS,
   SAFE_POSITIONS
 } from './ludoEngine';
-import { Crown, MessageSquare, Send, Smile, LogOut, Sword, Trophy, Wifi, WifiOff } from 'lucide-react';
+import { Crown, MessageSquare, Send, Smile, LogOut, Sword, Trophy, Wifi, WifiOff, Bot } from 'lucide-react';
 
 const COLOR_STYLES = {
   red:    { bg: '#ef4444', light: '#fee2e2', border: '#b91c1c', text: 'text-red-500', fill: '#ef4444' },
@@ -230,7 +230,11 @@ const LudoBoard = ({
                     <span className={`font-black text-sm truncate ${theme.text} ${isDisconnected ? 'line-through opacity-50' : ''}`}>
                       {p.username}
                     </span>
-                    {isMe && (
+                    {p.isBot ? (
+                      <span className="text-[9px] font-black px-1.5 py-0.5 rounded bg-cyan-500 text-black uppercase flex items-center gap-0.5">
+                        <Bot className="w-2.5 h-2.5" /> BOT
+                      </span>
+                    ) : isMe && (
                       <span className="text-[9px] font-extrabold px-1.5 py-0.5 rounded bg-amber-500 text-black uppercase">YOU</span>
                     )}
                     {isDisconnected ? (

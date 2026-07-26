@@ -509,6 +509,101 @@ export function calculatePlayerRankings(gameState) {
   });
 }
 
+export function evaluateBestBotMove(gameState, moves, difficulty = 'medium') {
+  if (!moves || moves.length === 0) return null;
+  if (moves.length === 1) return moves[0];
+
+  // Easy: Random move selection
+  if (difficulty === 'easy') {
+    const randomIndex = Math.floor(Math.random() * moves.length);
+    return moves[randomIndex];
+  }
+
+  const currentPlayer = gameState.players[gameState.currentPlayerId];
+  if (!currentPlayer) return moves[0];
+
+  let bestMove = moves[0];
+  let maxScore = -999;
+
+  moves.forEach(m => {
+    let score = 0;
+
+    // 1. Capture Opponent Token (+150 for hard, +100 for medium)
+    let createsCapture = false;
+    if (m.destState === TOKEN_STATE.ACTIVE && !SAFE_POSITIONS.includes(m.destPosition)) {
+      Object.values(gameState.players).forEach(other => {
+        if (other.id !== currentPlayer.id) {
+          (other.tokens || []).forEach(tok => {
+            if (tok.state === TOKEN_STATE.ACTIVE && tok.position === m.destPosition) {
+              createsCapture = true;
+            }
+          });
+        }
+      });
+    }
+
+    if (createsCapture) {
+      score += (difficulty === 'hard' ? 150 : 100);
+    }
+
+    // 2. Finish token into center home (+120 for hard, +80 for medium)
+    if (m.destState === TOKEN_STATE.FINISHED) {
+      score += (difficulty === 'hard' ? 120 : 80);
+    }
+
+    // 3. Move token out of Base Yard (+70)
+    if (m.startState === TOKEN_STATE.BASE && m.destState === TOKEN_STATE.ACTIVE) {
+      score += 70;
+    }
+
+    // 4. Land on Safe Star Position (+60 for hard, +30 for medium)
+    if (m.destState === TOKEN_STATE.ACTIVE && SAFE_POSITIONS.includes(m.destPosition)) {
+      score += (difficulty === 'hard' ? 60 : 30);
+    }
+
+    // 5. Enter Home Stretch Column (+50)
+    if (m.startState === TOKEN_STATE.ACTIVE && m.destState === TOKEN_STATE.HOME_COL) {
+      score += 50;
+    }
+
+    // 6. Hard Difficulty: Threat Calculation (Escape from opponent in range 1-6 behind)
+    if (difficulty === 'hard' && m.startState === TOKEN_STATE.ACTIVE && !SAFE_POSITIONS.includes(m.startPos)) {
+      let isUnderThreat = false;
+      Object.values(gameState.players).forEach(other => {
+        if (other.id !== currentPlayer.id) {
+          (other.tokens || []).forEach(tok => {
+            if (tok.state === TOKEN_STATE.ACTIVE) {
+              const dist = getDistanceFromStart(other.color, tok.position);
+              const targetDist = getDistanceFromStart(other.color, m.startPos);
+              const diff = targetDist - dist;
+              if (diff > 0 && diff <= 6) {
+                isUnderThreat = true;
+              }
+            }
+          });
+        }
+      });
+      if (isUnderThreat) {
+        score += 45;
+      }
+    }
+
+    // 7. Distance progress bonus
+    if (m.destState === TOKEN_STATE.ACTIVE) {
+      score += getDistanceFromStart(currentPlayer.color, m.destPosition) * 0.5;
+    } else if (m.destState === TOKEN_STATE.HOME_COL) {
+      score += 50 + (m.destHomeProgress || 0) * 2;
+    }
+
+    if (score > maxScore) {
+      maxScore = score;
+      bestMove = m;
+    }
+  });
+
+  return bestMove;
+}
+
 export { PLAYER_COLORS, START_POSITIONS, SAFE_POSITIONS, TOKEN_STATE };
 
 

@@ -3,8 +3,7 @@ import { useTheme } from '../../../contexts/ThemeContext';
 import { ludoManager } from '../../../utils/ludoManager';
 import { createGame } from './ludoEngine';
 import LudoChat from './LudoChat';
-import { Users, Copy, Check, LogIn, Plus, Crown, Loader2, Dice1, RefreshCw, Bot } from 'lucide-react';
-
+import { Users, Copy, Check, LogIn, Plus, Crown, Loader2, Dice1, RefreshCw, Bot, Brain, Zap, Shield, X } from 'lucide-react';
 
 const getAvatarPath = (avatar) => {
   if (!avatar) return null;
@@ -26,6 +25,11 @@ const LudoLobby = ({ currentUser, onGameStart, onLeave, urlRoomCode, onRoomJoine
   const [activeRooms, setActiveRooms] = useState({});
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+
+  // Robot / AI Bot Config State
+  const [showBotModal, setShowBotModal] = useState(false);
+  const [botCount, setBotCount] = useState(3); // 1, 2, 3
+  const [botDifficulty, setBotDifficulty] = useState('medium'); // 'easy' | 'medium' | 'hard'
 
   useEffect(() => {
     ludoManager.initialize(currentUser);
@@ -282,15 +286,18 @@ const LudoLobby = ({ currentUser, onGameStart, onLeave, urlRoomCode, onRoomJoine
           </div>
 
           <div className="space-y-4">
-            {/* Play Bots Button */}
+            {/* Play vs AI Robots Button */}
             <button
-              onClick={onStartBotGame}
+              onClick={() => setShowBotModal(true)}
               className="w-full h-16 rounded-2xl bg-gradient-to-r from-emerald-400 via-teal-500 to-cyan-500 text-white font-black text-base shadow-lg hover:shadow-cyan-500/25 transition-all cursor-pointer flex items-center px-4 gap-3 group active:scale-95"
             >
               <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center flex-shrink-0 group-hover:scale-110 transition-transform">
                 <Bot className="w-5 h-5 text-white" />
               </div>
-              <span className="tracking-wide">Play Bots</span>
+              <div className="flex flex-col items-start min-w-0">
+                <span className="tracking-wide text-sm font-black">Play vs AI Robots</span>
+                <span className="text-[10px] text-teal-100 font-semibold">1-3 Custom Bots • Easy to Pro AI</span>
+              </div>
             </button>
 
             {/* Create Room Button */}
@@ -422,6 +429,102 @@ const LudoLobby = ({ currentUser, onGameStart, onLeave, urlRoomCode, onRoomJoine
         </div>
 
       </div>
+
+      {/* ─── ROBOT ARENA SETUP MODAL ─── */}
+      {showBotModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-md animate-fade-in">
+          <div className={`${theme.cardBg} border ${theme.border} rounded-3xl p-6 max-w-md w-full shadow-2xl space-y-6 relative`}>
+            
+            {/* Close Button */}
+            <button
+              onClick={() => setShowBotModal(false)}
+              className="absolute top-4 right-4 p-2 rounded-full hover:bg-slate-200 dark:hover:bg-slate-800 text-gray-400 hover:text-white transition-colors cursor-pointer"
+            >
+              <X className="w-5 h-5" />
+            </button>
+
+            {/* Header */}
+            <div className="flex items-center gap-3">
+              <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-teal-500 to-cyan-500 flex items-center justify-center text-white shadow-lg shadow-teal-500/25">
+                <Bot className="w-7 h-7" />
+              </div>
+              <div>
+                <h3 className={`text-xl font-black ${theme.text}`}>Robot Arena</h3>
+                <p className={`text-xs ${theme.textSecondary}`}>Configure AI Bot match settings</p>
+              </div>
+            </div>
+
+            {/* Bot Count Selector */}
+            <div className="space-y-2">
+              <label className="text-xs font-black tracking-wider text-amber-500 uppercase block">
+                NUMBER OF BOTS ({botCount} {botCount === 1 ? 'Bot' : 'Bots'} • {botCount + 1} Players)
+              </label>
+              <div className="grid grid-cols-3 gap-2">
+                {[
+                  { count: 1, label: '1 Bot', sub: '2 Players' },
+                  { count: 2, label: '2 Bots', sub: '3 Players' },
+                  { count: 3, label: '3 Bots', sub: '4 Players' }
+                ].map(item => (
+                  <button
+                    key={item.count}
+                    onClick={() => setBotCount(item.count)}
+                    className={`p-3 rounded-2xl border flex flex-col items-center justify-center transition-all cursor-pointer ${
+                      botCount === item.count
+                        ? 'bg-amber-500/20 border-amber-500 text-amber-500 font-black shadow-md'
+                        : `${isDarkMode ? 'bg-slate-900/60 border-slate-800 text-gray-400' : 'bg-slate-50 border-slate-200 text-slate-600'} hover:border-amber-500/50`
+                    }`}
+                  >
+                    <span className="text-xs font-bold">{item.label}</span>
+                    <span className="text-[10px] opacity-70 mt-0.5">{item.sub}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Bot Intelligence Selector */}
+            <div className="space-y-2">
+              <label className="text-xs font-black tracking-wider text-amber-500 uppercase block">
+                AI INTELLIGENCE LEVEL
+              </label>
+              <div className="grid grid-cols-3 gap-2">
+                {[
+                  { id: 'easy', label: 'Casual', icon: Shield, color: 'text-emerald-500', bg: 'bg-emerald-500/10 border-emerald-500/30' },
+                  { id: 'medium', label: 'Balanced', icon: Zap, color: 'text-amber-500', bg: 'bg-amber-500/10 border-amber-500/30' },
+                  { id: 'hard', label: 'Pro AI', icon: Brain, color: 'text-rose-500', bg: 'bg-rose-500/10 border-rose-500/30' }
+                ].map(diff => {
+                  const Icon = diff.icon;
+                  const isSelected = botDifficulty === diff.id;
+                  return (
+                    <button
+                      key={diff.id}
+                      onClick={() => setBotDifficulty(diff.id)}
+                      className={`p-3 rounded-2xl border flex flex-col items-center justify-center transition-all cursor-pointer ${
+                        isSelected
+                          ? `${diff.bg} border-2 ${diff.color} font-black shadow-lg scale-105`
+                          : `${isDarkMode ? 'bg-slate-900/60 border-slate-800 text-gray-400' : 'bg-slate-50 border-slate-200 text-slate-600'}`
+                      }`}
+                    >
+                      <Icon className={`w-5 h-5 mb-1 ${diff.color}`} />
+                      <span className="text-xs font-bold">{diff.label}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Launch Match Button */}
+            <button
+              onClick={() => {
+                setShowBotModal(false);
+                if (onStartBotGame) onStartBotGame(botCount, botDifficulty);
+              }}
+              className="w-full py-4 rounded-2xl bg-gradient-to-r from-emerald-500 via-teal-500 to-cyan-500 text-white font-black text-base shadow-xl hover:shadow-cyan-500/25 transition-all cursor-pointer active:scale-95 flex items-center justify-center gap-2"
+            >
+              🚀 LAUNCH ROBOT MATCH
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
