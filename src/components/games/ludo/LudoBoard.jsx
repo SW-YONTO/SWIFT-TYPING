@@ -234,19 +234,23 @@ const LudoBoard = ({
                     </span>
                     {p.isBot ? (
                       <span className="text-[9px] font-black px-1.5 py-0.5 rounded bg-cyan-500 text-black uppercase flex items-center gap-0.5">
-                        <Bot className="w-2.5 h-2.5" /> BOT
+                        <Bot className="w-2.5 h-2.5" /> AI BOT
                       </span>
-                    ) : isMe && (
-                      <span className="text-[9px] font-extrabold px-1.5 py-0.5 rounded bg-amber-500 text-black uppercase">YOU</span>
-                    )}
-                    {isDisconnected ? (
-                      <div className="flex items-center justify-center w-5 h-5 rounded-full bg-rose-500/10 border border-rose-500/20" title="Offline (Disconnected)">
-                        <WifiOff className="w-3 h-3 text-rose-500" />
-                      </div>
                     ) : (
-                      <div className="flex items-center justify-center w-5 h-5 rounded-full bg-emerald-500/10 border border-emerald-500/20 animate-pulse" title="Online (Connected)">
-                        <Wifi className="w-3 h-3 text-emerald-500" />
-                      </div>
+                      <>
+                        {isMe && (
+                          <span className="text-[9px] font-extrabold px-1.5 py-0.5 rounded bg-amber-500 text-black uppercase">YOU</span>
+                        )}
+                        {isDisconnected ? (
+                          <div className="flex items-center justify-center w-5 h-5 rounded-full bg-rose-500/10 border border-rose-500/20" title="Offline (Disconnected)">
+                            <WifiOff className="w-3 h-3 text-rose-500" />
+                          </div>
+                        ) : (
+                          <div className="flex items-center justify-center w-5 h-5 rounded-full bg-emerald-500/10 border border-emerald-500/20 animate-pulse" title="Online (Connected)">
+                            <Wifi className="w-3 h-3 text-emerald-500" />
+                          </div>
+                        )}
+                      </>
                     )}
                     {isCurrent && !isDisconnected && (
                       <span className="text-[9px] font-black px-2 py-0.5 rounded-full bg-amber-500 text-black animate-pulse">TURN</span>

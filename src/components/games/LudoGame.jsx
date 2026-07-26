@@ -31,6 +31,7 @@ const LudoGame = ({ currentUser }) => {
   const [floatingEmojis, setFloatingEmojis] = useState([]);
   const [countdown, setCountdown] = useState(null);
   const [gameMode, setGameMode] = useState('online'); // 'online' | 'bots' | 'local'
+  const [botDifficulty, setBotDifficulty] = useState('medium'); // 'easy' | 'medium' | 'hard'
   const [chatBubbles, setChatBubbles] = useState({ red: '', blue: '', green: '', yellow: '' });
   const [chatHistory, setChatHistory] = useState([]);
   const [onlinePlayers, setOnlinePlayers] = useState([]);
@@ -635,10 +636,6 @@ const LudoGame = ({ currentUser }) => {
     setWinner(null);
     setPhase('lobby');
     setSearchParams({}, { replace: true });
-  }, [setSearchParams]);
-
-  const [botDifficulty, setBotDifficulty] = useState('medium');
-
   // 11. Offline Bot & Local Play Modes
   const handleStartBotGame = useCallback((botCount = 3, difficulty = 'medium') => {
     setGameMode('bots');
