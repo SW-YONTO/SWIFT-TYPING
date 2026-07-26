@@ -636,6 +636,8 @@ const LudoGame = ({ currentUser }) => {
     setWinner(null);
     setPhase('lobby');
     setSearchParams({}, { replace: true });
+  }, [setSearchParams]);
+
   // 11. Offline Bot & Local Play Modes
   const handleStartBotGame = useCallback((botCount = 3, difficulty = 'medium') => {
     setGameMode('bots');
