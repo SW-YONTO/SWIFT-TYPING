@@ -85,6 +85,7 @@
       "target": "nsis",
       "icon": "build/icon.ico",
       "requestedExecutionLevel": "asInvoker",
+      "forceCodeSigning": false,
       "artifactName": "Swift-Typing-Setup-${version}.${ext}"
     },
     "nsis": {

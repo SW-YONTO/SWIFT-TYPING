@@ -11,7 +11,8 @@ node_modules
 dist
 dist-ssr
 *.local
-
+.zip
+*.zip
 # Electron build outputs
 release/
 build/
@@ -68,6 +69,8 @@ agents/
 # Electron build/installer files
 swift typing/
 Swift Typing Setup*
+Swift-Typing-v*
+Swift-Typing-*
 
 # Marketing assets
 post/

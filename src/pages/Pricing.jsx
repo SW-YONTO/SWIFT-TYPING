@@ -23,6 +23,18 @@ const Pricing = () => {
   const { theme } = useTheme();
   const [showModal, setShowModal] = useState(false);
 
+  // Auto-open modal if URL contains a promo/referral code
+  React.useEffect(() => {
+    try {
+      const searchParams = new URLSearchParams(window.location.search);
+      const hash = window.location.hash;
+      const hasCode = searchParams.has('code') || searchParams.has('coupon') || searchParams.has('ref') || hash.includes('code=') || hash.includes('coupon=') || hash.includes('ref=');
+      if (hasCode) {
+        setShowModal(true);
+      }
+    } catch (e) {}
+  }, []);
+
   const plans = [
     {
       name: "Free",

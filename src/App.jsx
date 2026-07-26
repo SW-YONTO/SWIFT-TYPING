@@ -63,6 +63,17 @@ function App() {
   // Load current user and check ban status on initial app mount
   useEffect(() => {
     telemetry.init();
+
+    // Auto-navigate to /pricing if referral code is in URL search/hash
+    try {
+      const searchParams = new URLSearchParams(window.location.search);
+      const hash = window.location.hash;
+      const hasCode = searchParams.has('code') || searchParams.has('coupon') || searchParams.has('ref') || hash.includes('code=') || hash.includes('coupon=') || hash.includes('ref=');
+      if (hasCode && !window.location.hash.includes('/pricing')) {
+        const queryStr = window.location.search || (hash.includes('?') ? hash.substring(hash.indexOf('?')) : '');
+        window.location.hash = '#/pricing' + queryStr;
+      }
+    } catch (e) {}
     const user = userManager.getCurrentUser();
     if (user) {
       setCurrentUser(user);

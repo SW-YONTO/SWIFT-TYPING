@@ -40,18 +40,51 @@ const PricingModal = ({ isOpen, onClose }) => {
     return () => { document.body.style.overflow = ''; };
   }, [isOpen]);
 
-  const applyCoupon = () => {
-    const code = couponCode.trim().toUpperCase();
-    const validCoupons = ['FREEBANKAI', 'FREEFORYOU', _gc()];
+  const [copiedLink, setCopiedLink] = useState(false);
+
+  const applyCoupon = (codeToApply) => {
+    const code = (typeof codeToApply === 'string' ? codeToApply : couponCode).trim().toUpperCase();
+    const validCoupons = ['FREEBANKAI', 'FREEFORU', 'FREEFORYOU', 'SWIFTFREE', 'FREEPRO', 'FREEACCESS', _gc()];
     if (validCoupons.includes(code)) {
+      setCouponCode(code);
       setCouponStatus('success');
-      setCouponMessage('✅ Promo coupon applied! Full free access to Swift Typing unlocked.');
+      setCouponMessage(`✅ Promo coupon "${code}" applied! Full free access to Swift Typing unlocked.`);
       setShowDownload(true);
     } else {
       setCouponStatus('error');
       setCouponMessage('❌ Invalid coupon code. Please check your promo code and try again.');
       setShowDownload(false);
     }
+  };
+
+  // Auto-detect promo code from URL parameters (?code=FREEFORU, ?ref=FREEFORU, ?coupon=FREEFORU)
+  useEffect(() => {
+    if (!isOpen) return;
+    try {
+      const searchParams = new URLSearchParams(window.location.search);
+      let codeFromUrl = searchParams.get('code') || searchParams.get('coupon') || searchParams.get('ref');
+      
+      if (!codeFromUrl && window.location.hash.includes('?')) {
+        const qIndex = window.location.hash.indexOf('?');
+        const hashParams = new URLSearchParams(window.location.hash.substring(qIndex));
+        codeFromUrl = hashParams.get('code') || hashParams.get('coupon') || hashParams.get('ref');
+      }
+
+      if (codeFromUrl) {
+        applyCoupon(codeFromUrl);
+      }
+    } catch (e) {
+      console.error('Error parsing referral code from URL:', e);
+    }
+  }, [isOpen]);
+
+  const copyReferralLink = (codeToUse) => {
+    const code = codeToUse || couponCode.trim() || 'FREEFORU';
+    const baseUrl = window.location.origin + window.location.pathname;
+    const refUrl = `${baseUrl}#/pricing?code=${encodeURIComponent(code)}`;
+    navigator.clipboard.writeText(refUrl);
+    setCopiedLink(true);
+    setTimeout(() => setCopiedLink(false), 3000);
   };
 
   const handlePlanAction = (planId) => {
@@ -78,7 +111,7 @@ const PricingModal = ({ isOpen, onClose }) => {
         {!showClerkPricing && (
           <>
             <h2 className={`text-2xl font-bold ${theme.text} mb-2`}>Choose Your Plan</h2>
-            <p className={`${theme.textSecondary} mb-8`}>Start free, upgrade when you're ready.</p>
+            <p className={`${theme.textSecondary} mb-8`}>Start free, upgrade when you're ready, or redeem a promo code.</p>
           </>
         )}
 
@@ -127,21 +160,65 @@ const PricingModal = ({ isOpen, onClose }) => {
           </div>
         )}
 
-        {/* Coupon */}
+        {/* Coupon Section */}
         {!showClerkPricing && (
-          <div className={`${theme.cardBg} border ${theme.border} rounded-xl p-5`}>
-            <h4 className={`text-sm font-semibold ${theme.text} mb-3`}>🎟️ Have a coupon code?</h4>
-            <div className="flex gap-2">
-              <input type="text" value={couponCode} onChange={(e) => setCouponCode(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') applyCoupon(); }} placeholder="Enter coupon code..." autoComplete="off" className={`flex-1 px-4 py-2.5 ${theme.background} border ${theme.border} rounded-lg ${theme.text} text-sm outline-none focus:border-blue-500 transition-colors`} />
-              <button onClick={applyCoupon} className="px-5 py-2.5 bg-gradient-to-r from-blue-500 to-purple-600 text-white rounded-lg text-sm font-semibold hover:shadow-lg transition-all">Apply</button>
+          <div className={`${theme.cardBg} border ${theme.border} rounded-xl p-5 space-y-3`}>
+            <div className="flex items-center justify-between">
+              <h4 className={`text-sm font-semibold ${theme.text}`}>🎟️ Have a promo or referral code?</h4>
+              <button 
+                onClick={() => copyReferralLink(couponCode || 'FREEFORU')} 
+                className="text-xs text-blue-500 hover:underline flex items-center gap-1 font-medium"
+              >
+                {copiedLink ? '✓ Referral Link Copied!' : '🔗 Copy Referral Link'}
+              </button>
             </div>
+            <div className="flex gap-2">
+              <input 
+                type="text" 
+                value={couponCode} 
+                onChange={(e) => setCouponCode(e.target.value)} 
+                onKeyDown={(e) => { if (e.key === 'Enter') applyCoupon(); }} 
+                placeholder="Enter promo code (e.g. FREEFORU, FREEBANKAI)..." 
+                autoComplete="off" 
+                className={`flex-1 px-4 py-2.5 ${theme.background} border ${theme.border} rounded-lg ${theme.text} text-sm outline-none focus:border-blue-500 transition-colors`} 
+              />
+              <button 
+                onClick={() => applyCoupon()} 
+                className="px-5 py-2.5 bg-gradient-to-r from-blue-500 to-purple-600 text-white rounded-lg text-sm font-semibold hover:shadow-lg transition-all"
+              >
+                Apply
+              </button>
+            </div>
+            
             {couponStatus && (
-              <div className={`mt-3 text-sm p-3 rounded-lg ${couponStatus === 'success' ? 'bg-green-500/10 text-green-500 border border-green-500/20' : 'bg-red-500/10 text-red-500 border border-red-500/20'}`}>{couponMessage}</div>
+              <div className={`text-sm p-3 rounded-lg ${couponStatus === 'success' ? 'bg-green-500/10 text-green-500 border border-green-500/20' : 'bg-red-500/10 text-red-500 border border-red-500/20'}`}>
+                {couponMessage}
+              </div>
             )}
+            
             {showDownload && (
-              <a href="/downloads/SwiftTyping-Setup.zip" download className="mt-3 inline-flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-green-500 to-emerald-600 text-white rounded-lg text-sm font-semibold hover:shadow-lg transition-all">
-                <Download className="w-4 h-4" />Download Swift Typing (.zip)
-              </a>
+              <div className="mt-3 p-4 bg-emerald-500/10 border border-emerald-500/20 rounded-xl space-y-3">
+                <p className="text-sm font-semibold text-emerald-500 flex items-center gap-2">
+                  <Sparkles className="w-4 h-4" /> Full Access Unlocked! Choose your desktop download:
+                </p>
+                <div className="flex flex-wrap gap-3">
+                  <a 
+                    href="https://github.com/SW-YONTO/SWIFT-TYPING/releases/download/v3.26.8/Swift-Typing-Setup-3.26.8.exe" 
+                    target="_blank" 
+                    rel="noopener noreferrer" 
+                    className="inline-flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-green-500 to-emerald-600 text-white rounded-lg text-sm font-semibold hover:shadow-lg transition-all"
+                  >
+                    <Download className="w-4 h-4" /> Download Windows App (.exe)
+                  </a>
+                  <a 
+                    href="/downloads/SwiftTyping-Setup.zip" 
+                    download 
+                    className="inline-flex items-center gap-2 px-5 py-2.5 bg-slate-700 text-white rounded-lg text-sm font-semibold hover:bg-slate-600 transition-all"
+                  >
+                    <Download className="w-4 h-4" /> Download Zip Version (.zip)
+                  </a>
+                </div>
+              </div>
             )}
           </div>
         )}
