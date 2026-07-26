@@ -595,6 +595,8 @@ const LudoBoard = ({
 
           const isCurrent = gameState?.currentPlayerId === p.id;
           const bubble = chatBubbles[color];
+          const isTopCorner = color === 'blue' || color === 'green';
+          const bubblePositionClass = isTopCorner ? 'top-14 left-0' : 'bottom-14 left-0';
 
           return (
             <div
@@ -608,7 +610,7 @@ const LudoBoard = ({
               >
                 {/* Avatar with countdown ring */}
                 <div
-                  key={isCurrent ? `timer-${gameState?.turnCount}-${gameState?.turnPhase}-${gameState?.diceValue}` : `idle-${color}`}
+                  key={isCurrent ? `timer-${gameState?.turnCount}-${gameState?.currentPlayerId}` : `idle-${color}`}
                   className="relative w-9 h-9 flex items-center justify-center flex-shrink-0"
                 >
                   {/* SVG rounded-rect countdown ring OUTSIDE the avatar */}
@@ -667,7 +669,7 @@ const LudoBoard = ({
 
               {/* Chat Bubble */}
               {bubble && (
-                <div className="absolute bottom-12 left-0 z-50 bg-amber-400 text-slate-950 font-black text-xs px-3 py-1.5 rounded-2xl shadow-2xl animate-fade-in border border-amber-300 max-w-[150px] truncate">
+                <div className={`absolute ${bubblePositionClass} z-50 bg-amber-400 text-slate-950 font-black text-xs px-3 py-1.5 rounded-2xl shadow-2xl animate-fade-in border border-amber-300 max-w-[150px] truncate`}>
                   {bubble}
                 </div>
               )}

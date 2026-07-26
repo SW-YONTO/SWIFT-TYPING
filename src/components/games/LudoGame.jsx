@@ -43,12 +43,15 @@ const LudoGame = ({ currentUser }) => {
 
   const myPlayerId = gameMode === 'online' ? (currentUser?.id || ludoManager.userId) : (gameState ? gameState.currentPlayerId : '');
 
-  // Keep ludoManager.roomCode synced with URL
+  // Keep ludoManager.roomCode and user synced with props/URL
   useEffect(() => {
+    if (currentUser) {
+      ludoManager.updateUser(currentUser);
+    }
     if (urlRoomCode) {
       ludoManager.roomCode = urlRoomCode;
     }
-  }, [urlRoomCode]);
+  }, [urlRoomCode, currentUser]);
 
   // 1. Reconnection on Tab Reload
   useEffect(() => {
@@ -463,6 +466,11 @@ const LudoGame = ({ currentUser }) => {
   const handleDiceRoll = useCallback(() => {
     if (!gameState || gameState.currentPlayerId !== myPlayerId || gameState.turnPhase !== 'roll' || isRolling) return;
 
+    if (skipTimerRef.current) {
+      clearTimeout(skipTimerRef.current);
+      skipTimerRef.current = null;
+    }
+
     const player = gameState.players[myPlayerId];
     setIsRolling(true);
 
@@ -492,6 +500,11 @@ const LudoGame = ({ currentUser }) => {
   // 6. Token Click / Move Action (Step-by-Step 3D Jumping Movement)
   const handleTokenClick = useCallback((tokenId) => {
     if (!gameState || gameState.currentPlayerId !== myPlayerId || gameState.turnPhase !== 'move') return;
+
+    if (skipTimerRef.current) {
+      clearTimeout(skipTimerRef.current);
+      skipTimerRef.current = null;
+    }
 
     const move = validMoves.find(m => m.tokenId === tokenId);
     if (!move) return;

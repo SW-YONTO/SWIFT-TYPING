@@ -58,6 +58,12 @@ class LudoManager {
     this.avatar = user.avatar || null;
   }
 
+  updateUser(user = {}) {
+    if (user.id) this.userId = user.id;
+    if (user.username) this.username = user.username;
+    if (user.avatar !== undefined) this.avatar = user.avatar;
+  }
+
   getUserData() {
     return {
       userId: this.userId,
@@ -159,7 +165,15 @@ class LudoManager {
   }
 
   async createRoom(callbacks = {}) {
-    this.roomCode = this.generateRoomCode();
+    let code = this.generateRoomCode();
+    let existing = await this.checkRoomExists(code);
+    let attempts = 0;
+    while (existing && attempts < 5) {
+      code = this.generateRoomCode();
+      existing = await this.checkRoomExists(code);
+      attempts++;
+    }
+    this.roomCode = code;
     this.isHost = true;
     Object.assign(this, callbacks);
 
