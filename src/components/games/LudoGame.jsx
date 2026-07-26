@@ -275,7 +275,7 @@ const LudoGame = ({ currentUser }) => {
     const interval = setInterval(async () => {
       const now = Date.now();
       const playersList = Object.values(gameState.players);
-      const presenceUserIds = onlinePlayers.map(op => op.userId);
+      const presenceUserIds = onlinePlayers.map(op => op.userId || op.user_id);
 
       let stateChanged = false;
       let updatedState = JSON.parse(JSON.stringify(gameState));
@@ -285,19 +285,27 @@ const LudoGame = ({ currentUser }) => {
 
         const isOnline = presenceUserIds.includes(p.id);
         if (!isOnline) {
-          if (!offlineTimersRef.current[p.id]) {
+          const offlineStart = p.offlineSince || offlineTimersRef.current[p.id];
+          if (!offlineStart) {
             offlineTimersRef.current[p.id] = now;
-          } else if (now - offlineTimersRef.current[p.id] >= 60000) { // 1 minute (60s)
+            updatedState.players[p.id].offlineSince = now;
+            stateChanged = true;
+          } else if (now - offlineStart >= 60000) { // 1 minute (60s)
             console.log(`[LUDO] Player ${p.username} offline for > 1 min. Auto-resigning...`);
             const amIHost = ludoManager.isHost;
             if (amIHost) {
               updatedState = handlePlayerResign(updatedState, p.id);
+              delete updatedState.players[p.id].offlineSince;
               stateChanged = true;
             }
           }
         } else {
           // Player came back online, clear their offline timer
-          delete offlineTimersRef.current[p.id];
+          if (p.offlineSince || offlineTimersRef.current[p.id]) {
+            delete updatedState.players[p.id].offlineSince;
+            delete offlineTimersRef.current[p.id];
+            stateChanged = true;
+          }
         }
       }
 

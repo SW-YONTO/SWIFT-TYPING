@@ -86,19 +86,6 @@ class LudoManager {
 
   async fetchActiveRooms() {
     try {
-      const tenMinutesAgo = new Date(Date.now() - 10 * 60 * 1000).toISOString();
-
-      // Clean up stale abandoned waiting rooms older than 10 minutes
-      try {
-        await supabase
-          .from('ludo_rooms')
-          .delete()
-          .eq('status', 'waiting')
-          .lt('created_at', tenMinutesAgo);
-      } catch (err) {
-        console.warn('Stale room cleanup warning:', err);
-      }
-
       const { data, error } = await supabase
         .from('ludo_rooms')
         .select('*')
@@ -220,24 +207,13 @@ class LudoManager {
 
     const channelName = `ludo_room_${this.roomCode}`;
 
-    // If channel exists and is already active for this room, do not tear down connection!
-    if (this.roomChannel && (this.roomChannel.topic === `realtime:${channelName}` || this.roomChannel.topic === channelName)) {
-      console.log(`[LUDO_MANAGER] Active channel retained for ${channelName}`);
-      Object.assign(this, callbacks);
-      try {
-        const state = this.roomChannel.presenceState();
-        const players = Object.values(state).flat();
-        if (callbacks.onPlayersUpdate) {
-          callbacks.onPlayersUpdate(players);
-        }
-      } catch (e) {
-        console.warn('Failed to push initial presence players:', e);
-      }
-      return;
-    }
-
     if (this.roomChannel) {
-      await supabase.removeChannel(this.roomChannel);
+      try {
+        await supabase.removeChannel(this.roomChannel);
+      } catch (e) {
+        console.warn('Error removing previous room channel:', e);
+      }
+      this.roomChannel = null;
     }
 
     this.roomChannel = supabase.channel(channelName, {
