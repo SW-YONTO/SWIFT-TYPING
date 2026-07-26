@@ -8,15 +8,7 @@ import LudoBoard from './ludo/LudoBoard';
 import { Trophy, RotateCcw, Home, Sword, Crown } from 'lucide-react';
 import { supabase } from '../../utils/supabaseClient';
 
-const getAvatarPath = (avatar) => {
-  if (!avatar) return null;
-  if (avatar.startsWith('data:image/') || avatar.startsWith('http')) return avatar;
-  try {
-    return new URL(`../../assets/avatars/${avatar}`, import.meta.url).href;
-  } catch {
-    return null;
-  }
-};
+import { getAvatarPath } from '../../utils/image';
 
 const LudoGame = ({ currentUser }) => {
   const { theme } = useTheme();

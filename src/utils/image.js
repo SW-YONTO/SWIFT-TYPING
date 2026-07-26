@@ -53,9 +53,22 @@ export const compressImageToBase64 = (file, maxSize = 200, quality = 0.8) => {
         resolve(compressedBase64);
       };
       
-      img.onerror = (error) => reject(error);
-    };
-    
-    reader.onerror = (error) => reject(error);
-  });
+// Vite glob import for all avatar PNG assets
+const avatarImages = import.meta.glob('/src/assets/avatars/*.png', { eager: true, import: 'default' });
+
+/**
+ * Resolves avatar filenames or data URLs into valid browser image URLs
+ * @param {string} avatar Filename (e.g., 'avatar1.png'), data URL, or HTTP link
+ * @returns {string|null} Resolved image URL
+ */
+export const getAvatarPath = (avatar) => {
+  if (!avatar) return avatarImages['/src/assets/avatars/avatar1.png'] || null;
+  if (typeof avatar === 'string' && (avatar.startsWith('data:image/') || avatar.startsWith('http://') || avatar.startsWith('https://'))) {
+    return avatar;
+  }
+
+  const filename = String(avatar).split('/').pop();
+  const fullPath = `/src/assets/avatars/${filename}`;
+
+  return avatarImages[fullPath] || avatarImages['/src/assets/avatars/avatar1.png'] || null;
 };

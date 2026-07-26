@@ -5,15 +5,7 @@ import { createGame } from './ludoEngine';
 import LudoChat from './LudoChat';
 import { Users, Copy, Check, LogIn, Plus, Crown, Loader2, Dice1, RefreshCw, Bot, Brain, Zap, Shield, X } from 'lucide-react';
 
-const getAvatarPath = (avatar) => {
-  if (!avatar) return null;
-  if (avatar.startsWith('data:image/') || avatar.startsWith('http')) return avatar;
-  try {
-    return new URL(`../../../assets/avatars/${avatar}`, import.meta.url).href;
-  } catch {
-    return null;
-  }
-};
+import { getAvatarPath } from '../../../utils/image';
 
 const LudoLobby = ({ currentUser, onGameStart, onLeave, urlRoomCode, onRoomJoined, onStartBotGame, onStartLocalGame }) => {
   const { theme, isDarkMode } = useTheme();
