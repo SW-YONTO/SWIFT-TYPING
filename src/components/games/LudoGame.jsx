@@ -676,15 +676,18 @@ const LudoGame = ({ currentUser }) => {
     }, 1000);
   }, [currentUser]);
 
-  const handleStartLocalGame = useCallback(() => {
+  const handleStartLocalGame = useCallback((playerCount = 4) => {
     setGameMode('local');
-    const playerIds = ['p1', 'p2', 'p3', 'p4'];
-    const playerInfos = [
+    const ALL_PLAYERS = [
       { id: 'p1', username: 'Player 1 (Red)', avatar: 'avatar1.png' },
       { id: 'p2', username: 'Player 2 (Blue)', avatar: 'avatar2.png' },
       { id: 'p3', username: 'Player 3 (Green)', avatar: 'avatar3.png' },
       { id: 'p4', username: 'Player 4 (Yellow)', avatar: 'avatar4.png' },
     ];
+
+    const countToUse = Math.min(4, Math.max(2, playerCount));
+    const playerInfos = ALL_PLAYERS.slice(0, countToUse);
+    const playerIds = playerInfos.map(p => p.id);
     const initialGameState = createGame(playerIds, playerInfos);
     setCountdown(3);
     setGameState(initialGameState);

@@ -23,6 +23,10 @@ const LudoLobby = ({ currentUser, onGameStart, onLeave, urlRoomCode, onRoomJoine
   const [botCount, setBotCount] = useState(3); // 1, 2, 3
   const [botDifficulty, setBotDifficulty] = useState('medium'); // 'easy' | 'medium' | 'hard'
 
+  // Pass & Play Local Config State
+  const [showLocalModal, setShowLocalModal] = useState(false);
+  const [localPlayerCount, setLocalPlayerCount] = useState(4); // 2, 3, 4
+
   useEffect(() => {
     ludoManager.initialize(currentUser);
 
@@ -304,15 +308,18 @@ const LudoLobby = ({ currentUser, onGameStart, onLeave, urlRoomCode, onRoomJoine
               <span className="tracking-wide">Create Room</span>
             </button>
 
-            {/* Play in Person Button */}
+            {/* Play in Person Button (Pass & Play) */}
             <button
-              onClick={onStartLocalGame}
+              onClick={() => setShowLocalModal(true)}
               className="w-full h-16 rounded-2xl bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 text-white font-black text-base shadow-lg hover:shadow-purple-500/25 transition-all cursor-pointer flex items-center px-4 gap-3 group active:scale-95"
             >
               <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center flex-shrink-0 group-hover:scale-110 transition-transform">
                 <Users className="w-5 h-5 text-white" />
               </div>
-              <span className="tracking-wide">Play in Person</span>
+              <div className="flex flex-col items-start min-w-0">
+                <span className="tracking-wide text-sm font-black">Play in Person</span>
+                <span className="text-[10px] text-purple-100 font-semibold">2, 3, or 4 Players • 1 Device</span>
+              </div>
             </button>
           </div>
         </div>
@@ -513,6 +520,69 @@ const LudoLobby = ({ currentUser, onGameStart, onLeave, urlRoomCode, onRoomJoine
               className="w-full py-4 rounded-2xl bg-gradient-to-r from-emerald-500 via-teal-500 to-cyan-500 text-white font-black text-base shadow-xl hover:shadow-cyan-500/25 transition-all cursor-pointer active:scale-95 flex items-center justify-center gap-2"
             >
               🚀 LAUNCH ROBOT MATCH
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* ─── PASS & PLAY LOCAL SETUP MODAL ─── */}
+      {showLocalModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-fade-in">
+          <div className={`w-full max-w-md ${theme.cardBg} rounded-3xl border ${theme.border} p-6 shadow-2xl space-y-6`}>
+            <div className="flex items-center justify-between border-b border-gray-800 pb-4">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-2xl bg-indigo-500/20 border border-indigo-500/30 flex items-center justify-center">
+                  <Users className="w-5 h-5 text-indigo-400" />
+                </div>
+                <div>
+                  <h3 className={`text-lg font-black ${theme.text}`}>Pass & Play Arena</h3>
+                  <p className="text-xs text-gray-400">Play in person with friends on 1 device</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setShowLocalModal(false)}
+                className="p-2 rounded-xl text-gray-400 hover:text-white hover:bg-slate-800 transition-colors cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Local Player Count Selector */}
+            <div className="space-y-2">
+              <label className="text-xs font-black tracking-wider text-indigo-400 uppercase block">
+                NUMBER OF LOCAL PLAYERS
+              </label>
+              <div className="grid grid-cols-3 gap-3">
+                {[
+                  { count: 2, label: '2 Players', sub: 'Red vs Blue' },
+                  { count: 3, label: '3 Players', sub: 'Red, Blue, Green' },
+                  { count: 4, label: '4 Players', sub: 'Full 4-Color Board' }
+                ].map(item => (
+                  <button
+                    key={item.count}
+                    onClick={() => setLocalPlayerCount(item.count)}
+                    className={`p-3 rounded-2xl border flex flex-col items-center justify-center transition-all cursor-pointer ${
+                      localPlayerCount === item.count
+                        ? 'bg-indigo-500/20 border-indigo-500 text-indigo-400 font-black shadow-md scale-105'
+                        : `${isDarkMode ? 'bg-slate-900/60 border-slate-800 text-gray-400' : 'bg-slate-50 border-slate-200 text-slate-600'} hover:border-indigo-500/50`
+                    }`}
+                  >
+                    <span className="text-xs font-bold">{item.label}</span>
+                    <span className="text-[9px] opacity-70 mt-0.5">{item.sub}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Launch Pass & Play Button */}
+            <button
+              onClick={() => {
+                setShowLocalModal(false);
+                if (onStartLocalGame) onStartLocalGame(localPlayerCount);
+              }}
+              className="w-full py-4 rounded-2xl bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 text-white font-black text-base shadow-xl hover:shadow-indigo-500/25 transition-all cursor-pointer active:scale-95 flex items-center justify-center gap-2"
+            >
+              🎮 LAUNCH PASS & PLAY MATCH
             </button>
           </div>
         </div>
