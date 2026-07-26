@@ -16,25 +16,18 @@ const LudoDice = ({ value, isRolling, canRoll, onRoll, playerColor }) => {
   const [animating, setAnimating] = useState(false);
 
   useEffect(() => {
+    let interval = null;
     if (isRolling) {
-      setAnimating(true);
-      const interval = setInterval(() => {
+      interval = setInterval(() => {
         setDisplayValue(Math.floor(Math.random() * 6) + 1);
-      }, 80);
-
-      const timeout = setTimeout(() => {
-        clearInterval(interval);
-        setDisplayValue(value || 1);
-        setAnimating(false);
-      }, 600);
-
-      return () => {
-        clearInterval(interval);
-        clearTimeout(timeout);
-      };
-    } else if (value) {
-      setDisplayValue(value);
+      }, 70);
+    } else {
+      setDisplayValue(value || 1);
     }
+
+    return () => {
+      if (interval) clearInterval(interval);
+    };
   }, [isRolling, value]);
 
   const dots = DICE_FACES[displayValue] || DICE_FACES[1];

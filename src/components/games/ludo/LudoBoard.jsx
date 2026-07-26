@@ -90,7 +90,9 @@ const LudoBoard = ({
   }, [gameState]);
 
   const currentPlayer = gameState?.players[gameState?.currentPlayerId];
-  const isMyTurn = gameMode !== 'online' || gameState?.currentPlayerId === myPlayerId;
+  const isMyTurn = (gameMode === 'local')
+    ? (!currentPlayer?.isBot)
+    : (gameState?.currentPlayerId === myPlayerId && !currentPlayer?.isBot);
   const canRoll = isMyTurn && gameState?.turnPhase === 'roll' && !isRolling;
 
   const validTokenIds = useMemo(() => {

@@ -41,7 +41,10 @@ const LudoGame = ({ currentUser }) => {
   const offlineTimersRef = useRef({});
 
 
-  const myPlayerId = gameMode === 'online' ? (currentUser?.id || ludoManager.userId) : (gameState ? gameState.currentPlayerId : '');
+  const humanPlayerId = currentUser?.id || ludoManager.userId || 'player1';
+  const myPlayerId = (gameMode === 'local')
+    ? (gameState ? gameState.currentPlayerId : 'p1')
+    : humanPlayerId;
 
   // Keep ludoManager.roomCode and user synced with props/URL
   useEffect(() => {
@@ -343,11 +346,15 @@ const LudoGame = ({ currentUser }) => {
       return;
     }
 
-    const isMyTurn = gameMode !== 'online' || gameState.currentPlayerId === myPlayerId;
+    const isMyTurn = (gameMode === 'local')
+      ? (!currentPlayer?.isBot)
+      : (gameState.currentPlayerId === myPlayerId && !currentPlayer?.isBot);
 
     if (isMyTurn && gameState.turnPhase === 'move') {
       const moves = getValidMoves(gameState);
       setValidMoves(moves);
+
+      const allBaseOpens = moves.length > 0 && moves.every(m => m.startState === 'base' && m.destState === 'active');
 
       if (moves.length === 0) {
         logLudo('SKIP', `No valid moves available for ${currentPlayer?.username}. Skipping turn...`);
@@ -361,8 +368,8 @@ const LudoGame = ({ currentUser }) => {
             ludoManager.updateGameState(newState);
           }
         }, 800);
-      } else if (moves.length === 1) {
-        logLudo('AUTO_MOVE', `Only 1 valid move available for ${currentPlayer?.username}. Auto-moving token #${moves[0].tokenId}...`);
+      } else if (moves.length === 1 || allBaseOpens) {
+        logLudo('AUTO_MOVE', `Auto-moving token #${moves[0].tokenId} for ${currentPlayer?.username}...`);
         skipTimerRef.current = setTimeout(() => {
           handleTokenClick(moves[0].tokenId);
         }, 400);
@@ -415,16 +422,22 @@ const LudoGame = ({ currentUser }) => {
       if (gameState.turnPhase === 'roll' && !isRolling) {
         setIsRolling(true);
         const value = rollDice();
-        const rolledState = applyDiceRoll(gameState, value);
 
-        logLudo('BOT_DICE_ROLL', `${currentPlayer.username} rolled a ${value}!`, { value, rolledState });
+        logLudo('BOT_DICE_ROLL', `${currentPlayer.username} rolled a ${value}!`, { value });
+
+        // Set target diceValue in state immediately
+        setGameState(prev => prev ? ({ ...prev, diceValue: value }) : prev);
 
         setTimeout(() => {
           setIsRolling(false);
+          // Hold static rolled face clearly for 600ms before applying move phase
           setTimeout(() => {
-            setGameState(rolledState);
-          }, 400);
-        }, 400);
+            setGameState(prev => {
+              if (!prev) return prev;
+              return applyDiceRoll(prev, value);
+            });
+          }, 600);
+        }, 500);
       }
       // 2. Bot Move Phase
       else if (gameState.turnPhase === 'move') {
@@ -446,41 +459,45 @@ const LudoGame = ({ currentUser }) => {
     }, 700);
 
     return () => clearTimeout(botTimer);
-  }, [gameState, phase, isRolling, animateTokenMove, gameMode]);
+  }, [gameState, phase, isRolling, animateTokenMove, gameMode, botDifficulty]);
 
   // 5. Dice Roll Action
   const handleDiceRoll = useCallback(() => {
-    if (!gameState || gameState.currentPlayerId !== myPlayerId || gameState.turnPhase !== 'roll' || isRolling) return;
+    const player = gameState?.players[myPlayerId];
+    if (!gameState || player?.isBot || gameState.currentPlayerId !== myPlayerId || gameState.turnPhase !== 'roll' || isRolling) return;
 
     if (skipTimerRef.current) {
       clearTimeout(skipTimerRef.current);
       skipTimerRef.current = null;
     }
 
-    const player = gameState.players[myPlayerId];
     setIsRolling(true);
+    const value = rollDice();
+
+    logLudo('DICE_ROLL', `Player ${player?.username} (${player?.color}) rolled a ${value}!`, { value });
 
     if (gameMode === 'online') {
       ludoManager.broadcastDiceRoll(player?.color);
     }
 
-    const value = rollDice();
-    const newState = applyDiceRoll(gameState, value);
-
-    logLudo('DICE_ROLL', `Player ${player?.username} (${player?.color}) rolled a ${value}!`, { value, newState });
-
-    if (gameMode === 'online') {
-      ludoManager.updateGameState(newState);
-    }
+    // Set target diceValue in state immediately
+    setGameState(prev => prev ? ({ ...prev, diceValue: value }) : prev);
 
     setTimeout(() => {
       setIsRolling(false);
 
-      // Hold static rolled number clearly on dice face for 500ms (0.5s)
+      // Hold static rolled number clearly on dice face for 500ms (0.5s) before enabling move phase
       setTimeout(() => {
-        setGameState(newState);
+        setGameState(prev => {
+          if (!prev) return prev;
+          const newState = applyDiceRoll(prev, value);
+          if (gameMode === 'online') {
+            ludoManager.updateGameState(newState);
+          }
+          return newState;
+        });
       }, 500);
-    }, 400);
+    }, 500);
   }, [gameState, myPlayerId, isRolling, gameMode]);
 
   // 6. Token Click / Move Action (Step-by-Step 3D Jumping Movement)
@@ -628,10 +645,13 @@ const LudoGame = ({ currentUser }) => {
     setBotDifficulty(difficulty);
 
     const BOT_NAMES = ['CyberBot', 'RoboPulse', 'MechaOmega', 'NeuraBot'];
+    const BOT_AVATARS = ['avatar2.png', 'avatar3.png', 'avatar4.png', 'avatar5.png'];
+    const humanId = currentUser?.id || ludoManager.userId || 'player1';
+
     const totalPlayers = Math.min(4, Math.max(2, botCount + 1));
-    const playerIds = [currentUser?.id || 'player1'];
+    const playerIds = [humanId];
     const playerInfos = [
-      { id: currentUser?.id || 'player1', username: currentUser?.username || 'You', avatar: currentUser?.avatar || 'avatar1.png' }
+      { id: humanId, username: currentUser?.username || 'You', avatar: currentUser?.avatar || 'avatar1.png' }
     ];
 
     for (let i = 1; i < totalPlayers; i++) {
@@ -640,7 +660,7 @@ const LudoGame = ({ currentUser }) => {
       playerInfos.push({
         id: bId,
         username: `${BOT_NAMES[i - 1]} (${difficulty.toUpperCase()})`,
-        avatar: 'bot',
+        avatar: BOT_AVATARS[i - 1] || 'avatar2.png',
         isBot: true,
         botDifficulty: difficulty
       });
