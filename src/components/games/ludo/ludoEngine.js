@@ -522,60 +522,62 @@ export function evaluateBestBotMove(gameState, moves, difficulty = 'medium') {
   const currentPlayer = gameState.players[gameState.currentPlayerId];
   if (!currentPlayer) return moves[0];
 
+  const activeTokens = (currentPlayer.tokens || []).filter(t => t.state === TOKEN_STATE.ACTIVE);
+
   let bestMove = moves[0];
-  let maxScore = -999;
+  let maxScore = -9999;
 
   moves.forEach(m => {
     let score = 0;
 
-    // 1. Capture Opponent Token (+150 for hard, +100 for medium)
-    let createsCapture = false;
+    // 1. CAPTURE / KILL OPPONENT TOKEN (Human Priority #1: +250 pts)
+    let capturesCount = 0;
     if (m.destState === TOKEN_STATE.ACTIVE && !SAFE_POSITIONS.includes(m.destPosition)) {
       Object.values(gameState.players).forEach(other => {
         if (other.id !== currentPlayer.id) {
           (other.tokens || []).forEach(tok => {
             if (tok.state === TOKEN_STATE.ACTIVE && tok.position === m.destPosition) {
-              createsCapture = true;
+              capturesCount++;
             }
           });
         }
       });
     }
-
-    if (createsCapture) {
-      score += (difficulty === 'hard' ? 150 : 100);
+    if (capturesCount > 0) {
+      score += 250 * capturesCount;
     }
 
-    // 2. Finish token into center home (+120 for hard, +80 for medium)
+    // 2. REACH HOME CENTER (FINISH TOKEN: +200 pts)
     if (m.destState === TOKEN_STATE.FINISHED) {
-      score += (difficulty === 'hard' ? 120 : 80);
+      score += 200;
     }
 
-    // 3. Move token out of Base Yard (+70)
-    if (m.startState === TOKEN_STATE.BASE && m.destState === TOKEN_STATE.ACTIVE) {
-      score += 70;
-    }
-
-    // 4. Land on Safe Star Position (+60 for hard, +30 for medium)
-    if (m.destState === TOKEN_STATE.ACTIVE && SAFE_POSITIONS.includes(m.destPosition)) {
-      score += (difficulty === 'hard' ? 60 : 30);
-    }
-
-    // 5. Enter Home Stretch Column (+50)
+    // 3. ENTER HOME STRETCH COLUMN (+130 pts)
     if (m.startState === TOKEN_STATE.ACTIVE && m.destState === TOKEN_STATE.HOME_COL) {
-      score += 50;
+      score += 130;
     }
 
-    // 6. Hard Difficulty: Threat Calculation (Escape from opponent in range 1-6 behind)
-    if (difficulty === 'hard' && m.startState === TOKEN_STATE.ACTIVE && !SAFE_POSITIONS.includes(m.startPos)) {
+    // 4. OPEN NEW TOKEN FROM BASE (Human multi-token strategy: +160 pts if <= 1 active token)
+    if (m.startState === TOKEN_STATE.BASE && m.destState === TOKEN_STATE.ACTIVE) {
+      if (activeTokens.length <= 1) {
+        score += 160; // Highly urgent to bring a 2nd token out!
+      } else if (activeTokens.length === 2) {
+        score += 120;
+      } else {
+        score += 80;
+      }
+    }
+
+    // 5. ESCAPE DANGER / OPPONENT THREAT ZONE (+150 pts for Hard, +90 for Medium)
+    if (m.startState === TOKEN_STATE.ACTIVE && !SAFE_POSITIONS.includes(m.startPos)) {
       let isUnderThreat = false;
       Object.values(gameState.players).forEach(other => {
         if (other.id !== currentPlayer.id) {
           (other.tokens || []).forEach(tok => {
             if (tok.state === TOKEN_STATE.ACTIVE) {
-              const dist = getDistanceFromStart(other.color, tok.position);
-              const targetDist = getDistanceFromStart(other.color, m.startPos);
-              const diff = targetDist - dist;
+              const enemyDist = getDistanceFromStart(other.color, tok.position);
+              const myDist = getDistanceFromStart(other.color, m.startPos);
+              const diff = myDist - enemyDist;
               if (diff > 0 && diff <= 6) {
                 isUnderThreat = true;
               }
@@ -584,15 +586,39 @@ export function evaluateBestBotMove(gameState, moves, difficulty = 'medium') {
         }
       });
       if (isUnderThreat) {
-        score += 45;
+        score += (difficulty === 'hard' ? 150 : 90);
       }
     }
 
-    // 7. Distance progress bonus
+    // 6. LAND ON SAFE STAR SPOT (+110 pts for Hard, +60 for Medium)
+    if (m.destState === TOKEN_STATE.ACTIVE && SAFE_POSITIONS.includes(m.destPosition)) {
+      score += (difficulty === 'hard' ? 110 : 60);
+    }
+
+    // 7. STACK WITH OWN TOKEN (TEAM BLOCKADE: +70 pts)
     if (m.destState === TOKEN_STATE.ACTIVE) {
-      score += getDistanceFromStart(currentPlayer.color, m.destPosition) * 0.5;
+      const stacksWithOwn = (currentPlayer.tokens || []).some(t =>
+        t.id !== m.tokenId && t.state === TOKEN_STATE.ACTIVE && t.position === m.destPosition
+      );
+      if (stacksWithOwn) {
+        score += 70;
+      }
+    }
+
+    // 8. MULTI-TOKEN MANAGEMENT & DISTANCE BALANCING:
+    // Humans advance trailing tokens forward to support each other instead of solo racing 1 token
+    if (m.destState === TOKEN_STATE.ACTIVE) {
+      const moveDistance = getDistanceFromStart(currentPlayer.color, m.destPosition);
+      if (activeTokens.length > 1) {
+        const minDistance = Math.min(...activeTokens.map(t => getDistanceFromStart(currentPlayer.color, t.position)));
+        const tokenDist = getDistanceFromStart(currentPlayer.color, m.startPos);
+        if (tokenDist === minDistance) {
+          score += 40; // Advance trailing pawn!
+        }
+      }
+      score += moveDistance * 0.3;
     } else if (m.destState === TOKEN_STATE.HOME_COL) {
-      score += 50 + (m.destHomeProgress || 0) * 2;
+      score += 60 + (m.destHomeProgress || 0) * 5;
     }
 
     if (score > maxScore) {

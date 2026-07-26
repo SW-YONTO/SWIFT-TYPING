@@ -495,17 +495,19 @@ const LudoGame = ({ currentUser }) => {
 
   // 6. Token Click / Move Action (Step-by-Step 3D Jumping Movement)
   const handleTokenClick = useCallback((tokenId) => {
-    if (!gameState || gameState.currentPlayerId !== myPlayerId || gameState.turnPhase !== 'move') return;
+    if (!gameState || gameState.turnPhase !== 'move') return;
+    const player = gameState.players[gameState.currentPlayerId];
+    if (!player || player.isBot) return;
 
     if (skipTimerRef.current) {
       clearTimeout(skipTimerRef.current);
       skipTimerRef.current = null;
     }
 
-    const move = validMoves.find(m => m.tokenId === tokenId);
+    const moves = getValidMoves(gameState);
+    const move = moves.find(m => m.tokenId === tokenId);
     if (!move) return;
 
-    const player = gameState.players[myPlayerId];
     const newState = applyMove(gameState, move);
     const nextPlayer = newState.players[newState.currentPlayerId];
 
@@ -514,11 +516,11 @@ const LudoGame = ({ currentUser }) => {
     setValidMoves([]);
 
     if (gameMode === 'online') {
-      ludoManager.broadcastTokenMoveStart(myPlayerId, tokenId, newState);
+      ludoManager.broadcastTokenMoveStart(player.id, tokenId, newState);
     }
 
-    animateTokenMove(myPlayerId, tokenId, newState, true);
-  }, [gameState, myPlayerId, validMoves, animateTokenMove, gameMode]);
+    animateTokenMove(player.id, tokenId, newState, true);
+  }, [gameState, animateTokenMove, gameMode]);
 
 
   // 7. Chat Message Action
