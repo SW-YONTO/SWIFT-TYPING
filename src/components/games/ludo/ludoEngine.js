@@ -65,13 +65,26 @@ export function rollDice() {
   return Math.floor(Math.random() * 6) + 1;
 }
 
-/**
- * Apply dice roll to state
- */
 export function applyDiceRoll(state, value) {
   const newState = JSON.parse(JSON.stringify(state));
   newState.diceValue = value;
   newState.diceRolled = true;
+
+  if (value === 6) {
+    newState.consecutiveSixes = (newState.consecutiveSixes || 0) + 1;
+  } else {
+    newState.consecutiveSixes = 0;
+  }
+
+  // 3 Consecutive 6s Penalty Rule (Void 3rd 6 and skip turn)
+  if (newState.consecutiveSixes >= 3) {
+    newState.consecutiveSixes = 0;
+    newState.diceValue = null;
+    newState.diceRolled = false;
+    advanceTurn(newState);
+    return newState;
+  }
+
   newState.turnPhase = 'move';
   return newState;
 }
@@ -182,6 +195,7 @@ function advanceTurn(state) {
   state.diceRolled = false;
   state.turnPhase = 'roll';
   state.extraTurn = false;
+  state.consecutiveSixes = 0;
   state.turnCount++;
 }
 
