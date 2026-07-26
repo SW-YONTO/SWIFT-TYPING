@@ -512,6 +512,7 @@
     // Obfuscated coupon code (FREEBANKAI)
     const _ck = [70, 82, 69, 69, 66, 65, 78, 75, 65, 73];
     function _gc() { return _ck.map(c => String.fromCharCode(c)).join('') }
+    const validCoupons = ['FREEBANKAI', 'FREEFORU', 'FREEFORYOU', 'SWIFTFREE', 'FREEPRO', 'FREEACCESS', 'FREE', _gc()];
 
     function openModal() { document.getElementById('modalOverlay').classList.add('active'); document.body.style.overflow = 'hidden' }
     function closeModal() { document.getElementById('modalOverlay').classList.remove('active'); document.body.style.overflow = '' }
@@ -548,22 +549,37 @@
       }
     }
 
-    function applyCoupon() {
-      const input = document.getElementById('couponInput').value.trim().toUpperCase();
+    function applyCoupon(codeToApply) {
+      const rawInput = (typeof codeToApply === 'string' && codeToApply.trim()) ? codeToApply : document.getElementById('couponInput').value;
+      const input = rawInput.trim().toUpperCase().replace(/[^A-Z0-9]/g, '');
       const msg = document.getElementById('couponMsg');
       const dl = document.getElementById('downloadBtn');
-      if (input === _gc()) {
-        msg.textContent = '✅ Coupon applied! You can now download Swift Typing for free.';
+      if (input && validCoupons.includes(input)) {
+        document.getElementById('couponInput').value = input;
+        msg.textContent = `✅ Coupon "${input}" applied! Full free access to Swift Typing unlocked.`;
         msg.className = 'coupon-msg show success';
         dl.classList.add('show');
         dl.href = '/downloads/SwiftTyping-Setup.zip';
         dl.setAttribute('download', '');
-      } else {
-        msg.textContent = '❌ Invalid coupon code. Please try again.';
+      } else if (input) {
+        msg.textContent = `❌ Invalid coupon code "${input}". Please try again.`;
         msg.className = 'coupon-msg show error';
         dl.classList.remove('show');
       }
     }
+
+    // Auto-detect promo code from URL query/hash on landing page
+    window.addEventListener('DOMContentLoaded', () => {
+      try {
+        const fullUrl = window.location.href;
+        const match = fullUrl.match(/[?&](code|coupon|ref)=([^&/#]+)/i);
+        if (match && match[2]) {
+          const urlCode = decodeURIComponent(match[2]);
+          openModal();
+          applyCoupon(urlCode);
+        }
+      } catch (e) {}
+    });
 
     // Interactive Keyboard Wave Effect
     const kbel = document.getElementById('keyboard');

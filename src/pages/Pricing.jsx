@@ -19,19 +19,18 @@ import {
   Sparkles
 } from 'lucide-react';
 
+import { extractPromoCodeFromUrl } from '../utils/promoCodes';
+
 const Pricing = () => {
   const { theme } = useTheme();
   const [showModal, setShowModal] = useState(false);
 
   // Auto-open modal if URL contains a promo/referral code
   React.useEffect(() => {
-    try {
-      const fullUrl = window.location.href;
-      const hasCode = /[?&](code|coupon|ref)=/i.test(fullUrl);
-      if (hasCode) {
-        setShowModal(true);
-      }
-    } catch (e) {}
+    const code = extractPromoCodeFromUrl();
+    if (code) {
+      setShowModal(true);
+    }
   }, []);
 
   const plans = [

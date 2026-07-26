@@ -1,10 +1,7 @@
 import React, { useState, useEffect, Suspense } from 'react';
 import { useTheme } from '../contexts/ThemeContext';
 import { X, Download, Check, Star, Gift, Crown, Sparkles, WifiOff, ExternalLink } from 'lucide-react';
-
-// Obfuscated coupon
-const _ck = [70,82,69,69,66,65,78,75,65,73];
-const _gc = () => _ck.map(c => String.fromCharCode(c)).join('');
+import { isValidPromoCode, extractPromoCodeFromUrl } from '../utils/promoCodes';
 
 // Pricing table fallback component
 const ClerkPricingTable = () => (
@@ -45,9 +42,8 @@ const PricingModal = ({ isOpen, onClose }) => {
   const applyCoupon = (codeToApply) => {
     let rawCode = (typeof codeToApply === 'string' && codeToApply.trim()) ? codeToApply : couponCode;
     const code = rawCode.trim().toUpperCase().replace(/[^A-Z0-9]/g, '');
-    const validCoupons = ['FREEBANKAI', 'FREEFORU', 'FREEFORYOU', 'SWIFTFREE', 'FREEPRO', 'FREEACCESS', 'FREE', _gc()];
     
-    if (code && validCoupons.includes(code)) {
+    if (code && isValidPromoCode(code)) {
       setCouponCode(code);
       setCouponStatus('success');
       setCouponMessage(`✅ Promo coupon "${code}" applied! Full free access to Swift Typing unlocked.`);
@@ -62,22 +58,19 @@ const PricingModal = ({ isOpen, onClose }) => {
   // Auto-detect promo code from URL parameters (?code=FREEFORU, ?ref=FREEFORU, ?coupon=FREEFORU)
   useEffect(() => {
     if (!isOpen) return;
-    try {
-      const fullUrl = window.location.href;
-      const match = fullUrl.match(/[?&](code|coupon|ref)=([^&/#]+)/i);
-      if (match && match[2]) {
-        const urlCode = decodeURIComponent(match[2]);
-        applyCoupon(urlCode);
-      }
-    } catch (e) {
-      console.error('Error parsing referral code from URL:', e);
+    const urlCode = extractPromoCodeFromUrl();
+    if (urlCode) {
+      applyCoupon(urlCode);
     }
   }, [isOpen]);
 
   const copyReferralLink = (codeToUse) => {
     const code = codeToUse || couponCode.trim() || 'FREEFORU';
-    const baseUrl = window.location.origin + window.location.pathname;
-    const refUrl = `${baseUrl}#/pricing?code=${encodeURIComponent(code)}`;
+    let originPath = window.location.origin + window.location.pathname;
+    if (!originPath.endsWith('/')) {
+      originPath += '/';
+    }
+    const refUrl = `${originPath}#/pricing?code=${encodeURIComponent(code)}`;
     navigator.clipboard.writeText(refUrl);
     setCopiedLink(true);
     setTimeout(() => setCopiedLink(false), 3000);

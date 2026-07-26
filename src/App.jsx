@@ -13,6 +13,8 @@ import { ShieldAlert, Award, X } from 'lucide-react';
 import { telemetry } from './utils/telemetryTracker';
 import { supabase } from './utils/supabaseClient';
 
+import { extractPromoCodeFromUrl } from './utils/promoCodes';
+
 // Lazy-loaded page components for code splitting
 const TypingLessons = React.lazy(() => import('./pages/TypingLessons'));
 const TypingCourses = React.lazy(() => import('./pages/TypingCourses'));
@@ -83,12 +85,9 @@ function App() {
 
     // Auto-navigate to /pricing if referral code is in URL search/hash
     try {
-      const fullUrl = window.location.href;
-      const hasCode = /[?&](code|coupon|ref)=/i.test(fullUrl);
-      if (hasCode && !window.location.hash.includes('/pricing')) {
-        const match = fullUrl.match(/([?&](code|coupon|ref)=[^&/#]+)/i);
-        const paramStr = match ? '?' + match[1] : '';
-        window.location.hash = '#/pricing' + paramStr;
+      const code = extractPromoCodeFromUrl();
+      if (code && !window.location.hash.includes('/pricing')) {
+        window.location.hash = `#/pricing?code=${encodeURIComponent(code)}`;
       }
     } catch (e) {}
 
