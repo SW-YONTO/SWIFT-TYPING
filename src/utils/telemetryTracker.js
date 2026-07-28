@@ -14,16 +14,9 @@ function getDeviceId() {
   return deviceId;
 }
 
-/**
- * Ultra-Quota-Efficient Telemetry Tracker
- * Uses 1 Daily UPSERT Row per user per day instead of logging every lesson.
- * Reduces database requests by 97% while maintaining 100% full offline data integrity.
- */
 class TelemetryTracker {
   constructor() {
     this.deviceId = getDeviceId();
-    this.lastSyncTime = 0;
-    this.SYNC_INTERVAL_MS = import.meta.env.DEV ? 10 * 1000 : 10 * 60 * 1000; // 10 seconds in development, 10 minutes in production
     this.initialized = false;
   }
 
@@ -31,103 +24,57 @@ class TelemetryTracker {
     if (this.initialized) return;
     this.initialized = true;
 
-    // Flush pending offline stats on startup, online reconnect, or tab close
     if (typeof window !== 'undefined') {
       window.addEventListener('online', () => {
-        this.syncDailySummary(true);
-        this.syncPastHistory();
+        this.syncActiveUserProgress();
+        this.startPingHeartbeat();
       });
-      window.addEventListener('beforeunload', () => this.syncDailySummary(true));
+      window.addEventListener('beforeunload', () => this.syncActiveUserProgress());
     }
 
-    // Initial sync & one-time past history sync
-    this.syncDailySummary();
-    this.syncPastHistory();
+    // Initial cloud sync ONLY for active logged-in user
+    this.syncActiveUserProgress();
+    this.startPingHeartbeat();
   }
 
-  async checkBanStatus(username = '') {
-    const targetUser = (username || '').toLowerCase();
-    const targetDev  = (this.deviceId || '').toLowerCase();
+  /**
+   * Periodic Ping Heartbeat (Every 3 minutes)
+   * Updates only last_seen timestamp in Supabase user_telemetry table.
+   * Extremely lightweight, uses < 100 bytes of bandwidth!
+   */
+  startPingHeartbeat() {
+    if (this.pingTimer) clearInterval(this.pingTimer);
+    this.pingTimer = setInterval(async () => {
+      if (!navigator.onLine) return;
+      try {
+        const currentUserId = localStorage.getItem('typing_app_current_user');
+        if (!currentUserId) return;
+        const users = JSON.parse(localStorage.getItem('typing_app_users') || '[]');
+        const targetUser = users.find(u => u.id === currentUserId);
+        if (!targetUser || !targetUser.username) return;
 
-    // 1. Check local banManager first (fast & offline lock)
-    try {
-      const bannedList = JSON.parse(localStorage.getItem('swift_banned_devices') || '[]');
-      const localFound = bannedList.find(b => {
-        const d = (b.device_id || '').toLowerCase();
-        return b.is_banned && (d === targetDev || (targetUser && d === targetUser));
-      });
+        const ADMIN_USERNAMES = ['sd', 'swsharagaki', 'admin', 'swiftadmin'];
+        if (ADMIN_USERNAMES.includes(targetUser.username.toLowerCase().trim())) return;
 
-      if (localFound) {
-        const reason = localFound.ban_reason || 'Suspended by Administrator.';
-        localStorage.setItem('swift_device_banned', 'true');
-        localStorage.setItem('swift_ban_reason', reason);
-      }
-    } catch (e) {}
+        const cleanUser = targetUser.username.toLowerCase().replace(/[^a-z0-9]/g, '_');
+        const rowId = `${this.deviceId}_${cleanUser}`;
+        const nowIso = new Date().toISOString();
 
-    // Enforce offline lock: Disconnecting Internet CANNOT bypass ban
-    if (!navigator.onLine) {
-      const isBannedLocally = localStorage.getItem('swift_device_banned') === 'true';
-      if (isBannedLocally) {
-        return true;
-      }
-      return false;
-    }
+        console.log('💚 [PING HEARTBEAT]: Updating last_seen timestamp for', targetUser.username);
 
-    // 2. Check Supabase user_moderation (case-insensitive target matching)
-    try {
-      const targets = Array.from(new Set([
-        this.deviceId,
-        targetDev,
-        username,
-        targetUser
-      ])).filter(Boolean);
-
-      const { data } = await supabase
-        .from('user_moderation')
-        .select('*')
-        .in('device_id', targets)
-        .eq('is_banned', true)
-        .limit(1);
-
-      if (data && data.length > 0) {
-        const item = data[0];
-        const reason = item.ban_reason || 'Suspended by Administrator.';
-
-        // Lock in local storage & local banManager so offline reloads stay banned
-        localStorage.setItem('swift_device_banned', 'true');
-        localStorage.setItem('swift_ban_reason', reason);
-        try {
-          const list = JSON.parse(localStorage.getItem('swift_banned_devices') || '[]');
-          if (!list.some(b => b.device_id?.toLowerCase() === targetUser || b.device_id?.toLowerCase() === targetDev)) {
-            list.unshift({ device_id: username || this.deviceId, is_banned: true, ban_reason: reason, banned_at: new Date().toISOString() });
-            localStorage.setItem('swift_banned_devices', JSON.stringify(list));
-          }
-        } catch (e) {}
-
-        return true;
-      } else {
-        // ONLY clear local ban when ONLINE and Supabase confirms user is NOT banned
-        localStorage.setItem('swift_device_banned', 'false');
-        localStorage.removeItem('swift_ban_reason');
-        try {
-          const list = JSON.parse(localStorage.getItem('swift_banned_devices') || '[]');
-          const filtered = list.filter(b => b.device_id?.toLowerCase() !== targetUser && b.device_id?.toLowerCase() !== targetDev);
-          localStorage.setItem('swift_banned_devices', JSON.stringify(filtered));
-        } catch (e) {}
-
-        return false;
-      }
-    } catch (e) {
-      const isB = localStorage.getItem('swift_device_banned') === 'true';
-      return isB;
-    }
+        await supabase
+          .from('user_telemetry')
+          .update({ last_seen: nowIso })
+          .eq('id', rowId);
+      } catch (e) {}
+    }, 3 * 60 * 1000);
   }
 
   getPlatformInfo() {
     const isElectron = !!(
-      window.electron || 
-      window.electronAPI || 
-      window.process?.type === 'renderer' || 
+      window.electron ||
+      window.electronAPI ||
+      window.process?.type === 'renderer' ||
       navigator.userAgent.includes('Electron')
     );
 
@@ -147,172 +94,259 @@ class TelemetryTracker {
   }
 
   /**
-   * Called whenever user completes a test, lesson, or game (Online or Offline)
+   * Sync complete user progress snapshot from localStorage to Supabase 'user_telemetry' table.
    */
-  recordTest({ wpm = 0, accuracy = 0, timeSpent = 0, type = 'test' }) {
-    const today = new Date().toISOString().split('T')[0];
-    let session = JSON.parse(localStorage.getItem('swift_today_session') || '{}');
-
-    if (session.date !== today) {
-      session = {
-        date: today,
-        testsCompleted: 0,
-        wpmSum: 0,
-        maxWpm: 0,
-        accuracySum: 0,
-        totalTimeSpent: 0
-      };
-    }
-
-    // Accumulate locally (works 100% offline!)
-    session.testsCompleted += 1;
-    session.wpmSum += Number(wpm) || 0;
-    session.maxWpm = Math.max(session.maxWpm || 0, Number(wpm) || 0);
-    session.accuracySum += Number(accuracy) || 0;
-    session.totalTimeSpent += Number(timeSpent) || 0;
-
-    localStorage.setItem('swift_today_session', JSON.stringify(session));
-
-    // Throttled UPSERT to Supabase if online
-    this.syncDailySummary();
-  }
-
-  /**
-   * UPSERT 1 Single Daily Row to Supabase per user per day.
-   * Batched to sync every 10 minutes max, or on tab close/reconnect.
-   */
-  async syncDailySummary(force = false) {
+  async syncUserProgress(userId) {
     if (!navigator.onLine) return;
-
-    // 10-minute batch interval (unless forced on reconnect or tab close)
-    const now = Date.now();
-    if (!force && now - this.lastSyncTime < this.SYNC_INTERVAL_MS) return;
-
-    const today = new Date().toISOString().split('T')[0];
-    const session = JSON.parse(localStorage.getItem('swift_today_session') || '{}');
-    if (!session.testsCompleted || session.date !== today) return;
-
-    this.lastSyncTime = now;
-
-    try {
-      const { clientType, osPlatform } = this.getPlatformInfo();
-      let username = 'Anonymous Typist';
-      try {
-        const currentUserId = localStorage.getItem('typing_app_current_user');
-        const users = JSON.parse(localStorage.getItem('typing_app_users') || '[]');
-        const user = users.find(u => u.id === currentUserId);
-        if (user?.username) username = user.username;
-      } catch (e) {}
-
-      // Exclude Admin Accounts (sd, swsharagaki, admin, swiftadmin) from telemetry tracking
-      const ADMIN_USERNAMES = ['sd', 'swsharagaki', 'admin', 'swiftadmin'];
-      if (ADMIN_USERNAMES.includes(username.toLowerCase())) {
-        return;
-      }
-
-      const summaryId = `${this.deviceId}_${today}`;
-      const avgWpm = Math.round(session.wpmSum / session.testsCompleted);
-      const avgAccuracy = Math.round(session.accuracySum / session.testsCompleted);
-
-      const dailyPayload = {
-        summary_id: summaryId,
-        device_id: this.deviceId,
-        username,
-        client_type: clientType,
-        os_platform: osPlatform,
-        app_version: APP_VERSION,
-        date: today,
-        last_seen: new Date().toISOString(),
-        tests_completed: session.testsCompleted,
-        max_wpm: session.maxWpm,
-        avg_wpm: avgWpm,
-        avg_accuracy: avgAccuracy,
-        total_time_seconds: session.totalTimeSpent,
-        updated_at: new Date().toISOString()
-      };
-
-      await supabase.from('user_daily_telemetry').upsert([dailyPayload], { onConflict: 'summary_id' });
-    } catch (err) {
-      // Quiet fail
-    }
-  }
-
-  /**
-   * One-time sync of user's past local history to Supabase daily telemetry.
-   * Runs only once per device.
-   */
-  async syncPastHistory() {
-    if (!navigator.onLine) return;
-    const isMigrated = localStorage.getItem('swift_history_migrated_v2');
-    if (isMigrated === 'true') return;
 
     try {
       const usersStr = localStorage.getItem('typing_app_users');
       if (!usersStr) return;
       const users = JSON.parse(usersStr);
 
-      const { clientType, osPlatform } = this.getPlatformInfo();
+      const targetUser = users.find(u => u.id === userId || u.username === userId);
+      if (!targetUser || !targetUser.username) return;
 
-      for (const u of users) {
-        const progressStr = localStorage.getItem(`typing_app_user_progress_${u.id}`);
-        if (!progressStr) continue;
-        const progress = JSON.parse(progressStr);
-
-        const results = progress.testResults || [];
-        if (results.length === 0) continue;
-
-        // Group results by day
-        const dailyGroups = {};
-        results.forEach(r => {
-          const dateStr = r.completedAt ? r.completedAt.split('T')[0] : null;
-          if (!dateStr) return;
-
-          if (!dailyGroups[dateStr]) {
-            dailyGroups[dateStr] = {
-              tests: 0,
-              wpmSum: 0,
-              maxWpm: 0,
-              accSum: 0,
-              timeSpent: 0
-            };
-          }
-          dailyGroups[dateStr].tests += 1;
-          dailyGroups[dateStr].wpmSum += Number(r.wpm) || 0;
-          dailyGroups[dateStr].maxWpm = Math.max(dailyGroups[dateStr].maxWpm, Number(r.wpm) || 0);
-          dailyGroups[dateStr].accSum += Number(r.accuracy) || 0;
-          dailyGroups[dateStr].timeSpent += Number(r.timeSpent || 60) || 0;
-        });
-
-        // Upsert each day's group to Supabase
-        for (const [dateStr, g] of Object.entries(dailyGroups)) {
-          const summaryId = `${this.deviceId}_${dateStr}`;
-          const avgWpm = Math.round(g.wpmSum / g.tests);
-          const avgAccuracy = Math.round(g.accSum / g.tests);
-
-          const payload = {
-            summary_id: summaryId,
-            device_id: this.deviceId,
-            username: u.username,
-            client_type: clientType,
-            os_platform: osPlatform,
-            app_version: APP_VERSION,
-            date: dateStr,
-            last_seen: new Date(dateStr).toISOString(),
-            tests_completed: g.tests,
-            max_wpm: g.maxWpm,
-            avg_wpm: avgWpm,
-            avg_accuracy: avgAccuracy,
-            total_time_seconds: g.timeSpent,
-            updated_at: new Date().toISOString()
-          };
-
-          await supabase.from('user_daily_telemetry').upsert([payload], { onConflict: 'summary_id' });
-        }
+      const ADMIN_USERNAMES = ['sd', 'swsharagaki', 'admin', 'swiftadmin'];
+      if (ADMIN_USERNAMES.includes(targetUser.username.toLowerCase().trim())) {
+        return;
       }
 
-      localStorage.setItem('swift_history_migrated_v2', 'true');
+      const progRaw = localStorage.getItem(`typing_app_user_progress_${targetUser.id}`);
+      const prog = progRaw ? JSON.parse(progRaw) : {};
+      const stats = prog.stats || {};
+      const completedLessons = prog.completedLessons || [];
+      const testResults = prog.testResults || [];
+
+      let computedAvgAcc = targetUser.averageAccuracy || 90;
+      const nonGameResults = testResults.filter(r => r.type !== 'game');
+      if (nonGameResults.length > 0) {
+        computedAvgAcc = Math.round(
+          nonGameResults.reduce((sum, r) => sum + (r.accuracy || 0), 0) / nonGameResults.length
+        );
+      }
+
+      let computedAvgWpm = targetUser.averageWPM || 0;
+      if (nonGameResults.length > 0) {
+        computedAvgWpm = Math.round(
+          nonGameResults.reduce((sum, r) => sum + (r.wpm || 0), 0) / nonGameResults.length
+        );
+      }
+
+      const { clientType, osPlatform } = this.getPlatformInfo();
+      const cleanUser = targetUser.username.toLowerCase().replace(/[^a-z0-9]/g, '_');
+      const rowId = `${this.deviceId}_${cleanUser}`;
+
+      const payload = {
+        id: rowId,
+        device_id: this.deviceId,
+        user_id: targetUser.id,
+        username: targetUser.username,
+        client_type: clientType,
+        os_platform: osPlatform,
+        app_version: APP_VERSION,
+        average_wpm: computedAvgWpm,
+        best_wpm: stats.bestWPM || computedAvgWpm,
+        average_accuracy: computedAvgAcc,
+        lessons_completed_count: completedLessons.length,
+        total_time_seconds: stats.totalTime || 0,
+        total_tests: stats.totalTests || targetUser.totalTests || testResults.length,
+        completed_lessons: completedLessons,
+        test_results: testResults,
+        last_seen: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      };
+
+      console.log('☁️ [SUPABASE SYNC SUCCESS]: Synced full user progress for', targetUser.username, payload);
+
+      const { error } = await supabase
+        .from('user_telemetry')
+        .upsert([payload], { onConflict: 'id' });
+
+      if (error) {
+        console.warn('⚠️ Supabase user_telemetry upsert alert:', error.message);
+      }
+    } catch (err) {
+      console.warn('Failed to sync user progress to cloud:', err);
+    }
+  }
+
+  /**
+   * Listen for live updates from Admin (e.g. unlocked lessons) via Supabase Realtime & Periodic Poll
+   */
+  subscribeToCloudProgressUpdates(userId, username, onCloudUpdate) {
+    if (!navigator.onLine || !userId) return () => {};
+
+    const cleanUser = (username || '').toLowerCase().trim();
+
+    // 1. Initial fetch check on mount
+    this.fetchLatestCloudProgress(userId, username, onCloudUpdate);
+
+    // 2. Realtime Channel Subscription
+    const channelName = `user_telemetry_sync_${userId}_${Math.random().toString(36).substring(2, 6)}`;
+    const channel = supabase
+      .channel(channelName)
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'user_telemetry' },
+        (payload) => {
+          if (!payload.new) return;
+          const remoteUser = (payload.new.username || '').toLowerCase().trim();
+          const remoteUserId = payload.new.user_id || '';
+          if (remoteUser === cleanUser || remoteUserId === userId) {
+            console.log('⚡ [REALTIME CLOUD PUSH RECEIVED]: Admin updated progress!', payload.new);
+            this.applyCloudProgressToLocal(userId, payload.new, onCloudUpdate);
+          }
+        }
+      )
+      .subscribe();
+
+    // 3. Periodic 10s poll check in case Realtime WebSockets are blocked
+    const pollInterval = setInterval(() => {
+      this.fetchLatestCloudProgress(userId, username, onCloudUpdate);
+    }, 10000);
+
+    return () => {
+      try {
+        supabase.removeChannel(channel);
+      } catch (e) {}
+      clearInterval(pollInterval);
+    };
+  }
+
+  async fetchLatestCloudProgress(userId, username, onCloudUpdate) {
+    try {
+      if (!navigator.onLine || !userId) return;
+      const cleanUser = (username || '').toLowerCase().trim();
+      const { data } = await supabase
+        .from('user_telemetry')
+        .select('*')
+        .or(`user_id.eq.${userId},username.ilike.${username}`)
+        .limit(1);
+
+      if (data && data.length > 0) {
+        const cloudRecord = data[0];
+        this.applyCloudProgressToLocal(userId, cloudRecord, onCloudUpdate);
+      }
+    } catch (e) {}
+  }
+
+  applyCloudProgressToLocal(userId, cloudRecord, onCloudUpdate) {
+    if (!cloudRecord || !userId) return;
+
+    try {
+      const progKey = `typing_app_user_progress_${userId}`;
+      const localRaw = localStorage.getItem(progKey);
+      const localProg = localRaw ? JSON.parse(localRaw) : { completedLessons: [], stats: {} };
+
+      const remoteLessons = cloudRecord.completed_lessons || [];
+      const localLessons = localProg.completedLessons || [];
+
+      const remoteJson = JSON.stringify((remoteLessons || []).map(l => typeof l === 'string' ? l : l.lessonId).sort());
+      const localJson = JSON.stringify((localLessons || []).map(l => typeof l === 'string' ? l : l.lessonId).sort());
+
+      const hasNewData = remoteJson !== localJson;
+
+      if (hasNewData) {
+        localProg.completedLessons = remoteLessons;
+        if (cloudRecord.best_wpm) localProg.stats.bestWPM = Math.max(localProg.stats?.bestWPM || 0, cloudRecord.best_wpm);
+        if (cloudRecord.total_time_seconds) localProg.stats.totalTime = Math.max(localProg.stats?.totalTime || 0, cloudRecord.total_time_seconds);
+
+        localStorage.setItem(progKey, JSON.stringify(localProg));
+
+        console.log('🎉 [CLIENT LOCAL PROGRESS SYNCED FROM CLOUD]: Updated lessons count =', remoteLessons.length);
+
+        if (typeof onCloudUpdate === 'function') {
+          onCloudUpdate(cloudRecord, remoteLessons.length);
+        }
+      }
     } catch (e) {
-      console.warn('History migration failed:', e);
+      console.warn('Failed to apply cloud progress to local storage:', e);
+    }
+  }
+
+  /**
+   * Sync ONLY the active logged-in user to Supabase
+   */
+  async syncActiveUserProgress() {
+    try {
+      const currentUserId = localStorage.getItem('typing_app_current_user');
+      if (currentUserId) {
+        await this.syncUserProgress(currentUserId);
+      }
+    } catch (e) {}
+  }
+
+  /**
+   * Called whenever a test or lesson finishes
+   */
+  recordTest({ wpm = 0, accuracy = 0, timeSpent = 0, type = 'test' }) {
+    const currentUserId = localStorage.getItem('typing_app_current_user');
+    if (currentUserId) {
+      this.syncUserProgress(currentUserId);
+    }
+  }
+
+  async checkBanStatus(username = '') {
+    const targetUser = (username || '').toLowerCase();
+    const targetDev = (this.deviceId || '').toLowerCase();
+
+    try {
+      const bannedList = JSON.parse(localStorage.getItem('swift_banned_devices') || '[]');
+      const localFound = bannedList.find(b => {
+        const d = (b.device_id || '').toLowerCase();
+        return b.is_banned && (d === targetDev || (targetUser && d === targetUser));
+      });
+
+      if (localFound) {
+        const reason = localFound.ban_reason || 'Suspended by Administrator.';
+        localStorage.setItem('swift_device_banned', 'true');
+        localStorage.setItem('swift_ban_reason', reason);
+        return true;
+      }
+    } catch (e) { }
+
+    if (!navigator.onLine) {
+      return localStorage.getItem('swift_device_banned') === 'true';
+    }
+
+    try {
+      const targets = Array.from(new Set([
+        this.deviceId,
+        targetDev,
+        username,
+        targetUser
+      ])).filter(Boolean);
+
+      const { data } = await supabase
+        .from('user_moderation')
+        .select('*')
+        .in('device_id', targets)
+        .eq('is_banned', true)
+        .limit(1);
+
+      if (data && data.length > 0) {
+        const item = data[0];
+        const reason = item.ban_reason || 'Suspended by Administrator.';
+        localStorage.setItem('swift_device_banned', 'true');
+        localStorage.setItem('swift_ban_reason', reason);
+
+        try {
+          const list = JSON.parse(localStorage.getItem('swift_banned_devices') || '[]');
+          if (!list.some(b => b.device_id?.toLowerCase() === targetDev)) {
+            list.unshift({ device_id: username || this.deviceId, is_banned: true, ban_reason: reason, banned_at: new Date().toISOString() });
+            localStorage.setItem('swift_banned_devices', JSON.stringify(list));
+          }
+        } catch (e) { }
+
+        return true;
+      } else {
+        localStorage.removeItem('swift_device_banned');
+        localStorage.removeItem('swift_ban_reason');
+        return false;
+      }
+    } catch (e) {
+      return localStorage.getItem('swift_device_banned') === 'true';
     }
   }
 }

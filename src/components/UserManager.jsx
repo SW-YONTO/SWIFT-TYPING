@@ -525,10 +525,10 @@ const UserManager = ({ onUserSelect, currentUser }) => {
               
               <div className="flex gap-3">
                 <button
-                  disabled={deleteConfirmUsername !== deletingUser.username}
+                  disabled={deleteConfirmUsername.trim().toLowerCase() !== deletingUser.username.trim().toLowerCase()}
                   onClick={confirmDeleteUser}
                   className={`flex-1 py-3 rounded-xl font-semibold flex items-center justify-center gap-2 transition-all ${
-                    deleteConfirmUsername === deletingUser.username
+                    deleteConfirmUsername.trim().toLowerCase() === deletingUser.username.trim().toLowerCase()
                       ? 'bg-red-600 hover:bg-red-500 text-white shadow-lg active:scale-95 cursor-pointer'
                       : 'bg-gray-300 dark:bg-gray-700 text-gray-500 dark:text-gray-400 cursor-not-allowed'
                   }`}

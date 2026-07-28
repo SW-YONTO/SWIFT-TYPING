@@ -3,15 +3,15 @@ import { supabase } from '../utils/supabaseClient';
 import { useTheme } from '../contexts/ThemeContext';
 import { userManager, progressManager, adminAuditManager, banManager } from '../utils/storage';
 import { typingLessons } from '../data/lessons';
-import { Users, Ban, RefreshCw, LogOut, LayoutDashboard, CheckCircle, Clock, Award, X, Eye, ChevronDown, Trash2, AlertTriangle } from 'lucide-react';
+import { Users, Ban, RefreshCw, LogOut, LayoutDashboard, CheckCircle, Clock, Award, X, Eye, ChevronDown, Trash2, AlertTriangle, Lock, Unlock, ShieldAlert, Info } from 'lucide-react';
 
-import AdminLockScreen     from '../components/admin/AdminLockScreen';
-import AdminOverview       from '../components/admin/AdminOverview';
-import AdminUserList       from '../components/admin/AdminUserList';
-import AdminModeration     from '../components/admin/AdminModeration';
-import TypistDeepDive      from '../components/admin/TypistDeepDive';
+import AdminLockScreen from '../components/admin/AdminLockScreen';
+import AdminOverview from '../components/admin/AdminOverview';
+import AdminUserList from '../components/admin/AdminUserList';
+import AdminModeration from '../components/admin/AdminModeration';
+import TypistDeepDive from '../components/admin/TypistDeepDive';
 import CompletionCertificate from '../components/admin/CompletionCertificate';
-import CustomDropdown      from '../components/common/CustomDropdown';
+import CustomDropdown from '../components/common/CustomDropdown';
 
 const DEFAULT_ADMIN_PASS = 'swiftadmin123';
 
@@ -20,14 +20,15 @@ export default function AdminPortal() {
 
   // ─── Auth ───────────────────────────────────────────────────
   const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [passwordInput,   setPasswordInput]   = useState('');
-  const [showPassword,    setShowPassword]    = useState(false);
-  const [authError,       setAuthError]       = useState('');
-  const [isShaking,       setIsShaking]       = useState(false);
+  const [passwordInput, setPasswordInput] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [authError, setAuthError] = useState('');
+  const [isShaking, setIsShaking] = useState(false);
 
   // ─── Toast Notification (Floating) ──────────────────────────
-  const [loading,             setLoading]             = useState(false);
-  const [statusMsg,           setStatusMsgState]      = useState('');
+  const [loading, setLoading] = useState(false);
+  const [statusMsg, setStatusMsgState] = useState(null);
+  
   const [autoRefreshInterval, setAutoRefreshIntervalState] = useState(() => {
     const saved = localStorage.getItem('swift_admin_auto_refresh');
     return saved !== null ? Number(saved) : 30;
@@ -37,13 +38,38 @@ export default function AdminPortal() {
     setAutoRefreshIntervalState(val);
     localStorage.setItem('swift_admin_auto_refresh', String(val));
   };
-
+  
   const setStatusMsg = (msg) => {
-    setStatusMsgState(msg);
-    if (msg) {
-      setTimeout(() => {
-        setStatusMsgState(prev => prev === msg ? '' : prev);
-      }, 3500);
+    if (!msg) {
+      setStatusMsgState(null);
+      return;
+    }
+    const cleanMsg = msg.replace(/[\p{Emoji_Presentation}\p{Extended_Pictographic}]/gu, '').trim();
+    
+    let type = 'info';
+    if (msg.includes('Alert') || msg.includes('Failed') || msg.includes('banned') || msg.includes('suspended') || msg.includes('❌') || msg.includes('🚫') || msg.includes('⚠️')) type = 'error';
+    else if (msg.includes('Unbanned') || msg.includes('Successfully') || msg.includes('exported') || msg.includes('✅') || msg.includes('💾')) type = 'success';
+    else if (msg.includes('Deleted') || msg.includes('cleared') || msg.includes('🗑️') || msg.includes('🧹')) type = 'delete';
+    else if (msg.includes('Unlocked') || msg.includes('🔓')) type = 'unlock';
+    else if (msg.includes('Locked') || msg.includes('🔒')) type = 'lock';
+    else if (msg.includes('Certificate') || msg.includes('🎓')) type = 'certificate';
+
+    const toastObj = { text: cleanMsg, type };
+    setStatusMsgState(toastObj);
+    setTimeout(() => {
+      setStatusMsgState(prev => prev?.text === cleanMsg ? null : prev);
+    }, 3500);
+  };
+
+  const getToastIcon = (type) => {
+    switch (type) {
+      case 'error': return <AlertTriangle className="w-5 h-5 text-red-400" />;
+      case 'success': return <CheckCircle className="w-5 h-5 text-emerald-400" />;
+      case 'delete': return <Trash2 className="w-5 h-5 text-red-400" />;
+      case 'unlock': return <Unlock className="w-5 h-5 text-emerald-400" />;
+      case 'lock': return <Lock className="w-5 h-5 text-amber-400" />;
+      case 'certificate': return <Award className="w-5 h-5 text-purple-400" />;
+      default: return <Info className="w-5 h-5 text-blue-400" />;
     }
   };
 
@@ -53,13 +79,13 @@ export default function AdminPortal() {
     electronRatio: '0%', electronCount: 0, webCount: 0,
     avgWpm: 0, maxWpm: 0, totalTestsCompleted: 0, totalTimeSpentMinutes: 0
   });
-  const [dailyData,            setDailyData]            = useState([]);
+  const [dailyData, setDailyData] = useState([]);
   const [platformDistribution, setPlatformDistribution] = useState([]);
-  const [telemetryLogs,        setTelemetryLogs]        = useState([]);
+  const [telemetryLogs, setTelemetryLogs] = useState([]);
 
   // ─── Users / Moderation / Audit Logs / Appeals / Modal ────────
   const [registeredUsersList, setRegisteredUsersList] = useState([]);
-  const [bannedDevices,       setBannedDevices]       = useState([]);
+  const [bannedDevices, setBannedDevices] = useState([]);
   const [whitelistedAnomalies, setWhitelistedAnomalies] = useState(() => {
     try {
       return JSON.parse(localStorage.getItem('swift_whitelisted_anomalies') || '[]');
@@ -67,36 +93,36 @@ export default function AdminPortal() {
       return [];
     }
   });
-  const [unbanAppeals,        setUnbanAppeals]        = useState([]);
-  const [banInput,            setBanInput]            = useState('');
-  const [banReasonInput,      setBanReasonInput]      = useState('Abuse of service or leaderboard cheating.');
-  const [pendingBanUser,      setPendingBanUser]      = useState(null);
+  const [unbanAppeals, setUnbanAppeals] = useState([]);
+  const [banInput, setBanInput] = useState('');
+  const [banReasonInput, setBanReasonInput] = useState('Abuse of service or leaderboard cheating.');
+  const [pendingBanUser, setPendingBanUser] = useState(null);
   const [pendingDeleteTargets, setPendingDeleteTargets] = useState(null);
-  const [customBanReason,     setCustomBanReason]     = useState('Abuse of service or leaderboard cheating.');
-  const [copiedDeviceId,      setCopiedDeviceId]      = useState(null);
-  const [auditLogs,           setAuditLogs]           = useState([]);
+  const [customBanReason, setCustomBanReason] = useState('Abuse of service or leaderboard cheating.');
+  const [copiedDeviceId, setCopiedDeviceId] = useState(null);
+  const [auditLogs, setAuditLogs] = useState([]);
 
   // ─── Navigation / UI ─────────────────────────────────────────
   const getInitialTab = () => {
     const h = window.location.hash;
-    if (h.includes('#users') || h.includes('/users'))             return 'users';
+    if (h.includes('#users') || h.includes('/users')) return 'users';
     if (h.includes('#moderation') || h.includes('/moderation')) return 'moderation';
     if (h.includes('#certificates') || h.includes('/certificates')) return 'certificates';
     return 'overview';
   };
 
-  const [activeTab,         setActiveTab]         = useState(getInitialTab);
-  const [selectedTypist,    setSelectedTypist]    = useState(null);
-  const [timeRange,         setTimeRange]         = useState('1D');
-  const [isFilterExpanded,  setIsFilterExpanded]  = useState(false);
-  const [searchQuery,       setSearchQuery]       = useState('');
-  const [certificateUser,   setCertificateUser]   = useState(null);
-  const [showCertDropdown,  setShowCertDropdown]  = useState(false);
+  const [activeTab, setActiveTab] = useState(getInitialTab);
+  const [selectedTypist, setSelectedTypist] = useState(null);
+  const [timeRange, setTimeRange] = useState('1D');
+  const [isFilterExpanded, setIsFilterExpanded] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [certificateUser, setCertificateUser] = useState(null);
+  const [showCertDropdown, setShowCertDropdown] = useState(false);
 
   // ─── Theme styling helpers ───────────────────────────
-  const cardClass    = `${theme.cardBg} ${theme.border} border shadow-xl rounded-3xl transition-all duration-300`;
+  const cardClass = `${theme.cardBg} ${theme.border} border shadow-xl rounded-3xl transition-all duration-300`;
   const subTextClass = theme.textSecondary || 'text-gray-400';
-  const inputClass   = `${theme.inputBg} ${theme.border} border ${theme.text} rounded-2xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all duration-200`;
+  const inputClass = `${theme.inputBg} ${theme.border} border ${theme.text} rounded-2xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all duration-200`;
 
   // ─── Routing helpers ─────────────────────────────────────────
   const handleTabChange = (tab) => {
@@ -104,29 +130,46 @@ export default function AdminPortal() {
     window.location.hash = `#/admin#${tab}`;
   };
 
-  const handleSelectUser = (username) => {
-    if (!username) return;
+  const handleSelectUser = (userOrName) => {
+    if (!userOrName) return;
+    const targetObj = typeof userOrName === 'string'
+      ? registeredUsersList.find(u => u.username?.toLowerCase() === userOrName.toLowerCase()) || { username: userOrName, id: userOrName }
+      : userOrName;
+
     setActiveTab('users');
-    window.location.hash = `#/admin#users/${username}`;
-    const found = registeredUsersList.find(u => u.username?.toLowerCase() === username.toLowerCase());
-    if (found) setSelectedTypist(found);
+    setSelectedTypist(targetObj);
+    const uParam = encodeURIComponent(targetObj.username || targetObj.id || '');
+    window.history.replaceState(null, '', `#/admin#users?user=${uParam}`);
   };
 
   useEffect(() => {
-    const handleHashChange = () => {
-      const hash = window.location.hash;
-      if (hash.includes('#users/') || hash.includes('/users/')) {
-        const parts = hash.split('/');
-        const username = parts[parts.length - 1];
-        if (username && registeredUsersList.length > 0) {
-          const found = registeredUsersList.find(u => u.username?.toLowerCase() === username.toLowerCase());
-          if (found) { setSelectedTypist(found); setActiveTab('users'); }
+    const handleUrlStateChange = () => {
+      const href = window.location.href;
+      let targetName = null;
+
+      const paramMatch = href.match(/[?&]user=([^&]+)/) || href.match(/#users\?([^&]+)/) || href.match(/#users\/([^&?]+)/);
+      if (paramMatch && paramMatch[1]) {
+        targetName = decodeURIComponent(paramMatch[1]).toLowerCase().trim();
+      }
+
+      if (targetName && registeredUsersList.length > 0) {
+        const found = registeredUsersList.find(u =>
+          u.username?.toLowerCase().trim() === targetName ||
+          u.id?.toLowerCase().trim() === targetName
+        );
+        if (found) {
+          setSelectedTypist(found);
+          setActiveTab('users');
         }
       }
     };
-    window.addEventListener('hashchange', handleHashChange);
-    if (registeredUsersList.length > 0) handleHashChange();
-    return () => window.removeEventListener('hashchange', handleHashChange);
+    window.addEventListener('hashchange', handleUrlStateChange);
+    window.addEventListener('popstate', handleUrlStateChange);
+    if (registeredUsersList.length > 0) handleUrlStateChange();
+    return () => {
+      window.removeEventListener('hashchange', handleUrlStateChange);
+      window.removeEventListener('popstate', handleUrlStateChange);
+    };
   }, [registeredUsersList]);
 
   // Load audit logs & local ban list on mount
@@ -171,39 +214,54 @@ export default function AdminPortal() {
   async function fetchAdminData() {
     setLoading(true);
 
-    const localUsers = userManager.getUsers() || [];
-    setRegisteredUsersList(localUsers);
-
-    let localTotalTests = 0, localWpmSum = 0, localMaxWpm = 0, localTimeSec = 0;
-    localUsers.forEach(u => {
-      localTotalTests += u.totalTests || 0;
-      if (u.averageWPM) localWpmSum += u.averageWPM;
-      const prog = progressManager.getUserProgress(u.id);
-      if (prog?.stats?.bestWPM)   localMaxWpm  = Math.max(localMaxWpm, prog.stats.bestWPM);
-      if (prog?.stats?.totalTime) localTimeSec += prog.stats.totalTime;
-    });
-
     const isElectron = !!(window.electron || window.electronAPI || window.process?.type === 'renderer' || navigator.userAgent.includes('Electron'));
     let supabaseLogs = [], remoteError = null;
 
     try {
       if (navigator.onLine) {
-        let { data: dailyLogs, error: dailyErr } = await supabase
-          .from('user_daily_telemetry').select('*').order('updated_at', { ascending: false }).limit(500);
+        let { data: masterTelemetry } = await supabase
+          .from('user_telemetry').select('*').order('updated_at', { ascending: false }).limit(500);
 
-        if (!dailyErr && dailyLogs?.length > 0) {
-          supabaseLogs = dailyLogs.map(d => ({
-            id: d.summary_id, device_id: d.device_id, client_type: d.client_type,
-            os_platform: d.os_platform, app_version: d.app_version,
-            event_type: '10s_session_sync',
-            created_at: d.updated_at || d.last_seen,
-            event_data: { username: d.username, tests_completed: d.tests_completed, max_wpm: d.max_wpm, avg_wpm: d.avg_wpm, avg_accuracy: d.avg_accuracy, total_time_seconds: d.total_time_seconds }
-          }));
-        } else {
-          const { data: rawLogs, error } = await supabase.from('app_telemetry').select('*').order('created_at', { ascending: false }).limit(500);
-          if (error) remoteError = error.message;
-          else if (rawLogs) supabaseLogs = rawLogs;
+        if (!masterTelemetry || masterTelemetry.length === 0) {
+          const res1 = await supabase.from('user_progress_summary').select('*').order('updated_at', { ascending: false }).limit(500);
+          const res2 = await supabase.from('user_daily_telemetry').select('*').order('updated_at', { ascending: false }).limit(500);
+          masterTelemetry = res1.data || res2.data || [];
         }
+
+        const logsMap = new Map();
+
+        if (masterTelemetry) {
+          masterTelemetry.forEach(d => {
+            const key = d.id || `${d.device_id}_${d.username}`;
+            logsMap.set(key, {
+              id: key,
+              device_id: d.device_id,
+              username: d.username,
+              client_type: d.client_type,
+              os_platform: d.os_platform,
+              app_version: d.app_version,
+              event_type: 'User Progress Sync',
+              created_at: d.updated_at || d.last_seen,
+              tests_completed: d.total_tests || d.tests_completed || 0,
+              max_wpm: d.best_wpm || d.max_wpm || 0,
+              avg_wpm: d.average_wpm || d.avg_wpm || 0,
+              avg_accuracy: d.average_accuracy || d.avg_accuracy || 90,
+              total_time_seconds: d.total_time_seconds || 0,
+              completed_lessons: d.completed_lessons || [],
+              test_results: d.test_results || [],
+              event_data: {
+                username: d.username,
+                tests_completed: d.total_tests || d.tests_completed || 0,
+                max_wpm: d.best_wpm || d.max_wpm || 0,
+                avg_wpm: d.average_wpm || d.avg_wpm || 0,
+                avg_accuracy: d.average_accuracy || d.avg_accuracy || 90,
+                total_time_seconds: d.total_time_seconds || 0
+              }
+            });
+          });
+        }
+
+        supabaseLogs = Array.from(logsMap.values()).sort((a, b) => new Date(b.created_at || Date.now()).getTime() - new Date(a.created_at || Date.now()).getTime());
       }
     } catch (err) { remoteError = err.message; }
 
@@ -211,27 +269,25 @@ export default function AdminPortal() {
     setTelemetryLogs(supabaseLogs);
 
     const electronCount = supabaseLogs.filter(l => l.client_type === 'electron').length + (isElectron ? 1 : 0);
-    const webCount      = supabaseLogs.filter(l => l.client_type === 'web').length  + (!isElectron ? 1 : 0);
-    const totalClients  = electronCount + webCount;
+    const webCount = supabaseLogs.filter(l => l.client_type === 'web').length + (!isElectron ? 1 : 0);
+    const totalClients = electronCount + webCount;
     const electronRatioStr = totalClients ? Math.round((electronCount / totalClients) * 100) + '%' : (isElectron ? '100%' : '0%');
 
     let remoteWpms = [], remoteMaxWpm = 0, remoteTests = 0;
     supabaseLogs.forEach(e => {
-      const d = e.event_data || {};
-      if (d.tests_completed) remoteTests += Number(d.tests_completed) || 0;
-      if (d.avg_wpm) remoteWpms.push(Number(d.avg_wpm));
-      if (d.wpm)     remoteWpms.push(Number(d.wpm));
-      if (d.max_wpm) remoteMaxWpm = Math.max(remoteMaxWpm, Number(d.max_wpm));
+      if (e.tests_completed) remoteTests += Number(e.tests_completed) || 0;
+      if (e.avg_wpm) remoteWpms.push(Number(e.avg_wpm));
+      if (e.max_wpm) remoteMaxWpm = Math.max(remoteMaxWpm, Number(e.max_wpm));
     });
 
     setStats({
-      uniqueUsers: new Set(supabaseLogs.map(l => l.device_id)).size || 1,
-      registeredUsersCount: localUsers.length,
+      uniqueUsers: new Set(supabaseLogs.map(l => l.device_id)).size || 0,
+      registeredUsersCount: supabaseLogs.length,
       electronRatio: electronRatioStr, electronCount, webCount,
-      avgWpm: remoteWpms.length ? Math.round(remoteWpms.reduce((a, b) => a + b, 0) / remoteWpms.length) : (localUsers.length ? Math.round(localWpmSum / localUsers.length) : 0),
-      maxWpm: Math.max(localMaxWpm, remoteMaxWpm),
-      totalTestsCompleted: Math.max(localTotalTests, remoteTests),
-      totalTimeSpentMinutes: Math.round(localTimeSec / 60)
+      avgWpm: remoteWpms.length ? Math.round(remoteWpms.reduce((a, b) => a + b, 0) / remoteWpms.length) : 0,
+      maxWpm: remoteMaxWpm,
+      totalTestsCompleted: remoteTests,
+      totalTimeSpentMinutes: Math.round(supabaseLogs.reduce((acc, l) => acc + (l.total_time_seconds || 0), 0) / 60)
     });
 
     // Daily Activity chart
@@ -239,28 +295,67 @@ export default function AdminPortal() {
     if (supabaseLogs.length) {
       supabaseLogs.forEach(l => { const d = l.created_at?.split('T')[0] || 'Today'; dailyMap[d] = (dailyMap[d] || 0) + 1; });
     } else {
-      dailyMap[new Date().toISOString().split('T')[0]] = localTotalTests || 1;
+      dailyMap[new Date().toISOString().split('T')[0]] = 0;
     }
     setDailyData(Object.keys(dailyMap).sort().slice(-7).map(day => ({ date: day.substring(5), activity: dailyMap[day] })));
     setPlatformDistribution([
       { name: 'Web Version', value: webCount || 1, color: '#3b82f6' },
-      { name: 'Desktop',     value: electronCount || (isElectron ? 1 : 0), color: '#a855f7' }
+      { name: 'Desktop', value: electronCount || (isElectron ? 1 : 0), color: '#a855f7' }
     ]);
 
-    // Merged typist list
+    // Merged typist list (populated exclusively from Supabase user_telemetry)
     const typistMap = {};
-    localUsers.forEach(u => {
-      if (u.username) typistMap[u.username.toLowerCase()] = { id: u.id || u.username, username: u.username, averageWPM: u.averageWPM || 0, totalTests: u.totalTests || 0, clientType: isElectron ? 'Desktop' : 'Web' };
-    });
+
     supabaseLogs.forEach(log => {
-      const d = log.event_data || {};
-      if (d.username && d.username !== 'Anonymous Typist') {
-        const key = d.username.toLowerCase();
-        const wpm = Number(d.wpm || d.avg_wpm) || 0;
-        if (!typistMap[key]) typistMap[key] = { id: key, username: d.username, averageWPM: wpm, totalTests: d.tests_completed || 1, clientType: log.client_type === 'electron' ? 'Desktop' : 'Web' };
-        else { typistMap[key].averageWPM = Math.max(typistMap[key].averageWPM, wpm); typistMap[key].totalTests = Math.max(typistMap[key].totalTests, d.tests_completed || 1); }
+      const uname = (log.username || '').trim();
+      const devId = (log.device_id || '').trim();
+      const logTime = log.created_at || log.last_seen;
+
+      const normName = uname && uname !== 'Anonymous Typist' ? uname.toLowerCase() : null;
+
+      let existingKey = null;
+      if (normName && typistMap[normName]) {
+        existingKey = normName;
+      } else if (devId) {
+        existingKey = Object.keys(typistMap).find(k => typistMap[k].id?.toLowerCase() === devId.toLowerCase()) || null;
+      }
+
+      const wpm = Number(log.avg_wpm || log.max_wpm) || 0;
+      const bestWpm = Number(log.max_wpm) || wpm;
+      const acc = Number(log.avg_accuracy) || 90;
+      const tests = Number(log.tests_completed) || 1;
+      const timeSec = Number(log.total_time_seconds) || 0;
+
+      if (existingKey) {
+        if (!typistMap[existingKey].averageWPM) typistMap[existingKey].averageWPM = wpm;
+        typistMap[existingKey].averageAccuracy = typistMap[existingKey].averageAccuracy || acc;
+        typistMap[existingKey].bestWPM = Math.max(typistMap[existingKey].bestWPM || 0, bestWpm);
+        typistMap[existingKey].totalTimeSeconds = Math.max(typistMap[existingKey].totalTimeSeconds || 0, timeSec);
+        typistMap[existingKey].completedLessons = log.completed_lessons || typistMap[existingKey].completedLessons || [];
+        typistMap[existingKey].testResults = log.test_results || typistMap[existingKey].testResults || [];
+        typistMap[existingKey].totalTests = Math.max(typistMap[existingKey].totalTests || 0, tests);
+        if (logTime && (!typistMap[existingKey].lastSeenTime || new Date(logTime).getTime() > new Date(typistMap[existingKey].lastSeenTime).getTime())) {
+          typistMap[existingKey].lastSeenTime = logTime;
+        }
+      } else {
+        const key = normName || (devId ? devId.toLowerCase() : `anon_${Math.random()}`);
+        const displayName = (uname && uname !== 'Anonymous Typist') ? uname : (devId ? `Device (${devId.substring(0, 10)})` : 'Typist');
+        typistMap[key] = {
+          id: log.id || devId || key,
+          username: displayName,
+          averageWPM: wpm,
+          averageAccuracy: acc,
+          bestWPM: bestWpm,
+          totalTimeSeconds: timeSec,
+          completedLessons: log.completed_lessons || [],
+          testResults: log.test_results || [],
+          totalTests: tests,
+          clientType: log.client_type === 'electron' ? 'Desktop' : 'Web',
+          lastSeenTime: logTime || new Date().toISOString()
+        };
       }
     });
+    setRegisteredUsersList(Object.values(typistMap));
     setRegisteredUsersList(Object.values(typistMap));
 
     // Merge Supabase bans with local banManager bans
@@ -279,7 +374,7 @@ export default function AdminPortal() {
           });
         }
       }
-    } catch (e) {}
+    } catch (e) { }
 
     // Fetch unban appeals from Supabase & localStorage with 30-day auto cleanup
     let appealsMap = {};
@@ -295,7 +390,7 @@ export default function AdminPortal() {
           appealsMap[key] = { ...a, id: key, is_read: a.is_read || false };
         }
       });
-    } catch (e) {}
+    } catch (e) { }
 
     try {
       if (navigator.onLine) {
@@ -309,7 +404,7 @@ export default function AdminPortal() {
           remoteAppeals.forEach(ra => {
             const key = ra.id || `${ra.device_id}_${ra.username}_${ra.created_at || ''}`;
             const createdAtMs = ra.created_at ? new Date(ra.created_at).getTime() : nowMs;
-            
+
             if (nowMs - createdAtMs > thirtyDaysMs) {
               if (ra.id) expiredIds.push(ra.id);
             } else {
@@ -318,11 +413,11 @@ export default function AdminPortal() {
           });
 
           if (expiredIds.length > 0) {
-            supabase.from('unban_requests').delete().in('id', expiredIds).then(() => {});
+            supabase.from('unban_requests').delete().in('id', expiredIds).then(() => { });
           }
         }
       }
-    } catch (e) {}
+    } catch (e) { }
 
     const mergedAppeals = Object.values(appealsMap);
     localStorage.setItem('swift_unban_appeals', JSON.stringify(mergedAppeals));
@@ -337,7 +432,7 @@ export default function AdminPortal() {
     const target = banInput.trim();
     if (!target) return;
     const reason = banReasonInput.trim() || 'Abuse of service or leaderboard cheating.';
-    
+
     // 1. Update local storage instantly
     const updatedLocal = banManager.ban(target, reason);
     setBannedDevices(updatedLocal);
@@ -348,13 +443,13 @@ export default function AdminPortal() {
     // 2. Sync to Supabase background
     try {
       if (navigator.onLine) {
-        await supabase.from('user_moderation').upsert({ 
-          device_id: target, 
-          is_banned: true, 
-          ban_reason: reason 
+        await supabase.from('user_moderation').upsert({
+          device_id: target,
+          is_banned: true,
+          ban_reason: reason
         });
       }
-    } catch (e) {}
+    } catch (e) { }
   };
 
   const handleQuickBan = async (user) => {
@@ -396,7 +491,7 @@ export default function AdminPortal() {
         if (deviceId && deviceId !== username) records.push({ device_id: deviceId, is_banned: true, ban_reason: reason });
         await supabase.from('user_moderation').upsert(records);
       }
-    } catch (e) {}
+    } catch (e) { }
 
     setPendingBanUser(null);
   };
@@ -418,7 +513,7 @@ export default function AdminPortal() {
         // Also try lowercase match in case ban was stored with different casing
         await supabase.from('user_moderation').delete().eq('device_id', identifier.toLowerCase());
       }
-    } catch (e) {}
+    } catch (e) { }
   };
 
   const handleDeleteAppeal = async (appealItem) => {
@@ -437,14 +532,14 @@ export default function AdminPortal() {
         if (devId) await supabase.from('unban_requests').delete().eq('device_id', devId);
       }
       setStatusMsg(`🗑️ Deleted appeal record for '${appealItem.username || devId}'.`);
-    } catch (e) {}
+    } catch (e) { }
   };
 
   const handleToggleReadAppeal = async (appealItem) => {
     if (!appealItem) return;
     try {
       const newReadState = !appealItem.is_read;
-      const updatedList = unbanAppeals.map(a => 
+      const updatedList = unbanAppeals.map(a =>
         (a.id === appealItem.id || a.device_id === appealItem.device_id) ? { ...a, is_read: newReadState } : a
       );
       setUnbanAppeals(updatedList);
@@ -453,7 +548,7 @@ export default function AdminPortal() {
       if (navigator.onLine && appealItem.id) {
         await supabase.from('unban_requests').update({ is_read: newReadState }).eq('id', appealItem.id);
       }
-    } catch (e) {}
+    } catch (e) { }
   };
 
   const handleClearAuditLogs = () => {
@@ -482,8 +577,8 @@ export default function AdminPortal() {
         const username = typeof t === 'string' ? t : t.username;
         const id = typeof t === 'object' ? t.id : null;
 
-        localUsers = localUsers.filter(u => 
-          (username ? u.username?.toLowerCase() !== username.toLowerCase() : true) && 
+        localUsers = localUsers.filter(u =>
+          (username ? u.username?.toLowerCase() !== username.toLowerCase() : true) &&
           (id ? u.id !== id : true)
         );
 
@@ -492,6 +587,15 @@ export default function AdminPortal() {
         if (found?.id) localStorage.removeItem(`typing_app_user_progress_${found.id}`);
       });
       localStorage.setItem('typing_app_users', JSON.stringify(localUsers));
+
+      const currentUserId = localStorage.getItem('typing_app_current_user');
+      if (currentUserId && !localUsers.some(u => u.id === currentUserId)) {
+        if (localUsers.length > 0) {
+          localStorage.setItem('typing_app_current_user', localUsers[0].id);
+        } else {
+          localStorage.removeItem('typing_app_current_user');
+        }
+      }
 
       // 2. Remove from Supabase Cloud Database tables
       for (const t of targets) {
@@ -502,15 +606,15 @@ export default function AdminPortal() {
 
         if (navigator.onLine) {
           if (username) {
-            await supabase.from('user_daily_telemetry').delete().ilike('username', username);
-            await supabase.from('app_telemetry').delete().eq('device_id', username);
+            await supabase.from('user_telemetry').delete().ilike('username', username);
+            await supabase.from('user_telemetry').delete().ilike('id', `%${username}%`);
             await supabase.from('user_moderation').delete().ilike('device_id', username);
             await supabase.from('issued_certificates').delete().ilike('username', username);
             await supabase.from('unban_requests').delete().ilike('username', username);
           }
           if (deviceId && deviceId.toLowerCase() !== username?.toLowerCase()) {
-            await supabase.from('user_daily_telemetry').delete().ilike('device_id', deviceId);
-            await supabase.from('app_telemetry').delete().eq('device_id', deviceId);
+            await supabase.from('user_telemetry').delete().ilike('device_id', deviceId);
+            await supabase.from('user_telemetry').delete().ilike('id', `%${deviceId}%`);
             await supabase.from('user_moderation').delete().ilike('device_id', deviceId);
             await supabase.from('unban_requests').delete().ilike('device_id', deviceId);
           }
@@ -532,7 +636,7 @@ export default function AdminPortal() {
 
   const handleCopyDeviceId = (deviceId) => {
     if (!deviceId) return;
-    try { navigator.clipboard.writeText(deviceId); } catch {}
+    try { navigator.clipboard.writeText(deviceId); } catch { }
     setBanInput(deviceId);
     setCopiedDeviceId(deviceId);
     setStatusMsg(`Copied device ID & pre-filled ban field.`);
@@ -553,7 +657,7 @@ export default function AdminPortal() {
           totalTime = prog.stats.totalTime;
         }
       }
-    } catch (e) {}
+    } catch (e) { }
 
     setSelectedTypist(user);
     setCertificateUser({
@@ -579,7 +683,7 @@ export default function AdminPortal() {
           totalTime = prog.stats.totalTime;
         }
       }
-    } catch (e) {}
+    } catch (e) { }
 
     setSelectedTypist(user);
     adminAuditManager.logAction('CERTIFICATE_ISSUED', user.username, `WPM: ${certWpm}`);
@@ -595,7 +699,7 @@ export default function AdminPortal() {
           issued_by: 'Administrator'
         });
       }
-    } catch (e) {}
+    } catch (e) { }
     setStatusMsg(`🎓 Certificate issued to "${user.username}" (${certWpm} WPM).`);
   };
 
@@ -693,10 +797,14 @@ export default function AdminPortal() {
 
     const newCompletedLessons = flatLessons.slice(0, unlockCount).map(lessonId => {
       const found = (progress.completedLessons || []).find(c => c.lessonId === lessonId);
-      return found || {
+      if (found) {
+        return found; // KEEP ORIGINAL UNTOUCHED (genuine WPM, accuracy, completedAt)!
+      }
+      return {
         lessonId,
-        wpm: existingWpm,
-        accuracy: existingAcc,
+        wpm: 0,
+        accuracy: 0,
+        unlockedByAdmin: true,
         completedAt: new Date().toISOString()
       };
     });
@@ -704,31 +812,37 @@ export default function AdminPortal() {
     progress.completedLessons = newCompletedLessons;
     progressManager.saveUserProgress(localUser.id, progress);
 
-    // Sync to Supabase cloud table user_daily_telemetry with completed_lessons payload so remote client updates
+    // Sync to master Supabase table user_telemetry so client receives realtime push
     try {
       if (navigator.onLine) {
-        const today = new Date().toISOString().split('T')[0];
-        const summaryId = `admin_sync_${selectedTypist.username.toLowerCase()}_${today}`;
-        await supabase.from('user_daily_telemetry').upsert([{
-          summary_id: summaryId,
-          device_id: selectedTypist.id || selectedTypist.username,
+        const cleanUser = selectedTypist.username.toLowerCase().replace(/[^a-z0-9]/g, '_');
+        const rowId = `${selectedTypist.deviceId || 'dev_' + selectedTypist.id}_${cleanUser}`;
+        const payload = {
+          id: rowId,
+          device_id: selectedTypist.deviceId || selectedTypist.id || 'admin_pushed',
+          user_id: localUser.id,
           username: selectedTypist.username,
           client_type: selectedTypist.clientType?.toLowerCase() || 'web',
           os_platform: 'web',
           app_version: '3.26.9',
-          date: today,
-          last_seen: new Date().toISOString(),
-          tests_completed: Math.max(progress.stats?.totalTests || 0, unlockCount),
-          max_wpm: existingWpm,
-          avg_wpm: existingWpm,
-          avg_accuracy: existingAcc,
+          average_wpm: existingWpm,
+          best_wpm: existingWpm,
+          average_accuracy: existingAcc,
+          lessons_completed_count: newCompletedLessons.length,
           total_time_seconds: progress.stats?.totalTime || (unlockCount * 90),
-          completed_lessons: newCompletedLessons.map(l => l.lessonId),
+          total_tests: Math.max(progress.stats?.totalTests || 0, unlockCount),
+          completed_lessons: newCompletedLessons,
+          test_results: progress.testResults || [],
+          last_seen: new Date().toISOString(),
           updated_at: new Date().toISOString()
-        }], { onConflict: 'summary_id' });
+        };
+
+        console.log('⚡ [ADMIN PUSH PROGRESS]: Upserting master user_telemetry payload for', selectedTypist.username, payload);
+
+        await supabase.from('user_telemetry').upsert([payload], { onConflict: 'id' });
       }
     } catch (e) {
-      console.error('Failed to sync admin progress to Supabase:', e);
+      console.error('Failed to push admin progress update to Supabase user_telemetry:', e);
     }
 
     adminAuditManager.logAction('PROGRESS_UPDATE', selectedTypist.username, `Bulk progress set to ${percentage}% (${unlockCount} lessons)`);
@@ -736,55 +850,277 @@ export default function AdminPortal() {
     await fetchAdminData();
   };
 
+  // Helper to reliably find typist progress profile from local storage or user manager
+  const getTypistProgress = () => {
+    if (!selectedTypist || !selectedTypist.username) return null;
+    const targetName = selectedTypist.username.trim().toLowerCase();
+    const targetId = (selectedTypist.id || '').trim().toLowerCase();
+
+    // 1. Check current logged-in user
+    try {
+      const curUser = userManager.getCurrentUser();
+      if (curUser && (curUser.username?.trim().toLowerCase() === targetName || curUser.id?.trim().toLowerCase() === targetId)) {
+        const prog = progressManager.getUserProgress(curUser.id);
+        if (prog && (prog.completedLessons?.length > 0 || prog.testResults?.length > 0 || prog.stats?.totalTime > 0)) {
+          console.log('💾 [ADMIN PROGRESS MATCH]: Found via currentUser', curUser.id, prog);
+          return prog;
+        }
+      }
+    } catch { }
+
+    // 2. Check userManager registered users
+    try {
+      const users = userManager.getUsers() || [];
+      const matchedUser = users.find(u => u.username?.trim().toLowerCase() === targetName || u.id?.trim().toLowerCase() === targetId);
+      if (matchedUser) {
+        const prog = progressManager.getUserProgress(matchedUser.id);
+        if (prog && (prog.completedLessons?.length > 0 || prog.testResults?.length > 0 || prog.stats?.totalTime > 0)) {
+          console.log('💾 [ADMIN PROGRESS MATCH]: Found via userManager matchedUser', matchedUser.id, prog);
+          return prog;
+        }
+      }
+    } catch { }
+
+    // 3. Search all localStorage progress keys ONLY for keys specifically matching target user ID or username
+    try {
+      for (let i = 0; i < localStorage.length; i++) {
+        const k = localStorage.key(i);
+        if (k && k.startsWith('typing_app_user_progress_')) {
+          try {
+            const keyUserId = k.replace('typing_app_user_progress_', '').trim().toLowerCase();
+            const raw = localStorage.getItem(k);
+            if (raw) {
+              const parsed = JSON.parse(raw);
+              if (keyUserId === targetId || keyUserId === targetName || parsed.username?.trim().toLowerCase() === targetName) {
+                console.log('💾 [ADMIN PROGRESS MATCH]: Found via localStorage key scan', k, parsed);
+                return parsed;
+              }
+            }
+          } catch { }
+        }
+      }
+    } catch { }
+
+    // 4. Return selectedTypist remote user_telemetry progress if available
+    if (selectedTypist && (selectedTypist.completedLessons || selectedTypist.testResults)) {
+      return {
+        completedLessons: selectedTypist.completedLessons || [],
+        testResults: selectedTypist.testResults || [],
+        stats: {
+          bestWPM: selectedTypist.bestWPM || selectedTypist.averageWPM || 0,
+          bestAccuracy: selectedTypist.averageAccuracy || 90,
+          totalTime: selectedTypist.totalTimeSeconds || 0,
+          totalTests: selectedTypist.totalTests || 0
+        }
+      };
+    }
+
+    console.warn('⚠️ [ADMIN PROGRESS]: No matching progress object found for target typist:', targetName);
+    return null;
+  };
+
   // ─── Deep Analytics for selected typist ──────────────────────
   const getTypistAnalytics = () => {
     if (!selectedTypist || !selectedTypist.username) return null;
-    const username = selectedTypist.username?.toLowerCase() || '';
-    const typistLogs = telemetryLogs.filter(l => l.event_data?.username?.toLowerCase() === username);
+    const username = selectedTypist.username.trim().toLowerCase();
+    const typistLogs = telemetryLogs.filter(l => (l.username || l.event_data?.username || l.device_id || '').trim().toLowerCase() === username);
 
-    let localProg = null;
-    try {
-      const u = getOrCreateLocalUser(selectedTypist.username);
-      if (u) localProg = progressManager.getUserProgress(u.id);
-    } catch {}
+    const localProg = getTypistProgress();
 
-    const daysCutoff = { '1D': 1, '1W': 7, '1M': 30, '3M': 90, '6M': 180 }[timeRange] || 30;
-    const cutoff = Date.now() - daysCutoff * 86_400_000;
+    const rawMap = {};
+    const processItem = (t, wpm, acc) => {
+      if (!t || isNaN(t)) return;
+      if (wpm <= 0) return; // Skip 0 WPM unlocked placeholders so graph line stays accurate!
 
-    let dataPoints = [];
+      const dateObj = new Date(t);
+      const dateKey = timeRange === '1D' 
+        ? dateObj.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })
+        : dateObj.toISOString().split('T')[0];
+      const dateStr = timeRange === '1D'
+        ? dateObj.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })
+        : dateObj.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+
+      if (!rawMap[dateKey]) {
+        rawMap[dateKey] = {
+          timestamp: t,
+          dateStr: dateStr,
+          wpmSum: 0,
+          accSum: 0,
+          count: 0
+        };
+      }
+      rawMap[dateKey].wpmSum += wpm;
+      rawMap[dateKey].accSum += (acc > 0 ? acc : 90);
+      rawMap[dateKey].count += 1;
+    };
+
+    // Load from telemetry logs
     typistLogs.forEach(l => {
-      const t = new Date(l.created_at).getTime();
-      if (t >= cutoff) dataPoints.push({ date: new Date(l.created_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }), timestamp: t, wpm: Number(l.event_data?.wpm || l.event_data?.avg_wpm) || 0, accuracy: Number(l.event_data?.accuracy || l.event_data?.avg_accuracy) || 0 });
+      const t = new Date(l.created_at || l.last_seen || Date.now()).getTime();
+      const wpm = Number(l.avg_wpm || l.wpm || l.max_wpm || l.event_data?.wpm || l.event_data?.avg_wpm) || 0;
+      const acc = Number(l.avg_accuracy || l.event_data?.accuracy || l.event_data?.avg_accuracy) || 0;
+      processItem(t, wpm, acc);
     });
-    if (localProg?.testResults) {
-      localProg.testResults.forEach(r => {
-        const t = new Date(r.completedAt || Date.now()).getTime();
-        if (t >= cutoff) dataPoints.push({ date: new Date(t).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }), timestamp: t, wpm: Number(r.wpm) || 0, accuracy: Number(r.accuracy) || 0 });
+
+    // Load from cloud test_results
+    const cloudTests = selectedTypist?.test_results || selectedTypist?.testResults || [];
+    if (Array.isArray(cloudTests)) {
+      cloudTests.forEach(r => {
+        const t = new Date(r.completedAt || r.date || Date.now()).getTime();
+        const wpm = Number(r.wpm) || 0;
+        const acc = Number(r.accuracy) || 0;
+        processItem(t, wpm, acc);
       });
     }
-    dataPoints.sort((a, b) => a.timestamp - b.timestamp);
-    if (!dataPoints.length) dataPoints = [{ date: 'Initial', wpm: selectedTypist.averageWPM || 0, accuracy: 95 }];
+
+    // Load from localProg testResults
+    if (localProg?.testResults && Array.isArray(localProg.testResults)) {
+      localProg.testResults.forEach(r => {
+        const t = new Date(r.completedAt || r.date || Date.now()).getTime();
+        const wpm = Number(r.wpm) || 0;
+        const acc = Number(r.accuracy) || 0;
+        processItem(t, wpm, acc);
+      });
+    }
+
+    // Load from completed lessons (cloud + local) - Filter out 0 WPM unlocked placeholders
+    const allCompleted = [
+      ...(selectedTypist?.completed_lessons || []),
+      ...(selectedTypist?.completedLessons || []),
+      ...(localProg?.completedLessons || [])
+    ];
+
+    allCompleted.forEach((l, idx) => {
+      if (typeof l === 'object' && l !== null) {
+        const wpm = Number(l.wpm) || Number(l.grossWPM) || 0;
+        const acc = Number(l.accuracy) || 0;
+        if (wpm > 0) {
+          const t = new Date(l.completedAt || (Date.now() - (allCompleted.length - idx) * 3600000)).getTime();
+          processItem(t, wpm, acc);
+        }
+      }
+    });
+
+    let dataPoints = Object.values(rawMap).map(item => ({
+      date: item.dateStr,
+      timestamp: item.timestamp,
+      wpm: Math.round(item.wpmSum / item.count),
+      accuracy: Math.round(item.accSum / item.count)
+    })).sort((a, b) => a.timestamp - b.timestamp);
+
+    // Apply cutoff filter based on timeRange
+    const daysCutoff = { '1D': 1, '1W': 7, '1M': 30, '3M': 90, '6M': 180 }[timeRange] || 30;
+    const cutoff = Date.now() - daysCutoff * 86_400_000;
+    let filteredPoints = dataPoints.filter(p => p.timestamp >= cutoff);
+    let finalDataPoints = filteredPoints.length > 0 ? filteredPoints : dataPoints;
+
+    // Ensure Recharts receives at least 2 data points so AreaChart connects a line
+    if (finalDataPoints.length === 1) {
+      const p1 = finalDataPoints[0];
+      const startWpm = Math.max(5, Math.round(p1.wpm * 0.75));
+      const startAcc = Math.max(70, p1.accuracy - 3);
+      const prevDateObj = new Date(p1.timestamp - 86400000);
+      const prevDateStr = prevDateObj.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+
+      finalDataPoints = [
+        { date: prevDateStr, timestamp: p1.timestamp - 86400000, wpm: startWpm, accuracy: startAcc },
+        p1
+      ];
+    } else if (finalDataPoints.length === 0) {
+      const currentWpm = selectedTypist.averageWPM || 20;
+      const currentAcc = selectedTypist.averageAccuracy || 90;
+      const todayStr = new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+      const yesterdayObj = new Date(Date.now() - 86400000);
+      const yesterdayStr = yesterdayObj.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+
+      finalDataPoints = [
+        { date: yesterdayStr, timestamp: Date.now() - 86400000, wpm: Math.max(5, Math.round(currentWpm * 0.75)), accuracy: Math.max(70, currentAcc - 5) },
+        { date: todayStr, timestamp: Date.now(), wpm: currentWpm, accuracy: currentAcc }
+      ];
+    }
+
+    const validWpms = finalDataPoints.map(d => d.wpm).filter(w => w > 0);
+    const avgWpmVal = selectedTypist.averageWPM || (validWpms.length
+      ? Math.round(validWpms.reduce((a, b) => a + b, 0) / validWpms.length)
+      : 0);
+
+    // Extract peak WPM across local stats, telemetry logs, and graph data points
+    let logMaxWpm = 0;
+    let logAvgAcc = 0;
+    typistLogs.forEach(l => {
+      const m = Number(l.max_wpm || l.event_data?.max_wpm || l.event_data?.best_wpm || l.event_data?.wpm || l.wpm) || 0;
+      if (m > logMaxWpm) logMaxWpm = m;
+      const acc = Number(l.avg_accuracy || l.event_data?.avg_accuracy || l.event_data?.accuracy) || 0;
+      if (acc > logAvgAcc) logAvgAcc = acc;
+    });
+
+    const peakWpmVal = Math.max(
+      selectedTypist.averageWPM || 0,
+      localProg?.stats?.bestWPM || 0,
+      logMaxWpm,
+      ...finalDataPoints.map(d => d.wpm)
+    );
+
+    const validAccs = finalDataPoints.map(d => d.accuracy).filter(a => a > 0);
+    const avgAccVal = selectedTypist.averageAccuracy || logAvgAcc || (validAccs.length
+      ? Math.round(validAccs.reduce((a, b) => a + b, 0) / validAccs.length)
+      : (localProg?.stats?.bestAccuracy || 90));
+
+    const userLessons = getUserCompletedLessons();
+    const completedLessonsCount = userLessons.length;
+
+    // Time spent calculation (from localProg stats, test results, or telemetry logs)
+    let totalTimeSec = localProg?.stats?.totalTime || 0;
+    if (!totalTimeSec && localProg?.testResults) {
+      totalTimeSec = localProg.testResults.reduce((s, r) => s + (r.timeSpent || 0), 0);
+    }
+    let logMaxTime = 0;
+    typistLogs.forEach(l => {
+      const sec = Number(l.total_time_seconds || l.event_data?.total_time_seconds || l.event_data?.time_spent) || 0;
+      if (sec > logMaxTime) logMaxTime = sec;
+    });
+    totalTimeSec = Math.max(totalTimeSec, logMaxTime);
+
+    const timeSpentMins = Math.round(totalTimeSec / 60) || (localProg?.stats?.totalTime ? Math.round(localProg.stats.totalTime / 60) : 0);
+
+    console.log('📊 [ADMIN DEEP DIVE ANALYTICS]: Calculated Stats', {
+      selectedTypist: selectedTypist.username,
+      completedLessonsCount,
+      timeSpentMins,
+      peakWpmVal,
+      avgWpmVal,
+      avgAccVal,
+      dataPointsCount: finalDataPoints.length
+    });
 
     return {
-      dataPoints,
-      peakWpm: Math.max(selectedTypist.averageWPM || 0, ...dataPoints.map(d => d.wpm)),
-      avgAcc: dataPoints.length ? Math.round(dataPoints.reduce((s, d) => s + (d.accuracy || 95), 0) / dataPoints.length) : 95,
-      completedLessonsCount: localProg?.completedLessons?.length || 0,
-      totalTests: Math.max(selectedTypist.totalTests || 0, dataPoints.length),
-      timeSpentMins: Math.round((localProg?.stats?.totalTime || (dataPoints.length * 90)) / 60)
+      dataPoints: finalDataPoints.length > 0 ? finalDataPoints : [{ date: 'Initial', wpm: selectedTypist.averageWPM || 0, accuracy: 95 }],
+      avgWpm: avgWpmVal,
+      peakWpm: peakWpmVal,
+      avgAcc: avgAccVal,
+      completedLessonsCount,
+      totalTests: Math.max(selectedTypist.totalTests || 0, localProg?.testResults?.length || 0, finalDataPoints.length),
+      timeSpentMins
     };
   };
 
   // Get completed lessons list for selected user
   const getUserCompletedLessons = () => {
     if (!selectedTypist || !selectedTypist.username) return [];
-    try {
-      const u = getOrCreateLocalUser(selectedTypist.username);
-      if (u) {
-        const prog = progressManager.getUserProgress(u.id);
-        return prog?.completedLessons || [];
+    const localProg = getTypistProgress();
+    if (localProg?.completedLessons && localProg.completedLessons.length > 0) {
+      return localProg.completedLessons;
+    }
+    if (selectedTypist.completedLessons && Array.isArray(selectedTypist.completedLessons) && selectedTypist.completedLessons.length > 0) {
+      return selectedTypist.completedLessons;
+    }
+    const username = selectedTypist.username.trim().toLowerCase();
+    const typistLogs = telemetryLogs.filter(l => (l.username || l.event_data?.username || '').trim().toLowerCase() === username);
+    for (const log of typistLogs) {
+      if (log.completed_lessons && Array.isArray(log.completed_lessons) && log.completed_lessons.length > 0) {
+        return log.completed_lessons.map(item => typeof item === 'string' ? { lessonId: item, wpm: log.max_wpm || 60, accuracy: 95 } : item);
       }
-    } catch {}
+    }
     return [];
   };
 
@@ -806,9 +1142,9 @@ export default function AdminPortal() {
     logs.forEach(log => {
       const d = log.event_data || {};
       const tests = Number(d.tests_completed) || 1;
-      const wpm   = Number(d.avg_wpm || d.wpm) || 0;
-      const acc   = Number(d.avg_accuracy || d.accuracy) || 95;
-      const time  = Number(d.total_time_seconds) || tests * 60;
+      const wpm = Number(d.avg_wpm || d.wpm) || 0;
+      const acc = Number(d.avg_accuracy || d.accuracy) || 95;
+      const time = Number(d.total_time_seconds) || tests * 60;
       totalTests += tests; totalTime += time;
       maxWpm = Math.max(maxWpm, Number(d.max_wpm || wpm) || 0);
       wpmSum += wpm * tests; accSum += acc * tests;
@@ -827,7 +1163,7 @@ export default function AdminPortal() {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a'); a.href = url; a.download = `swift-typing-recovery-${selectedTypist.username}.json`;
     document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(url);
-    
+
     adminAuditManager.logAction('EXPORT_DATA', selectedTypist.username, 'Exported JSON recovery file');
     setStatusMsg(`💾 Recovery file exported for ${selectedTypist.username}!`);
   };
@@ -853,26 +1189,43 @@ export default function AdminPortal() {
 
   // Tab nav config
   const tabs = [
-    { id: 'overview',     label: 'Overview Dashboard',              icon: <LayoutDashboard className="w-4 h-4" />, count: null,                   activeClass: `${theme.accent} ${theme.secondary} border ${theme.border}`, },
-    { id: 'users',        label: 'Typist Profiles & Progression',   icon: <Users className="w-4 h-4" />,          count: registeredUsersList.length, activeClass: `${theme.accent} ${theme.secondary} border ${theme.border}`, },
-    { id: 'certificates', label: 'Certificates & Verification',     icon: <Award className="w-4 h-4 text-purple-500" />, count: null,           activeClass: 'text-purple-600 bg-purple-500/10 border border-purple-500/30', },
-    { id: 'moderation',   label: 'Moderation & Audit',              icon: <Ban className="w-4 h-4 text-red-500" />, count: bannedDevices.length,  activeClass: 'text-red-500 bg-red-500/10 border border-red-500/30',      },
+    { id: 'overview', label: 'Overview Dashboard', icon: <LayoutDashboard className="w-4 h-4" />, count: null, activeClass: `${theme.accent} ${theme.secondary} border ${theme.border}`, },
+    { id: 'users', label: 'Typist Profiles & Progression', icon: <Users className="w-4 h-4" />, count: registeredUsersList.length, activeClass: `${theme.accent} ${theme.secondary} border ${theme.border}`, },
+    { id: 'certificates', label: 'Certificates & Verification', icon: <Award className="w-4 h-4 text-purple-500" />, count: null, activeClass: 'text-purple-600 bg-purple-500/10 border border-purple-500/30', },
+    { id: 'moderation', label: 'Moderation & Audit', icon: <Ban className="w-4 h-4 text-red-500" />, count: bannedDevices.length, activeClass: 'text-red-500 bg-red-500/10 border border-red-500/30', },
   ];
 
   // ─── Main Render ──────────────────────────────────────────────
   return (
     <div className={`min-h-screen p-4 md:p-8 max-w-7xl mx-auto space-y-8 ${theme.background} ${theme.text} relative pb-20`}>
 
-      {/* Floating Toast Notification (Auto-dismisses in 3.5s) */}
+      {/* Floating Toast Notification (Theme-Matched, Icon-based) */}
       {statusMsg && (
-        <div className="fixed bottom-6 right-6 z-50 max-w-md p-4 bg-slate-950 text-white border border-emerald-500/50 shadow-2xl rounded-2xl text-xs font-extrabold flex items-center justify-between gap-3 backdrop-blur-md animate-bounce-short">
-          <div className="flex items-center gap-2.5">
-            <CheckCircle className="w-4 h-4 text-emerald-400 flex-shrink-0" />
-            <span>{statusMsg}</span>
+        <div className="fixed bottom-6 right-6 z-[99999] max-w-sm w-full animate-bounce-short pointer-events-auto">
+          <div className={`p-4 rounded-2xl shadow-2xl border backdrop-blur-2xl flex items-start gap-3.5 transition-all duration-300 ${theme?.cardBg || 'bg-slate-900'} ${theme?.border || 'border-slate-800'} ${theme?.text || 'text-white'}`}>
+            <div className={`p-2.5 rounded-xl ${theme?.secondary || 'bg-slate-800'} shrink-0 mt-0.5 flex items-center justify-center`}>
+              {getToastIcon(statusMsg.type)}
+            </div>
+            <div className="flex-1 pr-1 space-y-0.5 mt-1">
+              <h4 className={`text-xs font-black uppercase tracking-wider ${theme?.accent || 'text-emerald-400'}`}>
+                {statusMsg.type === 'error' ? 'System Alert' : 
+                 statusMsg.type === 'success' ? 'Success' : 
+                 statusMsg.type === 'delete' ? 'Deleted' : 
+                 statusMsg.type === 'unlock' ? 'Unlocked' : 
+                 statusMsg.type === 'lock' ? 'Locked' : 
+                 statusMsg.type === 'certificate' ? 'Certificate' : 'Notification'}
+              </h4>
+              <p className={`text-xs font-medium leading-relaxed ${theme?.textSecondary || 'text-slate-300'}`}>
+                {statusMsg.text}
+              </p>
+            </div>
+            <button 
+              onClick={() => setStatusMsgState(null)} 
+              className={`p-1 rounded-lg ${theme?.textSecondary || 'text-slate-400'} hover:${theme?.text || 'text-white'} hover:${theme?.secondary || 'bg-slate-800'} transition cursor-pointer`}
+            >
+              <X className="w-4 h-4" />
+            </button>
           </div>
-          <button onClick={() => setStatusMsg('')} className="p-1 hover:opacity-70 text-gray-400 hover:text-white transition">
-            <X className="w-4 h-4" />
-          </button>
         </div>
       )}
 
@@ -887,7 +1240,7 @@ export default function AdminPortal() {
           </div>
           <p className={`text-sm mt-1 ${subTextClass}`}>Real-time telemetry, user analytics, moderation &amp; curriculum controls</p>
         </div>
-        
+
         <div className="flex flex-wrap items-center gap-3">
           {/* Auto Refresh Dropdown (I-5) */}
           <CustomDropdown
@@ -921,9 +1274,8 @@ export default function AdminPortal() {
               handleTabChange(tab.id);
               if (tab.id === 'users' && !selectedTypist && registeredUsersList.length > 0) setSelectedTypist(registeredUsersList[0]);
             }}
-            className={`flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold text-sm transition-all cursor-pointer ${
-              activeTab === tab.id ? tab.activeClass : `${subTextClass} hover:opacity-80`
-            }`}
+            className={`flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold text-sm transition-all cursor-pointer ${activeTab === tab.id ? tab.activeClass : `${subTextClass} hover:opacity-80`
+              }`}
           >
             {tab.icon} {tab.label}{tab.count !== null ? ` (${tab.count})` : ''}
           </button>
@@ -947,7 +1299,7 @@ export default function AdminPortal() {
           <AdminUserList
             theme={theme} cardClass={cardClass} subTextClass={subTextClass} inputClass={inputClass}
             registeredUsersList={registeredUsersList} selectedTypist={selectedTypist}
-            setSelectedTypist={setSelectedTypist} searchQuery={searchQuery} setSearchQuery={setSearchQuery}
+            setSelectedTypist={handleSelectUser} searchQuery={searchQuery} setSearchQuery={setSearchQuery}
             handleQuickBan={handleQuickBan} handleIssueCertQuick={handleIssueCertQuick} handleExportBackupQuick={handleExportBackupQuick}
             handleDeleteUser={handleDeleteUser}
             bannedDevices={bannedDevices}
@@ -985,7 +1337,7 @@ export default function AdminPortal() {
             <div className={`p-5 border ${theme.border} ${theme.secondary} rounded-2xl space-y-4`}>
               <h4 className="font-extrabold text-sm">Select Student &amp; Issue Certificate</h4>
               <p className={`text-xs ${subTextClass}`}>Pick any registered typist to generate an official certificate with their peak WPM &amp; accuracy stats.</p>
-              
+
               <div className="space-y-3">
                 <label className={`text-[10px] font-bold uppercase tracking-wider ${subTextClass}`}>Select Student</label>
                 <select
@@ -1010,7 +1362,7 @@ export default function AdminPortal() {
                   >
                     <Award className="w-4 h-4" /> Certificate Actions <ChevronDown className="w-4 h-4" />
                   </button>
-                  
+
                   {showCertDropdown && selectedTypist && (
                     <div className="absolute left-0 right-0 mt-2 z-20 bg-slate-900 border border-slate-800 rounded-xl shadow-2xl p-1.5 space-y-1">
                       <button
@@ -1114,11 +1466,10 @@ export default function AdminPortal() {
                       key={preset}
                       type="button"
                       onClick={() => setCustomBanReason(preset)}
-                      className={`text-[10px] px-2.5 py-1 rounded-lg border transition text-left cursor-pointer ${
-                        customBanReason === preset
-                          ? 'bg-red-500/20 text-red-400 border-red-500/50 font-bold'
-                          : `${theme.secondary} ${subTextClass} border-gray-500/20 hover:opacity-80`
-                      }`}
+                      className={`text-[10px] px-2.5 py-1 rounded-lg border transition text-left cursor-pointer ${customBanReason === preset
+                        ? 'bg-red-500/20 text-red-400 border-red-500/50 font-bold'
+                        : `${theme.secondary} ${subTextClass} border-gray-500/20 hover:opacity-80`
+                        }`}
                     >
                       {preset}
                     </button>
@@ -1149,7 +1500,7 @@ export default function AdminPortal() {
       {pendingDeleteTargets && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-fadeIn">
           <div className={`${cardClass} p-6 max-w-md w-full space-y-5 shadow-2xl relative border-red-500/40 text-center`}>
-            
+
             {/* Close Button */}
             <button
               onClick={() => setPendingDeleteTargets(null)}

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { 
   ResponsiveContainer, AreaChart, Area, XAxis, YAxis, 
-  CartesianGrid, Tooltip 
+  CartesianGrid, Tooltip, Legend 
 } from 'recharts';
 import { 
   UserCheck, Download, Filter, TrendingUp, Award, Sliders, 
@@ -66,11 +66,19 @@ export default function TypistDeepDive({
 
   useEffect(() => {
     if (typistAnalytics && typistAnalytics.completedLessonsCount !== undefined) {
-      const totalLessons = 50;
+      let totalLessons = 83;
+      try {
+        let count = 0;
+        Object.values(typingLessons).forEach(unit => {
+          count += unit.lessons?.length || 0;
+        });
+        if (count > 0) totalLessons = count;
+      } catch (e) {}
+
       const currentPct = Math.min(100, Math.round((typistAnalytics.completedLessonsCount / totalLessons) * 100));
       setCustomProgress(currentPct);
     }
-  }, [selectedTypist?.username, typistAnalytics?.completedLessonsCount]);
+  }, [selectedTypist?.username, typistAnalytics?.completedLessonsCount, userCompletedLessons?.length]);
 
   const _cardClass  = cardClass || `${theme.cardBg} ${theme.border} border shadow-2xl rounded-3xl transition-all duration-300`;
   const _subText    = subTextClass || theme.textSecondary || 'text-gray-500';
@@ -112,10 +120,10 @@ export default function TypistDeepDive({
 
   const chartStroke   = isDarkMode ? '#94a3b8' : '#64748b';
   const chartGrid     = isDarkMode ? '#374151' : '#e2e8f0';
-  const chartAccent   = theme.css?.['--theme-primary'] || '#3b82f6';
+  const chartAccent   = theme.chartColor || theme.css?.['--theme-primary'] || (isDarkMode ? '#38bdf8' : '#2563eb');
   const tooltipBg     = isDarkMode ? '#1f2937' : '#ffffff';
-  const tooltipText   = isDarkMode ? '#f9fafb' : '#0f172a';
   const tooltipBorder = isDarkMode ? '#374151' : '#cbd5e1';
+  const tooltipText   = isDarkMode ? '#f9fafb' : '#0f172a';
 
   const toggleUnitExpand = (unitId) => {
     setExpandedUnits(prev => ({ ...prev, [unitId]: !prev[unitId] }));
@@ -133,62 +141,28 @@ export default function TypistDeepDive({
                 <UserCheck className={`w-7 h-7 ${theme.accent}`} /> {selectedTypist.username}
               </h2>
               {isBanned ? (
-                <span className="px-2.5 py-0.5 bg-red-500/20 text-red-500 border border-red-500/30 rounded-full text-xs font-black flex items-center gap-1">
+                <span className="px-2.5 py-1 bg-red-500/20 text-red-500 border border-red-500/30 rounded-full text-xs font-black flex items-center gap-1">
                   <ShieldAlert className="w-3.5 h-3.5 text-red-500" /> Banned
                 </span>
               ) : (
-                <span className="px-2.5 py-0.5 bg-emerald-500/15 text-emerald-600 border border-emerald-500/30 rounded-full text-xs font-black flex items-center gap-1">
-                  <ShieldCheck className="w-3.5 h-3.5 text-emerald-500" /> Active
-                </span>
+                <div className="px-3 py-1 bg-emerald-500/15 hover:bg-emerald-500/25 border border-emerald-500/30 text-emerald-500 font-extrabold text-xs rounded-full backdrop-blur-md flex items-center gap-1.5 shadow-sm transition">
+                  <Clock className="w-3.5 h-3.5 text-emerald-500" />
+                  <span>Last DB Update: {(() => {
+                    const rawTime = selectedTypist.lastSeenTime || selectedTypist.updated_at || selectedTypist.last_seen;
+                    if (!rawTime) return new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                    try {
+                      const d = new Date(rawTime);
+                      return isNaN(d.getTime()) ? 'Just now' : d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                    } catch (e) {
+                      return 'Just now';
+                    }
+                  })()}</span>
+                </div>
               )}
             </div>
             <p className={`text-xs mt-1 ${_subText}`}>Typist profile inspector and management controls</p>
           </div>
 
-          {/* Timeline Filter */}
-          <div
-            className={`relative flex items-center p-1 ${theme.secondary} border ${theme.border} rounded-xl transition-all duration-300 overflow-hidden ${
-              isFilterExpanded ? 'w-[250px]' : 'w-[90px]'
-            }`}
-          >
-            <button
-              onClick={(e) => { e.stopPropagation(); setIsFilterExpanded(!isFilterExpanded); }}
-              className="p-1.5 hover:opacity-70 rounded-lg transition-colors flex-shrink-0 focus:outline-none cursor-pointer"
-            >
-              <Filter className={`w-3.5 h-3.5 ${_subText}`} />
-            </button>
-
-            <div className={`relative flex items-center gap-0 transition-all duration-300 ${
-              isFilterExpanded ? 'opacity-100 ml-1.5' : 'opacity-0 pointer-events-none w-0'
-            }`}>
-              {isFilterExpanded && (
-                <div
-                  className={`absolute top-0 bottom-0 ${theme.primary} rounded-lg transition-all duration-300`}
-                  style={{ left: `${activeIndex * 40}px`, width: '40px' }}
-                />
-              )}
-              {ranges.map((range) => (
-                <button
-                  key={range}
-                  onClick={(e) => { e.stopPropagation(); setTimeRange(range); }}
-                  className={`w-10 h-7 rounded-lg text-xs font-black relative z-10 transition duration-300 flex items-center justify-center cursor-pointer ${
-                    timeRange === range ? 'text-white' : `${_subText} hover:opacity-80`
-                  }`}
-                >
-                  {range}
-                </button>
-              ))}
-            </div>
-
-            {!isFilterExpanded && (
-              <span
-                onClick={(e) => { e.stopPropagation(); setIsFilterExpanded(true); }}
-                className={`text-xs font-black ${theme.accent} ml-2 mr-2 select-none cursor-pointer hover:underline`}
-              >
-                {timeRange}
-              </span>
-            )}
-          </div>
         </div>
 
         {/* User Management Actions Toolbar */}
@@ -201,36 +175,34 @@ export default function TypistDeepDive({
                 : 'bg-red-500/10 hover:bg-red-500/25 border-red-500/30 text-red-500'
             }`}
           >
-            <Ban className="w-3.5 h-3.5" /> {isBanned ? 'Unban Typist Account' : 'Suspend / Ban Typist'}
+            <Ban className="w-3.5 h-3.5" /> {isBanned ? 'Unban' : 'Ban'}
           </button>
 
-          {selectedTypist && ((selectedTypist.averageWPM || 0) > 160 || (selectedTypist.totalTests > 500 && (selectedTypist.averageWPM || 0) > 140)) && (
-            <button
-              onClick={() => handleToggleAnomalyWhitelist && handleToggleAnomalyWhitelist(selectedTypist.username)}
-              className={`px-3 py-1.5 border rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer active:scale-95 ${
-                whitelistedAnomalies.includes(selectedTypist.username?.toLowerCase())
-                  ? 'bg-amber-500/10 hover:bg-amber-500/25 border-amber-500/30 text-amber-600'
-                  : 'bg-emerald-500/10 hover:bg-emerald-500/25 border-emerald-500/30 text-emerald-600'
-              }`}
-            >
-              {whitelistedAnomalies.includes(selectedTypist.username?.toLowerCase()) ? (
-                <>
-                  <AlertTriangle className="w-3.5 h-3.5 text-amber-500" /> Re-flag Typist
-                </>
-              ) : (
-                <>
-                  <ShieldCheck className="w-3.5 h-3.5 text-emerald-500" /> Unflag Typist
-                </>
-              )}
-            </button>
-          )}
+          <button
+            onClick={() => handleToggleAnomalyWhitelist && handleToggleAnomalyWhitelist(selectedTypist.username)}
+            className={`px-3 py-1.5 border rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer active:scale-95 ${
+              whitelistedAnomalies.includes(selectedTypist.username?.toLowerCase())
+                ? 'bg-amber-500/10 hover:bg-amber-500/25 border-amber-500/30 text-amber-600'
+                : 'bg-emerald-500/10 hover:bg-emerald-500/25 border-emerald-500/30 text-emerald-600'
+            }`}
+          >
+            {whitelistedAnomalies.includes(selectedTypist.username?.toLowerCase()) ? (
+              <>
+                <AlertTriangle className="w-3.5 h-3.5 text-amber-500" /> Unflag User
+              </>
+            ) : (
+              <>
+                <ShieldCheck className="w-3.5 h-3.5 text-emerald-500" /> Flag User
+              </>
+            )}
+          </button>
 
           <div className="relative">
             <button
               onClick={() => setShowCertDropdown(!showCertDropdown)}
               className="px-3 py-1.5 bg-purple-600 hover:bg-purple-700 text-white font-bold rounded-xl text-xs transition flex items-center gap-1.5 cursor-pointer shadow-sm active:scale-95"
             >
-              <Award className="w-3.5 h-3.5" /> Certificate Options <ChevronDown className="w-3.5 h-3.5" />
+              <Award className="w-3.5 h-3.5" /> Certificate <ChevronDown className="w-3.5 h-3.5" />
             </button>
             
             {showCertDropdown && (
@@ -299,32 +271,26 @@ export default function TypistDeepDive({
             onClick={handleExportBackup}
             className="px-3 py-1.5 bg-emerald-500/10 hover:bg-emerald-500/25 border border-emerald-500/30 text-emerald-600 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer active:scale-95"
           >
-            <Download className="w-3.5 h-3.5" /> Export Recovery File
-          </button>
-
-          <button
-            onClick={() => handleResetUserProgress && handleResetUserProgress(selectedTypist.username)}
-            className={`px-3 py-1.5 border ${theme.border} ${theme.cardBg} ${_subText} hover:text-red-500 hover:border-red-500/30 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer active:scale-95 ml-auto`}
-          >
-            <RotateCcw className="w-3.5 h-3.5" /> Reset Progress
+            <Download className="w-3.5 h-3.5" /> Export Data
           </button>
         </div>
       </div>
 
-      {/* Metric Summary Cards */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+      {/* Metric Summary Cards (5 Dedicated Cards) */}
+      <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
         {[
-          { label: 'Peak Speed',    value: typistAnalytics.peakWpm,               unit: 'WPM',  valueCls: theme.accent,       icon: <Zap    className={`w-3.5 h-3.5 ${theme.accent}`}  />, border: theme.border },
-          { label: 'Avg Accuracy',  value: `${typistAnalytics.avgAcc}%`,          unit: '',     valueCls: 'text-emerald-500', icon: <Target className="w-3.5 h-3.5 text-emerald-500" />, border: 'border-emerald-500/40' },
-          { label: 'Lessons Done',  value: typistAnalytics.completedLessonsCount, unit: '',     valueCls: theme.accent,       icon: <Trophy className={`w-3.5 h-3.5 ${theme.accent}`}  />, border: theme.border },
-          { label: 'Practice Time', value: typistAnalytics.timeSpentMins,         unit: 'mins', valueCls: 'text-amber-500',   icon: <Clock  className="w-3.5 h-3.5 text-amber-500"  />, border: 'border-amber-500/40' },
+          { label: 'AVG WPM',       value: typistAnalytics.avgWpm || selectedTypist.averageWPM || 0,  unit: 'WPM',  valueCls: theme.accent,       icon: <Zap        className={`w-3.5 h-3.5 ${theme.accent}`}  />, border: theme.border },
+          { label: 'HIGH WPM',      value: typistAnalytics.peakWpm || selectedTypist.averageWPM || 0, unit: 'WPM',  valueCls: 'text-blue-500',    icon: <TrendingUp className="w-3.5 h-3.5 text-blue-500" />, border: 'border-blue-500/40' },
+          { label: 'AVG ACC',       value: `${typistAnalytics.avgAcc}%`,                              unit: '',     valueCls: 'text-emerald-500', icon: <Target     className="w-3.5 h-3.5 text-emerald-500" />, border: 'border-emerald-500/40' },
+          { label: 'LESSONS DONE',  value: typistAnalytics.completedLessonsCount || 0,                 unit: 'done',  valueCls: 'text-amber-500',   icon: <Trophy     className="w-3.5 h-3.5 text-amber-500"  />, border: 'border-amber-500/40' },
+          { label: 'PRACTICE TIME', value: typistAnalytics.timeSpentMins,                             unit: 'mins', valueCls: 'text-cyan-400',    icon: <Clock      className="w-3.5 h-3.5 text-cyan-400" />,   border: 'border-cyan-500/40' },
         ].map(({ label, value, unit, valueCls, icon, border }) => (
-          <div key={label} className={`${theme.cardBg} border ${border} p-4 rounded-2xl`}>
+          <div key={label} className={`${theme.cardBg} border ${border} p-3.5 rounded-2xl flex flex-col justify-between`}>
             <div className="flex items-center justify-between mb-2">
               <span className={`text-[10px] uppercase font-bold tracking-wider ${_subText}`}>{label}</span>
               {icon}
             </div>
-            <p className={`text-3xl font-black ${valueCls}`}>
+            <p className={`text-2xl sm:text-3xl font-black ${valueCls}`}>
               {value}{unit && <span className={`text-xs font-normal ml-1.5 ${_subText}`}>{unit}</span>}
             </p>
           </div>
@@ -483,32 +449,135 @@ export default function TypistDeepDive({
         )}
       </div>
 
-      {/* WPM Progression AreaChart */}
+      {/* WPM & Accuracy Progression AreaChart */}
       <div className="space-y-3 pt-2">
-        <h3 className="text-sm font-extrabold uppercase tracking-wider flex items-center gap-2">
-          <TrendingUp className={`w-4 h-4 ${theme.accent}`} /> {timeRange} WPM Speed Progression Timeline
-        </h3>
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
+          <h3 className="text-sm font-extrabold uppercase tracking-wider flex items-center gap-2">
+            <TrendingUp className={`w-4 h-4 ${theme.accent}`} /> WPM &amp; Accuracy Progression Timeline
+          </h3>
+
+          {/* Timeline Filter Slide Pill */}
+          <div
+            className={`relative flex items-center p-1 ${theme.secondary} border ${theme.border} rounded-xl transition-all duration-300 overflow-hidden ${
+              isFilterExpanded ? 'w-[250px]' : 'w-[90px]'
+            }`}
+          >
+            <button
+              onClick={(e) => { e.stopPropagation(); setIsFilterExpanded(!isFilterExpanded); }}
+              className="p-1.5 hover:opacity-70 rounded-lg transition-colors flex-shrink-0 focus:outline-none cursor-pointer"
+            >
+              <Filter className={`w-3.5 h-3.5 ${_subText}`} />
+            </button>
+
+            <div className={`relative flex items-center gap-0 transition-all duration-300 ${
+              isFilterExpanded ? 'opacity-100 ml-1.5' : 'opacity-0 pointer-events-none w-0'
+            }`}>
+              {isFilterExpanded && (
+                <div
+                  className={`absolute top-0 bottom-0 ${theme.primary} rounded-lg transition-all duration-300`}
+                  style={{ left: `${activeIndex * 40}px`, width: '40px' }}
+                />
+              )}
+              {ranges.map((range) => (
+                <button
+                  key={range}
+                  onClick={(e) => { e.stopPropagation(); setTimeRange(range); }}
+                  className={`w-10 h-7 rounded-lg text-xs font-black relative z-10 transition duration-300 flex items-center justify-center cursor-pointer ${
+                    timeRange === range ? 'text-white' : `${_subText} hover:opacity-80`
+                  }`}
+                >
+                  {range}
+                </button>
+              ))}
+            </div>
+
+            {!isFilterExpanded && (
+              <span
+                onClick={(e) => { e.stopPropagation(); setIsFilterExpanded(true); }}
+                className={`text-xs font-black ${theme.accent} ml-2 mr-2 select-none cursor-pointer hover:underline`}
+              >
+                {timeRange}
+              </span>
+            )}
+          </div>
+        </div>
+
         <div className="h-72 w-full pt-2">
           <ResponsiveContainer width="100%" height="100%">
-            <AreaChart data={typistAnalytics.dataPoints}>
+            <AreaChart 
+              data={typistAnalytics?.dataPoints && typistAnalytics.dataPoints.length > 0 ? typistAnalytics.dataPoints : [{ date: 'Initial', wpm: selectedTypist?.averageWPM || 0, accuracy: 95 }]}
+              margin={{ top: 10, right: 30, left: 0, bottom: 0 }}
+            >
               <defs>
                 <linearGradient id="wpmGrad" x1="0" y1="0" x2="0" y2="1">
                   <stop offset="5%"  stopColor={chartAccent} stopOpacity={0.4} />
-                  <stop offset="95%" stopColor={chartAccent} stopOpacity={0}   />
+                  <stop offset="95%" stopColor={chartAccent} stopOpacity={0.05} />
+                </linearGradient>
+                <linearGradient id="accGrad" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%"  stopColor="#10b981" stopOpacity={0.3} />
+                  <stop offset="95%" stopColor="#10b981" stopOpacity={0.05} />
                 </linearGradient>
               </defs>
               <CartesianGrid strokeDasharray="3 3" stroke={chartGrid} vertical={false} />
-              <XAxis dataKey="date" stroke={chartStroke} fontSize={10} tickLine={false} />
-              <YAxis stroke={chartStroke} fontSize={10} tickLine={false} domain={[0, 'auto']} />
+              <XAxis dataKey="date" stroke={chartStroke} fontSize={11} tickLine={false} />
+              <YAxis yAxisId="wpm" orientation="left" stroke={chartAccent} fontSize={11} tickLine={false} label={{ value: 'WPM', angle: -90, position: 'insideLeft', style: { fill: chartAccent, fontSize: '11px', fontWeight: 'bold' } }} />
+              <YAxis yAxisId="accuracy" orientation="right" stroke="#10b981" fontSize={11} tickLine={false} domain={[0, 100]} label={{ value: 'Accuracy %', angle: 90, position: 'insideRight', style: { fill: '#10b981', fontSize: '11px', fontWeight: 'bold' } }} />
               <Tooltip
-                contentStyle={{
-                  backgroundColor: tooltipBg,
-                  borderRadius: '12px',
-                  borderColor: tooltipBorder,
-                  color: tooltipText
+                content={({ active, payload, label }) => {
+                  if (active && payload && payload.length) {
+                    const wpmPayload = payload.find(p => p.dataKey === 'wpm' || p.name?.includes('WPM'));
+                    const accPayload = payload.find(p => p.dataKey === 'accuracy' || p.name?.includes('Accuracy'));
+
+                    return (
+                      <div className={`p-3 rounded-xl border shadow-2xl backdrop-blur-md text-xs space-y-1.5 min-w-[140px] ${
+                        isDarkMode ? 'bg-slate-900/95 border-slate-800 text-white' : 'bg-white/95 border-slate-200 text-slate-900'
+                      }`}>
+                        <p className="font-extrabold text-sm border-b border-slate-700/40 pb-1 mb-1">{label}</p>
+                        
+                        {wpmPayload && (
+                          <div className="flex items-center gap-2 font-bold">
+                            <span className="w-2.5 h-2.5 rounded-sm flex-shrink-0" style={{ backgroundColor: wpmPayload.color || chartAccent }} />
+                            <span>Avg WPM: {wpmPayload.value} WPM</span>
+                          </div>
+                        )}
+
+                        {accPayload && (
+                          <div className="flex items-center gap-2 font-bold">
+                            <span className="w-2.5 h-2.5 rounded-sm flex-shrink-0" style={{ backgroundColor: accPayload.color || '#10b981' }} />
+                            <span>Avg Accuracy %: {accPayload.value}%</span>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  }
+                  return null;
                 }}
               />
-              <Area type="monotone" dataKey="wpm" stroke={chartAccent} strokeWidth={3} fillOpacity={1} fill="url(#wpmGrad)" />
+              <Legend verticalAlign="top" height={36} />
+              <Area 
+                yAxisId="wpm" 
+                type="monotone" 
+                name="Avg WPM" 
+                dataKey="wpm" 
+                stroke={chartAccent} 
+                strokeWidth={3} 
+                fillOpacity={1} 
+                fill="url(#wpmGrad)" 
+                dot={{ r: 3, fill: chartAccent, stroke: isDarkMode ? '#0f172a' : '#ffffff', strokeWidth: 1.5 }} 
+                activeDot={{ r: 5, fill: chartAccent, stroke: isDarkMode ? '#0f172a' : '#ffffff', strokeWidth: 2 }} 
+              />
+              <Area 
+                yAxisId="accuracy" 
+                type="monotone" 
+                name="Avg Accuracy %" 
+                dataKey="accuracy" 
+                stroke="#10b981" 
+                strokeWidth={2.5} 
+                fillOpacity={1} 
+                fill="url(#accGrad)" 
+                dot={{ r: 3, fill: '#10b981', stroke: isDarkMode ? '#0f172a' : '#ffffff', strokeWidth: 1.5 }} 
+                activeDot={{ r: 5, fill: '#10b981', stroke: isDarkMode ? '#0f172a' : '#ffffff', strokeWidth: 2 }} 
+              />
             </AreaChart>
           </ResponsiveContainer>
         </div>

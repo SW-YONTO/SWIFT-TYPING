@@ -43,8 +43,40 @@ export const userManager = {
   // Get all users
   getUsers: () => {
     try {
-      const users = safeStorage.getItem(STORAGE_KEYS.USERS);
-      return users ? JSON.parse(users) : [];
+      const usersRaw = safeStorage.getItem(STORAGE_KEYS.USERS);
+      if (!usersRaw) return [];
+      const users = JSON.parse(usersRaw);
+      let needsSave = false;
+
+      const syncedUsers = users.map(user => {
+        if (!user || !user.id) return user;
+        const progressRaw = safeStorage.getItem(`${STORAGE_KEYS.USER_PROGRESS}_${user.id}`);
+        if (!progressRaw) return user;
+        try {
+          const prog = JSON.parse(progressRaw);
+          if (prog && prog.testResults) {
+            const nonGameResults = prog.testResults.filter(r => r.type !== 'game');
+            const totalTests = prog.stats?.totalTests || prog.testResults.length;
+            const averageWPM = nonGameResults.length
+              ? Math.round(nonGameResults.reduce((sum, r) => sum + (r.wpm || 0), 0) / nonGameResults.length)
+              : (user.averageWPM || 0);
+            const averageAccuracy = nonGameResults.length
+              ? Math.round(nonGameResults.reduce((sum, r) => sum + (r.accuracy || 0), 0) / nonGameResults.length)
+              : (user.averageAccuracy || 0);
+
+            if (user.totalTests !== totalTests || user.averageWPM !== averageWPM || user.averageAccuracy !== averageAccuracy) {
+              needsSave = true;
+              return { ...user, totalTests, averageWPM, averageAccuracy };
+            }
+          }
+        } catch (e) {}
+        return user;
+      });
+
+      if (needsSave) {
+        safeStorage.setItem(STORAGE_KEYS.USERS, JSON.stringify(syncedUsers));
+      }
+      return syncedUsers;
     } catch (error) {
       console.warn('Failed to parse users:', error);
       return [];
@@ -137,7 +169,21 @@ export const progressManager = {
 
   // Save user progress
   saveUserProgress: (userId, progress) => {
+    try {
+      const users = userManager.getUsers();
+      const u = users.find(usr => usr.id === userId);
+      if (u) {
+        progress.userId = userId;
+        progress.username = u.username;
+      }
+    } catch (e) {}
     localStorage.setItem(`${STORAGE_KEYS.USER_PROGRESS}_${userId}`, JSON.stringify(progress));
+    try {
+      const activeUserId = localStorage.getItem('typing_app_current_user');
+      if (activeUserId && activeUserId === userId) {
+        telemetry.syncUserProgress(userId);
+      }
+    } catch (e) {}
   },
 
   // Mark lesson as completed
@@ -171,13 +217,18 @@ export const progressManager = {
       completedAt: new Date().toISOString()
     });
 
-    // Record anonymous telemetry stats for immediate live admin tracking
+    // Record telemetry stats for live admin tracking
     try {
       telemetry.recordTest({
         wpm: result.wpm || 0,
         accuracy: result.accuracy || 0,
         timeSpent: result.timeSpent || 0,
-        type: 'lesson'
+        type: 'lesson',
+        lessonId,
+        completedLessonsCount: progress.completedLessons.length,
+        totalTimeSeconds: progress.stats.totalTime,
+        bestWPM: progress.stats.bestWPM,
+        bestAccuracy: progress.stats.bestAccuracy
       });
     } catch (e) {}
 
@@ -187,7 +238,6 @@ export const progressManager = {
     const users = userManager.getUsers();
     const userIndex = users.findIndex(user => user.id === userId);
     if (userIndex !== -1) {
-      // Filter out game results for WPM calculation
       const nonGameResults = progress.testResults.filter(r => r.type !== 'game');
       users[userIndex].totalTests = progress.stats.totalTests;
       
@@ -212,13 +262,24 @@ export const progressManager = {
       completedAt: new Date().toISOString()
     });
 
-    // Record anonymous telemetry stats
+    // Update stats
+    progress.stats.totalTests += 1;
+    progress.stats.totalTime += testResult.timeSpent || 0;
+    progress.stats.totalCharacters += testResult.totalCharacters || 0;
+    progress.stats.bestWPM = Math.max(progress.stats.bestWPM, testResult.wpm || 0);
+    progress.stats.bestAccuracy = Math.max(progress.stats.bestAccuracy, testResult.accuracy || 0);
+
+    // Record telemetry stats
     try {
       telemetry.recordTest({
         wpm: testResult.wpm || 0,
         accuracy: testResult.accuracy || 0,
         timeSpent: testResult.timeSpent || 0,
-        type: testResult.type || 'test'
+        type: testResult.type || 'test',
+        completedLessonsCount: progress.completedLessons.length,
+        totalTimeSeconds: progress.stats.totalTime,
+        bestWPM: progress.stats.bestWPM,
+        bestAccuracy: progress.stats.bestAccuracy
       });
     } catch (e) {}
 

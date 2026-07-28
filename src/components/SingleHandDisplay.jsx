@@ -123,13 +123,6 @@ const SingleHandDisplay = React.memo(({ activeKey, settings = {} }) => {
       }
     }
 
-    console.log('🎯 Hand States:', {
-      currentKey: activeKey,
-      leftHandState,
-      rightHandState,
-      svgRendered: activeGroup ? activeKey.toLowerCase() : 'neutral',
-      theme: theme?.mode
-    });
 
     // Hide ALL groups first
     const allGroups = container.querySelectorAll('g[id]:not([id="Layer_1"])');

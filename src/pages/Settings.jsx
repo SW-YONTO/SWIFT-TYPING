@@ -1100,32 +1100,48 @@ const Settings = ({ currentUser, settings, onSettingsChange, onUserUpdate }) => 
               </div>
               
               <div className="space-y-4">
-                <div className="flex justify-between items-center py-2">
-                  <span className={`${theme.textSecondary} text-sm`}>Tests Completed</span>
-                  <span className={`font-bold ${theme.text} text-lg`}>{userProgress.stats.totalTests}</span>
-                </div>
-                
-                <div className="flex justify-between items-center py-2">
-                  <span className={`${theme.textSecondary} text-sm`}>Best WPM</span>
-                  <span className="font-bold text-blue-600 text-lg">{userProgress.stats.bestWPM}</span>
-                </div>
-                
-                <div className="flex justify-between items-center py-2">
-                  <span className={`${theme.textSecondary} text-sm`}>Best Accuracy</span>
-                  <span className="font-bold text-green-600 text-lg">{userProgress.stats.bestAccuracy}%</span>
-                </div>
-                
-                <div className="flex justify-between items-center py-2">
-                  <span className={`${theme.textSecondary} text-sm`}>Lessons Completed</span>
-                  <span className="font-bold text-purple-600 text-lg">{userProgress.completedLessons.length}</span>
-                </div>
-                
-                <div className="flex justify-between items-center py-2">
-                  <span className={`${theme.textSecondary} text-sm`}>Total Time</span>
-                  <span className="font-bold text-orange-600 text-lg">
-                    {Math.round(userProgress.stats.totalTime / 60)} min
-                  </span>
-                </div>
+                {(() => {
+                  const validResults = userProgress?.testResults?.filter(r => r.type !== 'game' && (r.wpm || 0) > 0) || [];
+                  const avgWpm = validResults.length 
+                    ? Math.round(validResults.reduce((sum, r) => sum + (r.wpm || 0), 0) / validResults.length)
+                    : (userProgress?.stats?.bestWPM || 0);
+
+                  const validAccResults = userProgress?.testResults?.filter(r => (r.accuracy || 0) > 0) || [];
+                  const avgAcc = validAccResults.length
+                    ? Math.round(validAccResults.reduce((sum, r) => sum + (r.accuracy || 0), 0) / validAccResults.length)
+                    : (userProgress?.stats?.bestAccuracy || 100);
+
+                  return (
+                    <>
+                      <div className="flex justify-between items-center py-2">
+                        <span className={`${theme.textSecondary} text-sm`}>Average WPM</span>
+                        <span className={`font-bold ${theme.accent} text-lg`}>{avgWpm} WPM</span>
+                      </div>
+                      
+                      <div className="flex justify-between items-center py-2">
+                        <span className={`${theme.textSecondary} text-sm`}>Average Accuracy</span>
+                        <span className="font-bold text-emerald-500 text-lg">{avgAcc}%</span>
+                      </div>
+
+                      <div className="flex justify-between items-center py-2">
+                        <span className={`${theme.textSecondary} text-sm`}>Best WPM</span>
+                        <span className="font-bold text-blue-600 text-lg">{userProgress.stats.bestWPM}</span>
+                      </div>
+
+                      <div className="flex justify-between items-center py-2">
+                        <span className={`${theme.textSecondary} text-sm`}>Lessons Completed</span>
+                        <span className="font-bold text-purple-600 text-lg">{userProgress.completedLessons.length}</span>
+                      </div>
+
+                      <div className="flex justify-between items-center py-2">
+                        <span className={`${theme.textSecondary} text-sm`}>Total Time</span>
+                        <span className="font-bold text-orange-600 text-lg">
+                          {Math.round(userProgress.stats.totalTime / 60)} min
+                        </span>
+                      </div>
+                    </>
+                  );
+                })()}
               </div>
             </div>
 

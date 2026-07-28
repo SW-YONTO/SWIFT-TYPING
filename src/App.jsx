@@ -9,7 +9,7 @@ import UpdateToast from './components/UpdateToast';
 import AdBanner from './components/AdBanner';
 import CompletionCertificate from './components/admin/CompletionCertificate';
 
-import { ShieldAlert, Award, X, LogOut } from 'lucide-react';
+import { ShieldAlert, Award, X, LogOut, RefreshCw, Send, Trash2, Info, Unlock, CheckCircle2 } from 'lucide-react';
 import { telemetry } from './utils/telemetryTracker';
 import { supabase } from './utils/supabaseClient';
 
@@ -62,20 +62,30 @@ function App() {
     showVirtualHand: false
   });
 
+  const [toastNotif, setToastNotif] = useState(null);
+  const isBannedRef = React.useRef(isBanned);
+  useEffect(() => { isBannedRef.current = isBanned; }, [isBanned]);
+
+  const showToast = (type, title, message) => {
+    const toastId = Date.now();
+    setToastNotif({ id: toastId, type, title, message });
+    setTimeout(() => {
+      setToastNotif(prev => prev?.id === toastId ? null : prev);
+    }, 5000);
+  };
+
   // Load current user and check ban status on initial app mount
   useEffect(() => {
     telemetry.init();
     
-    // Ensure initial user exists so referral links & pricing work immediately without blocking on login screen
+    // Select initial active user if accounts exist in storage
     let user = userManager.getCurrentUser();
     if (!user) {
       const users = userManager.getUsers();
       if (users.length > 0) {
         user = users[0];
-      } else {
-        user = userManager.addUser('Guest Typist', 'avatar1.png');
+        userManager.setCurrentUser(user.id);
       }
-      userManager.setCurrentUser(user.id);
     }
 
     setCurrentUser(user);
@@ -94,44 +104,35 @@ function App() {
     const checkBan = async () => {
       const activeUser = user || userManager.getCurrentUser();
       const username = activeUser?.username || '';
+      const wasBanned = isBannedRef.current;
       const banned = await telemetry.checkBanStatus(username);
+
       if (banned) {
+        const reason = localStorage.getItem('swift_ban_reason') || 'Suspended by Administrator.';
         setIsBanned(true);
-        setBanReason(localStorage.getItem('swift_ban_reason') || 'Suspended by Administrator.');
+        setBanReason(reason);
+        if (!wasBanned) {
+          showToast('error', 'Account Suspended', 'Your account has been suspended by Administrator.');
+        }
       } else {
-        setIsBanned(false);
+        if (wasBanned) {
+          setIsBanned(false);
+          showToast('success', 'Account Unbanned', 'Your account has been unbanned by Administrator! Welcome back.');
+        }
       }
     };
 
     checkBan();
-    
-    // Fallback worst-case checker: 10 minutes interval
-    const interval = setInterval(checkBan, 10 * 60 * 1000);
-
-    // Supabase Realtime subscription for instant ban updates without polling
-    const activeUser = user || userManager.getCurrentUser();
-    const username = activeUser?.username?.toLowerCase() || '';
-    const deviceId = telemetry.deviceId?.toLowerCase() || '';
+    // Fast polling every 3 seconds for instant real-time status updates without manual page reloads
+    const interval = setInterval(checkBan, 3000);
 
     const channel = supabase
-      .channel('public:user_moderation')
+      .channel('public:user_moderation_realtime')
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'user_moderation' },
-        (payload) => {
-          if (payload.eventType === 'INSERT' || payload.eventType === 'UPDATE') {
-            const record = payload.new;
-            const recordDevId = record.device_id?.toLowerCase();
-            if (recordDevId && (recordDevId === username || recordDevId === deviceId)) {
-              if (record.is_banned) {
-                const reason = record.ban_reason || 'Suspended by Administrator.';
-                localStorage.setItem('swift_device_banned', 'true');
-                localStorage.setItem('swift_ban_reason', reason);
-                setIsBanned(true);
-                setBanReason(reason);
-              }
-            }
-          }
+        () => {
+          checkBan();
         }
       )
       .subscribe();
@@ -186,6 +187,7 @@ function App() {
                 date: dateVal
               });
               localStorage.setItem(`swift_issued_certs_${currentUser.id}`, JSON.stringify(savedCerts));
+              showToast('certificate', 'New Certificate Issued', `Congratulations! Admin issued a certificate for your ${latestCert.wpm} WPM achievement.`);
             }
           }
         }
@@ -195,76 +197,29 @@ function App() {
     };
 
     checkNewCertificates();
-    const interval = setInterval(checkNewCertificates, 5 * 60 * 1000); // Check every 5 minutes
+    const interval = setInterval(checkNewCertificates, 3000);
     return () => clearInterval(interval);
   }, [currentUser]);
 
-  // Sync remote admin progress updates from Supabase to client local storage
+  // Sync remote admin progress updates from Supabase user_telemetry table to client local storage
   useEffect(() => {
-    if (!currentUser || !currentUser.username) return;
+    if (!currentUser || !currentUser.id || !currentUser.username) return;
 
-    const syncRemoteProgress = async () => {
-      try {
-        if (navigator.onLine) {
-          const targetName = currentUser.username.toLowerCase();
-          const { data, error } = await supabase
-            .from('user_daily_telemetry')
-            .select('*')
-            .ilike('username', targetName)
-            .order('updated_at', { ascending: false })
-            .limit(10);
-
-          if (!error && data && data.length > 0) {
-            const localProgress = progressManager.getUserProgress(currentUser.id);
-            let updated = false;
-
-            data.forEach(row => {
-              if (row.completed_lessons && Array.isArray(row.completed_lessons)) {
-                row.completed_lessons.forEach(lessonId => {
-                  if (!localProgress.completedLessons.some(l => l.lessonId === lessonId)) {
-                    localProgress.completedLessons.push({
-                      lessonId,
-                      wpm: row.max_wpm || row.avg_wpm || 60,
-                      accuracy: row.avg_accuracy || 95,
-                      completedAt: row.updated_at || new Date().toISOString()
-                    });
-                    updated = true;
-                  }
-                });
-              }
-            });
-
-            if (updated) {
-              progressManager.saveUserProgress(currentUser.id, localProgress);
-              setCurrentUser(prev => ({ ...prev }));
-            }
-          }
-        }
-      } catch (e) {
-        console.error('Failed to sync remote progress:', e);
+    const unsubscribe = telemetry.subscribeToCloudProgressUpdates(
+      currentUser.id,
+      currentUser.username,
+      (cloudRecord, lessonsCount) => {
+        showToast(
+          'unlock',
+          'Progress Updated',
+          `Administrator has updated your curriculum progress! (${lessonsCount} lessons unlocked)`
+        );
+        setCurrentUser(prev => ({ ...prev }));
       }
-    };
-
-    syncRemoteProgress();
-    const interval = setInterval(syncRemoteProgress, 15 * 1000); // Check every 15s
-
-    // Realtime listener for instant progress sync from Admin
-    const channel = supabase
-      .channel('public:user_daily_telemetry_progress')
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'user_daily_telemetry' },
-        (payload) => {
-          if (payload.new && payload.new.username?.toLowerCase() === currentUser.username.toLowerCase()) {
-            syncRemoteProgress();
-          }
-        }
-      )
-      .subscribe();
+    );
 
     return () => {
-      clearInterval(interval);
-      supabase.removeChannel(channel);
+      if (typeof unsubscribe === 'function') unsubscribe();
     };
   }, [currentUser?.id, currentUser?.username]);
 
@@ -304,6 +259,7 @@ function App() {
   const handleLogout = () => {
     setCurrentUser(null);
     userManager.setCurrentUser(null);
+    setIsBanned(false);
   };
 
   const handleSettingsChange = (newSettings) => {
@@ -327,20 +283,42 @@ function App() {
     }
   };
 
-  // Show banned block screen if device is restricted
-  if (isBanned) {
-    return (
-      <ThemeProvider>
-        <BannedScreenWithModals banReason={banReason} currentUser={currentUser} />
-      </ThemeProvider>
-    );
-  }
-
   // Show user manager if no user is selected
   if (!currentUser) {
     return (
       <ThemeProvider>
         <UserManager onUserSelect={handleUserSelect} currentUser={currentUser} />
+      </ThemeProvider>
+    );
+  }
+
+  // Show banned block screen if selected user is restricted
+  if (isBanned) {
+    return (
+      <ThemeProvider>
+        {toastNotif && (
+          <div className="fixed top-5 right-5 z-[99999] max-w-sm w-full animate-bounceIn pointer-events-auto">
+            <div className={`p-4 rounded-2xl shadow-2xl border backdrop-blur-2xl flex items-start gap-3 ${
+              toastNotif.type === 'error' ? 'bg-red-950/90 border-red-500/50 text-red-100 shadow-red-900/40' :
+              toastNotif.type === 'success' ? 'bg-emerald-950/90 border-emerald-500/50 text-emerald-100 shadow-emerald-900/40' :
+              'bg-blue-950/90 border-blue-500/50 text-blue-100 shadow-blue-900/40'
+            }`}>
+              <div className="p-2 rounded-xl bg-white/10 shrink-0 mt-0.5">
+                {toastNotif.type === 'error' ? <ShieldAlert className="w-5 h-5 text-red-400" /> :
+                 toastNotif.type === 'success' ? <Award className="w-5 h-5 text-emerald-400" /> :
+                 <Info className="w-5 h-5 text-blue-400" />}
+              </div>
+              <div className="flex-1 pr-1">
+                <h4 className="text-sm font-extrabold">{toastNotif.title}</h4>
+                <p className="text-xs text-white/80 font-medium leading-relaxed mt-0.5">{toastNotif.message}</p>
+              </div>
+              <button onClick={() => setToastNotif(null)} className="text-white/60 hover:text-white p-1 transition cursor-pointer">
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+          </div>
+        )}
+        <BannedScreenWithModals banReason={banReason} currentUser={currentUser} onLogout={handleLogout} showToast={showToast} />
       </ThemeProvider>
     );
   }
@@ -438,6 +416,9 @@ function App() {
 
             <UpdateToast />
 
+            {/* Theme-Matched Toast Notification */}
+            <ThemeMatchedToast toastNotif={toastNotif} setToastNotif={setToastNotif} />
+
             {/* Theme-based Certificate Toast and Modal Notifier */}
             <CertificateNotifier
               newCertificate={newCertificate}
@@ -450,6 +431,52 @@ function App() {
         </Router>
       </ErrorBoundary>
     </ThemeProvider>
+  );
+}
+
+// ─── Theme-Matched Global Toast Notifier ─────────────────────────────
+function ThemeMatchedToast({ toastNotif, setToastNotif }) {
+  const { theme } = useTheme();
+
+  if (!toastNotif) return null;
+
+  const getToastIcon = () => {
+    switch (toastNotif.type) {
+      case 'error':
+        return <ShieldAlert className="w-5 h-5 text-red-400" />;
+      case 'unlock':
+        return <Unlock className="w-5 h-5 text-emerald-400" />;
+      case 'success':
+        return <CheckCircle2 className="w-5 h-5 text-emerald-400" />;
+      case 'certificate':
+        return <Award className="w-5 h-5 text-amber-400" />;
+      default:
+        return <Info className="w-5 h-5 text-blue-400" />;
+    }
+  };
+
+  return (
+    <div className="fixed top-5 right-5 z-[99999] max-w-sm w-full animate-fadeIn pointer-events-auto">
+      <div className={`p-4 rounded-2xl shadow-2xl border backdrop-blur-2xl flex items-start gap-3.5 transition-all duration-300 ${theme?.cardBg || 'bg-slate-900'} ${theme?.border || 'border-slate-800'} ${theme?.text || 'text-white'}`}>
+        <div className={`p-2.5 rounded-xl ${theme?.secondary || 'bg-slate-800'} shrink-0 mt-0.5 flex items-center justify-center`}>
+          {getToastIcon()}
+        </div>
+        <div className="flex-1 pr-1 space-y-0.5">
+          <h4 className={`text-xs font-black uppercase tracking-wider ${theme?.accent || 'text-emerald-400'}`}>
+            {toastNotif.title}
+          </h4>
+          <p className={`text-xs font-medium leading-relaxed ${theme?.textSecondary || 'text-slate-300'}`}>
+            {toastNotif.message}
+          </p>
+        </div>
+        <button 
+          onClick={() => setToastNotif(null)} 
+          className={`p-1 rounded-lg ${theme?.textSecondary || 'text-slate-400'} hover:${theme?.text || 'text-white'} hover:${theme?.secondary || 'bg-slate-800'} transition cursor-pointer`}
+        >
+          <X className="w-4 h-4" />
+        </button>
+      </div>
+    </div>
   );
 }
 
@@ -521,7 +548,7 @@ function CertificateNotifier({
 export default App;
 
 // ─── Custom Banned Screen with Account Delete & In-App Appeal Modals ──────
-function BannedScreenWithModals({ banReason, currentUser }) {
+function BannedScreenWithModals({ banReason, currentUser, onLogout, showToast }) {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [showAppealModal, setShowAppealModal] = useState(false);
   const [appealMessage, setAppealMessage] = useState('');
@@ -538,9 +565,10 @@ function BannedScreenWithModals({ banReason, currentUser }) {
     setCheckingStatus(false);
 
     if (!isStillBanned) {
-      setCheckStatusMsg('🎉 Account unbanned! Reloading workspace...');
+      setCheckStatusMsg('🎉 Account unbanned!');
+      if (showToast) showToast('success', '🎉 Account Unbanned', 'Your account has been unbanned by Administrator!');
       setTimeout(() => {
-        window.location.reload();
+        if (onLogout) onLogout();
       }, 1000);
     } else {
       setCheckStatusMsg('🚫 Account is still suspended by Administrator.');
@@ -635,6 +663,7 @@ function BannedScreenWithModals({ banReason, currentUser }) {
 
     if (mailSuccess) {
       setAppealStatus('✅ Unban appeal submitted successfully! Admin will review your request.');
+      if (showToast) showToast('success', '✅ Appeal Submitted', 'Unban appeal submitted! Admin has been notified.');
       setTimeout(() => {
         setShowAppealModal(false);
         setAppealMessage('');
@@ -642,6 +671,7 @@ function BannedScreenWithModals({ banReason, currentUser }) {
       }, 3000);
     } else {
       setAppealStatus('✅ Appeal saved to Admin Inbox! Notification sent.');
+      if (showToast) showToast('success', '✅ Appeal Saved', 'Appeal saved to Admin Inbox.');
       setTimeout(() => {
         setShowAppealModal(false);
         setAppealMessage('');
@@ -651,15 +681,28 @@ function BannedScreenWithModals({ banReason, currentUser }) {
   };
 
   const handleConfirmDeleteAccount = () => {
-    localStorage.clear();
-    window.location.reload();
+    if (currentUser?.id) {
+      userManager.deleteUser(currentUser.id);
+    }
+    if (onLogout) {
+      onLogout();
+    } else {
+      userManager.setCurrentUser(null);
+      localStorage.setItem('swift_device_banned', 'false');
+      localStorage.removeItem('swift_ban_reason');
+      window.location.reload();
+    }
   };
 
   const handleSwitchAccount = () => {
-    userManager.setCurrentUser(null);
-    localStorage.setItem('swift_device_banned', 'false');
-    localStorage.removeItem('swift_ban_reason');
-    window.location.reload();
+    if (onLogout) {
+      onLogout();
+    } else {
+      userManager.setCurrentUser(null);
+      localStorage.setItem('swift_device_banned', 'false');
+      localStorage.removeItem('swift_ban_reason');
+      window.location.reload();
+    }
   };
 
   return (
@@ -680,18 +723,9 @@ function BannedScreenWithModals({ banReason, currentUser }) {
               <p className="text-[10px] font-bold text-red-400 uppercase tracking-wider">Account / User Name</p>
               <p className="text-base font-extrabold text-white">{currentUser?.username || 'Typist Account'}</p>
             </div>
-            <div className="flex items-center gap-2">
-              <span className="px-2 py-0.5 bg-red-500/20 text-red-400 font-extrabold text-[10px] rounded-md uppercase">
-                Banned 🚫
-              </span>
-              <button
-                onClick={handleSwitchAccount}
-                className="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-300 font-bold text-[11px] rounded-lg transition cursor-pointer flex items-center gap-1.5 active:scale-95"
-                title="Log out and switch to another account"
-              >
-                <LogOut className="w-3.5 h-3.5 text-slate-400" /> Log Out
-              </button>
-            </div>
+            <span className="px-2.5 py-1 bg-red-500/20 text-red-400 font-extrabold text-[10px] rounded-md uppercase">
+              Banned 🚫
+            </span>
           </div>
 
           <div>
@@ -713,34 +747,38 @@ function BannedScreenWithModals({ banReason, currentUser }) {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 gap-3">
+        <div className="grid grid-cols-1 gap-3.5">
           <button
             onClick={handleCheckUnbanStatus}
             disabled={checkingStatus}
-            className="w-full py-3.5 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white font-bold rounded-2xl transition shadow-lg shadow-emerald-600/20 text-center text-sm cursor-pointer flex items-center justify-center gap-2"
+            className="w-full py-3.5 px-5 bg-blue-500/10 hover:bg-blue-500/20 text-blue-400 font-bold rounded-2xl border border-blue-500/30 backdrop-blur-md transition-all duration-300 hover:shadow-lg hover:shadow-blue-500/10 active:scale-[0.98] cursor-pointer flex items-center justify-center gap-2.5 text-sm"
           >
-            {checkingStatus ? 'Checking Database...' : '🔄 Check Unban Status / Refresh'}
+            <RefreshCw className={`w-4 h-4 text-blue-400 ${checkingStatus ? 'animate-spin' : ''}`} />
+            <span>{checkingStatus ? 'Checking Database...' : 'Check Unban Status / Refresh'}</span>
           </button>
 
           <button
             onClick={handleSwitchAccount}
-            className="w-full py-3 bg-blue-600/20 hover:bg-blue-600/30 text-blue-300 font-bold rounded-2xl border border-blue-500/30 transition text-center text-sm cursor-pointer flex items-center justify-center gap-2"
+            className="w-full py-3.5 px-5 bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 font-bold rounded-2xl border border-amber-500/30 backdrop-blur-md transition-all duration-300 hover:shadow-lg hover:shadow-amber-500/10 active:scale-[0.98] cursor-pointer flex items-center justify-center gap-2.5 text-sm"
           >
-            <LogOut className="w-4 h-4 text-blue-400" /> Log Out &amp; Switch Account
+            <LogOut className="w-4 h-4 text-amber-400" />
+            <span>Log Out &amp; Switch Account</span>
           </button>
 
           <button
             onClick={() => setShowAppealModal(true)}
-            className="w-full py-3 bg-red-600/20 hover:bg-red-600/30 text-red-300 font-bold rounded-2xl border border-red-500/30 transition text-center text-sm cursor-pointer"
+            className="w-full py-3.5 px-5 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 font-bold rounded-2xl border border-emerald-500/30 backdrop-blur-md transition-all duration-300 hover:shadow-lg hover:shadow-emerald-500/10 active:scale-[0.98] cursor-pointer flex items-center justify-center gap-2.5 text-sm"
           >
-            Submit Unban Appeal (In-App)
+            <Send className="w-4 h-4 text-emerald-400" />
+            <span>Submit Unban Appeal (In-App)</span>
           </button>
 
           <button
             onClick={() => setShowDeleteModal(true)}
-            className="w-full py-3 bg-slate-800 hover:bg-slate-700 text-slate-400 font-semibold rounded-2xl border border-slate-700 transition text-sm cursor-pointer"
+            className="w-full py-3.5 px-5 bg-red-500/10 hover:bg-red-500/20 text-red-400 font-bold rounded-2xl border border-red-500/30 backdrop-blur-md transition-all duration-300 hover:shadow-lg hover:shadow-red-500/10 active:scale-[0.98] cursor-pointer flex items-center justify-center gap-2.5 text-sm"
           >
-            Delete Account &amp; Start Fresh
+            <Trash2 className="w-4 h-4 text-red-400" />
+            <span>Delete Account &amp; Start Fresh</span>
           </button>
         </div>
         {checkStatusMsg && (

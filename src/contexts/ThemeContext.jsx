@@ -7,7 +7,19 @@ const ThemeContext = createContext();
 export const useTheme = () => {
   const context = useContext(ThemeContext);
   if (!context) {
-    throw new Error('useTheme must be used within a ThemeProvider');
+    const savedThemeKey = (typeof localStorage !== 'undefined' && localStorage.getItem('typing_app_theme')) || 'blue';
+    const fallbackTheme = themes[savedThemeKey] || themes.blue;
+    return {
+      themeKey: savedThemeKey,
+      theme: fallbackTheme,
+      isDarkMode: fallbackTheme?.mode === 'dark',
+      fontSize: 'medium',
+      fontFamily: 'inter',
+      changeTheme: () => {},
+      toggleDarkMode: () => {},
+      changeFontSize: () => {},
+      changeFontFamily: () => {}
+    };
   }
   return context;
 };
