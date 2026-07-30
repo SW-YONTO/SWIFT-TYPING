@@ -13,7 +13,8 @@
     "electron": "electron .",
     "prebuild:icon": "node convert-icon.cjs",
     "pack": "npm run prebuild:icon && npm run build && cross-env CSC_IDENTITY_AUTO_DISCOVERY=false electron-builder --win",
-    "dist": "npm run prebuild:icon && npm run build && cross-env CSC_IDENTITY_AUTO_DISCOVERY=false electron-builder --win"
+    "dist": "npm run prebuild:icon && npm run build && cross-env CSC_IDENTITY_AUTO_DISCOVERY=false electron-builder --win",
+    "release": "node scripts/push-to-release.cjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.106.1",
