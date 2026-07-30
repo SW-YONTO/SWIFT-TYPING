@@ -32,7 +32,9 @@ import {
   Plus,
   RefreshCw,
   WifiOff,
-  Award
+  Award,
+  Sun,
+  Moon
 } from 'lucide-react';
 import { progressManager, themes, userManager, streakManager, dataManager } from '../utils/storage';
 import { useTheme } from '../contexts/ThemeContext';
@@ -567,7 +569,7 @@ const Settings = ({ currentUser, settings, onSettingsChange, onUserUpdate }) => 
                   {/* Light Themes */}
                   <div className="mb-6">
                     <h3 className={`text-sm font-medium ${theme.textSecondary} mb-3 flex items-center gap-2`}>
-                      <span>☀️</span> Light Themes
+                      <Sun className="w-4 h-4 text-amber-500" /> Light Themes
                     </h3>
                     <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                       {Object.entries(themes).filter(([, themeData]) => themeData.mode === 'light').map(([key, themeData]) => (
@@ -592,7 +594,7 @@ const Settings = ({ currentUser, settings, onSettingsChange, onUserUpdate }) => 
                   {/* Dark Themes */}
                   <div>
                     <h3 className={`text-sm font-medium ${theme.textSecondary} mb-3 flex items-center gap-2`}>
-                      <span>🌙</span> Dark Themes
+                      <Moon className="w-4 h-4 text-indigo-400" /> Dark Themes
                     </h3>
                     <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                       {Object.entries(themes).filter(([, themeData]) => themeData.mode === 'dark').map(([key, themeData]) => (

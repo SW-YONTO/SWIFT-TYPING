@@ -24,6 +24,25 @@ const UpdateToast = () => {
 
   const isElectron = window.electronAPI !== undefined;
 
+  const handleDismiss = (isPermanent = true) => {
+    setShow(false);
+    if (isPermanent) {
+      const vKey = versionInfo?.version ? `swift_update_dismissed_v${versionInfo.version}` : 'swift_update_dismissed_general';
+      try {
+        localStorage.setItem(vKey, 'true');
+        localStorage.setItem('swift_update_dismissed_global', 'true');
+      } catch (e) {}
+    }
+  };
+
+  const isAlreadyDismissed = (vStr) => {
+    try {
+      if (localStorage.getItem('swift_update_dismissed_global') === 'true') return true;
+      if (vStr && localStorage.getItem(`swift_update_dismissed_v${vStr}`) === 'true') return true;
+    } catch (e) {}
+    return false;
+  };
+
   useEffect(() => {
     // Handle network online/offline events
     const handleOnline = () => setIsOnline(true);
@@ -42,13 +61,14 @@ const UpdateToast = () => {
     const unsubscribeAvailable = window.electronAPI.onUpdateAvailable((info) => {
       setVersionInfo(info);
       setStatus('available');
-      setShow(true); // Open the toast when update is available
-      setMinimized(false);
+      if (!isAlreadyDismissed(info?.version)) {
+        setShow(true);
+        setMinimized(false);
+      }
     });
 
     const unsubscribeNotAvailable = window.electronAPI.onUpdateNotAvailable(() => {
       setStatus('not-available');
-      // Hide after a brief moment if we just checked
       setTimeout(() => setShow(false), 3000);
     });
 
@@ -60,14 +80,15 @@ const UpdateToast = () => {
     const unsubscribeDownloaded = window.electronAPI.onUpdateDownloaded((info) => {
       setVersionInfo(info);
       setStatus('downloaded');
-      setShow(true);
-      setMinimized(false);
+      if (!isAlreadyDismissed(info?.version)) {
+        setShow(true);
+        setMinimized(false);
+      }
     });
 
     const unsubscribeError = window.electronAPI.onUpdateError((err) => {
       console.error('Update error:', err);
-      // Only show error toast if we are online. If offline, it's expected to fail.
-      if (navigator.onLine) {
+      if (navigator.onLine && !isAlreadyDismissed()) {
         setStatus('error');
         setErrorMsg(typeof err === 'string' ? err : 'Error checking for updates');
         setShow(true);
@@ -76,9 +97,9 @@ const UpdateToast = () => {
       }
     });
 
-    // Auto-check for updates after a 5 seconds delay on startup
+    // Auto-check for updates after a 5 seconds delay on startup if not dismissed
     const checkTimeout = setTimeout(() => {
-      if (navigator.onLine) {
+      if (navigator.onLine && !isAlreadyDismissed()) {
         window.electronAPI.checkForUpdates();
       }
     }, 5000);
@@ -168,7 +189,7 @@ const UpdateToast = () => {
         <button 
           onClick={(e) => {
             e.stopPropagation();
-            setShow(false);
+            handleDismiss(true);
           }}
           className="hover:bg-white/20 p-1 rounded-full transition-colors"
         >
@@ -200,9 +221,9 @@ const UpdateToast = () => {
             <ChevronDown className="w-4 h-4" />
           </button>
           <button 
-            onClick={() => setShow(false)}
+            onClick={() => handleDismiss(true)}
             className={`p-1.5 rounded-lg hover:${theme.secondary} transition-colors ${theme.textSecondary}`}
-            title="Dismiss"
+            title="Dismiss & Don't Show Again"
           >
             <X className="w-4 h-4" />
           </button>
@@ -226,7 +247,7 @@ const UpdateToast = () => {
       )}
 
       {/* Actions */}
-      <div className="flex items-center gap-3 justify-end pt-1 border-t border-dashed border-gray-200 dark:border-gray-800">
+      <div className="flex items-center gap-2 justify-end pt-1 border-t border-dashed border-gray-200 dark:border-gray-800">
         {!isOnline && (
           <div className="flex items-center gap-1 text-xs text-red-500 mr-auto font-medium">
             <WifiOff className="w-3.5 h-3.5" />
@@ -234,11 +255,18 @@ const UpdateToast = () => {
           </div>
         )}
         
+        <button
+          onClick={() => handleDismiss(true)}
+          className={`px-3 py-1.5 text-xs font-bold ${theme.textSecondary} hover:${theme.text} hover:${theme.secondary} rounded-xl transition-all cursor-pointer`}
+        >
+          Mark as Read
+        </button>
+
         {status === 'available' && (
           <button
             onClick={handleDownload}
             disabled={!isOnline}
-            className={`px-4 py-2 text-xs font-bold text-white bg-blue-600 hover:bg-blue-500 disabled:opacity-50 disabled:cursor-not-allowed rounded-xl transition-all flex items-center gap-1.5 shadow-md shadow-blue-500/20`}
+            className={`px-4 py-2 text-xs font-bold text-white bg-blue-600 hover:bg-blue-500 disabled:opacity-50 disabled:cursor-not-allowed rounded-xl transition-all flex items-center gap-1.5 shadow-md shadow-blue-500/20 cursor-pointer`}
           >
             <Download className="w-3.5 h-3.5" />
             Download Now
@@ -248,7 +276,7 @@ const UpdateToast = () => {
         {status === 'downloaded' && (
           <button
             onClick={handleInstall}
-            className={`px-4 py-2 text-xs font-bold text-white bg-green-600 hover:bg-green-500 rounded-xl transition-all flex items-center gap-1.5 shadow-md shadow-green-500/20`}
+            className={`px-4 py-2 text-xs font-bold text-white bg-green-600 hover:bg-green-500 rounded-xl transition-all flex items-center gap-1.5 shadow-md shadow-green-500/20 cursor-pointer`}
           >
             <RefreshCw className="w-3.5 h-3.5 animate-spin" style={{ animationDuration: '3s' }} />
             Restart & Install
@@ -264,7 +292,7 @@ const UpdateToast = () => {
               }
             }}
             disabled={!isOnline}
-            className={`px-4 py-2 text-xs font-bold text-white bg-red-600 hover:bg-red-500 disabled:opacity-50 disabled:cursor-not-allowed rounded-xl transition-all`}
+            className={`px-4 py-2 text-xs font-bold text-white bg-red-600 hover:bg-red-500 disabled:opacity-50 disabled:cursor-not-allowed rounded-xl transition-all cursor-pointer`}
           >
             Retry Check
           </button>

@@ -334,7 +334,9 @@ const TypingGames = ({ currentUser }) => {
                     <div className="flex items-center gap-2 mb-2">
                       <h2 className={`text-xl font-bold ${theme.text}`}>{game.title}</h2>
                       {game.isBeta && (
-                        <span className="px-2 py-0.5 rounded-full bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 text-[10px] font-bold uppercase tracking-wider animate-pulse">Beta</span>
+                        <span className="px-2.5 py-0.5 rounded-full bg-amber-500/15 text-amber-700 dark:text-amber-400 border border-amber-500/30 text-[10px] font-black uppercase tracking-wider animate-pulse shadow-xs">
+                          Beta
+                        </span>
                       )}
                     </div>
                     <p className={`${theme.textSecondary} text-sm mb-4`}>{game.description}</p>

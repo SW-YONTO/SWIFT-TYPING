@@ -1,7 +1,7 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { useTheme } from '../contexts/ThemeContext';
-import { Github, Mail, Instagram, Heart, Code, Gamepad2, Star, Award } from 'lucide-react';
+import { Github, Mail, Instagram, Heart, Code, Gamepad2, Star, Award, ShieldCheck } from 'lucide-react';
 import surajAvatar from '../assets/suraj.jpg';
 import packageJson from '../../package.json';
 
@@ -93,8 +93,9 @@ const Footer = () => {
               <Link to="/settings" className={`block ${theme.textSecondary} hover:${theme.accent} transition-colors duration-200`}>
                 Settings
               </Link>
-              <Link to="/admin" className={`block text-xs font-semibold uppercase tracking-wider text-slate-500 hover:text-blue-400 transition-colors duration-200 mt-2`}>
-                🔒 Admin Portal
+              <Link to="/admin" className={`inline-flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-slate-500 hover:text-blue-400 transition-colors duration-200 mt-2`}>
+                <ShieldCheck className="w-4 h-4 text-slate-500" />
+                Admin Portal
               </Link>
             </div>
           </div>
