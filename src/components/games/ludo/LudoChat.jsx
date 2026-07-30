@@ -28,19 +28,25 @@ const LudoChat = ({ onSendChat, onSendEmoji }) => {
             <Smile className="w-4 h-4" />
           </button>
           {showEmoji && (
-            <div className="absolute right-0 bottom-8 z-50 bg-slate-900 border border-slate-700 rounded-xl p-2 grid grid-cols-4 gap-1 shadow-2xl">
-              {EMOJI_LIST.map(emoji => (
-                <button
-                  key={emoji}
-                  onClick={() => {
-                    if (onSendEmoji) onSendEmoji(emoji);
-                    setShowEmoji(false);
-                  }}
-                  className="text-lg hover:scale-125 transition-transform p-1 cursor-pointer"
-                >
-                  {emoji}
-                </button>
-              ))}
+            <div className="absolute right-0 bottom-9 z-[999] min-w-[210px] w-52 bg-slate-900 border border-slate-700 text-white rounded-2xl p-2.5 shadow-2xl backdrop-blur-xl animate-fade-in">
+              <div className="text-[10px] font-extrabold uppercase tracking-wider text-gray-400 mb-1.5 px-1">
+                Quick Reactions
+              </div>
+              <div className="grid grid-cols-4 gap-1.5">
+                {EMOJI_LIST.map(emoji => (
+                  <button
+                    key={emoji}
+                    type="button"
+                    onClick={() => {
+                      if (onSendEmoji) onSendEmoji(emoji);
+                      setShowEmoji(false);
+                    }}
+                    className="h-10 text-2xl flex items-center justify-center rounded-xl hover:bg-amber-500/20 hover:scale-110 active:scale-95 transition-all cursor-pointer select-none"
+                  >
+                    {emoji}
+                  </button>
+                ))}
+              </div>
             </div>
           )}
         </div>

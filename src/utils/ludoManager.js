@@ -86,11 +86,24 @@ class LudoManager {
 
   async fetchActiveRooms() {
     try {
+      const threeHoursAgo = new Date(Date.now() - 3 * 60 * 60 * 1000).toISOString();
+
+      // Clean up stale rooms in DB older than 3 hours
+      try {
+        await supabase
+          .from('ludo_rooms')
+          .delete()
+          .lt('updated_at', threeHoursAgo);
+      } catch (e) {
+        console.warn('DB stale room cleanup warning:', e);
+      }
+
       const { data, error } = await supabase
         .from('ludo_rooms')
         .select('*')
         .eq('status', 'waiting')
         .gt('player_count', 0)
+        .gte('updated_at', threeHoursAgo)
         .order('created_at', { ascending: false });
 
       if (!error && data) {
@@ -162,6 +175,12 @@ class LudoManager {
     }
     this.roomCode = code;
     this.isHost = true;
+    this.hostUsername = this.username;
+    this.roomRecord = {
+      room_code: code,
+      host_username: this.username,
+      host_avatar: this.avatar
+    };
     Object.assign(this, callbacks);
 
     try {
@@ -180,6 +199,7 @@ class LudoManager {
       console.warn('DB create room error:', e);
     }
 
+    this.startHeartbeat();
     await this.subscribeToRoom(this.roomCode, callbacks);
     return this.roomCode;
   }
@@ -192,10 +212,23 @@ class LudoManager {
     }
 
     this.roomCode = formattedCode;
+    this.roomRecord = roomRecord;
+    this.hostUsername = roomRecord.host_username;
     this.isHost = (roomRecord.host_username === this.username);
     Object.assign(this, callbacks);
 
     await this.subscribeToRoom(formattedCode, callbacks);
+
+    // Broadcast player_joined event so host receives immediate notification
+    if (this.roomChannel) {
+      const userData = this.getUserData();
+      await this.roomChannel.send({
+        type: 'broadcast',
+        event: 'player_joined',
+        payload: { player: userData }
+      });
+    }
+
     return roomRecord;
   }
 
@@ -223,26 +256,50 @@ class LudoManager {
       }
     });
 
-    // 1. Presence
-    this.roomChannel.on('presence', { event: 'sync' }, async () => {
-      const state = this.roomChannel.presenceState();
-      let players = Object.values(state).flat();
-      
-      // Always guarantee local user is included in players list
+    // Unified Presence State Updater (Deduplicated by userId)
+    const handlePresenceUpdate = async () => {
+      const state = this.roomChannel ? this.roomChannel.presenceState() : {};
+      const rawPlayers = Object.values(state).flat();
+
+      const uniquePlayersMap = new Map();
       const localUserData = this.getUserData();
-      if (localUserData && localUserData.userId) {
-        const found = players.some(p => (p.userId || p.user_id) === localUserData.userId);
-        if (!found) {
-          players = [localUserData, ...players];
+
+      rawPlayers.forEach(p => {
+        const id = p.userId || p.user_id;
+        if (id) {
+          uniquePlayersMap.set(id, p);
+        }
+      });
+
+      // Always guarantee local user is included in players list
+      if (localUserData && localUserData.userId && !uniquePlayersMap.has(localUserData.userId)) {
+        uniquePlayersMap.set(localUserData.userId, localUserData);
+      }
+
+      // If roomRecord exists and Host is not yet in presence state, inject host so guest sees host immediately
+      const currentHostUsername = this.hostUsername || this.roomRecord?.host_username;
+      if (currentHostUsername) {
+        const hasHostInList = Array.from(uniquePlayersMap.values()).some(p => p.isHost || p.username === currentHostUsername);
+        if (!hasHostInList && !this.isHost) {
+          const hostData = {
+            userId: `host_${currentHostUsername}`,
+            username: currentHostUsername,
+            avatar: this.roomRecord?.host_avatar || null,
+            isHost: true,
+            joinTime: 0
+          };
+          uniquePlayersMap.set(hostData.userId, hostData);
         }
       }
+
+      const players = Array.from(uniquePlayersMap.values());
 
       const time = new Date().toLocaleTimeString('en-US', { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit', fractionalSecondDigits: 3 });
       console.log(`%c[LUDO ${time}] [PRESENCE] Online players (${players.length}): ${players.map(p => `${p.username || p.user_id} (${p.color || 'no-color'})`).join(', ')}`, 'color: #10b981; font-weight: bold;');
       
       if (this.onPlayersUpdate) this.onPlayersUpdate(players);
 
-      if (this.isHost) {
+      if (this.isHost && this.roomCode) {
         try {
           await supabase
             .from('ludo_rooms')
@@ -252,7 +309,13 @@ class LudoManager {
           console.warn('DB player count update error:', e);
         }
       }
-    });
+    };
+
+    // 1. Presence Listeners (Sync, Join, Leave)
+    this.roomChannel
+      .on('presence', { event: 'sync' }, handlePresenceUpdate)
+      .on('presence', { event: 'join' }, handlePresenceUpdate)
+      .on('presence', { event: 'leave' }, handlePresenceUpdate);
 
     // 2. Postgres Changes (DB State Sync)
     this.roomChannel.on('postgres_changes', {
@@ -270,7 +333,7 @@ class LudoManager {
       }
     });
 
-    // 3. Broadcast Events (Instant Game Action, Chat, Emoji, Countdown, Dice Animation)
+    // 3. Broadcast Events (Instant Game Action, Chat, Emoji, Countdown, Dice Animation, Player Joined)
     this.roomChannel
       .on('broadcast', { event: 'game_action' }, ({ payload }) => {
         const time = new Date().toLocaleTimeString('en-US', { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit', fractionalSecondDigits: 3 });
@@ -278,6 +341,12 @@ class LudoManager {
         if (payload?.gameState && this.onGameStateSync) {
           this.onGameStateSync(payload.gameState);
         }
+      })
+      .on('broadcast', { event: 'player_joined' }, ({ payload }) => {
+        const time = new Date().toLocaleTimeString('en-US', { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit', fractionalSecondDigits: 3 });
+        console.log(`[LUDO ${time}] [PLAYER_JOINED_RX] Broadcast player_joined:`, payload);
+        if (this.onPlayerJoined) this.onPlayerJoined(payload);
+        handlePresenceUpdate();
       })
       .on('broadcast', { event: 'token_move_start' }, ({ payload }) => {
         const time = new Date().toLocaleTimeString('en-US', { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit', fractionalSecondDigits: 3 });
@@ -315,14 +384,10 @@ class LudoManager {
       if (status === 'SUBSCRIBED') {
         const userData = this.getUserData();
         await this.roomChannel.track(userData);
+        await handlePresenceUpdate();
 
-        if (this.onPlayersUpdate) {
-          const state = this.roomChannel.presenceState();
-          let players = Object.values(state).flat();
-          if (!players.some(p => (p.userId || p.user_id) === userData.userId)) {
-            players = [userData, ...players];
-          }
-          this.onPlayersUpdate(players);
+        if (this.isHost) {
+          this.startHeartbeat();
         }
 
         // Fetch latest DB state immediately after subscribing
@@ -468,14 +533,14 @@ class LudoManager {
     console.log(`[LUDO ${time}] [DICE_ROLL_TX] status: ${status}`);
   }
 
-  async broadcastEmoji(emoji) {
+  async broadcastEmoji(emoji, color) {
     await this.ensureRoomChannel();
     if (!this.roomChannel) return;
     const time = new Date().toLocaleTimeString('en-US', { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit', fractionalSecondDigits: 3 });
     const status = await this.roomChannel.send({
       type: 'broadcast',
       event: 'emoji',
-      payload: { emoji, userId: this.userId, username: this.username, timestamp: Date.now() }
+      payload: { emoji, color, userId: this.userId, username: this.username, timestamp: Date.now() }
     });
     console.log(`[LUDO ${time}] [EMOJI_TX] status: ${status}`);
   }

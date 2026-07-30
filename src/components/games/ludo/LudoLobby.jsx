@@ -67,6 +67,19 @@ const LudoLobby = ({ currentUser, onGameStart, onLeave, urlRoomCode, onRoomJoine
         onPlayersUpdate: (updatedPlayers) => {
           setPlayers(updatedPlayers);
         },
+        onPlayerJoined: (payload) => {
+          if (payload?.player) {
+            setPlayers(prev => {
+              const map = new Map();
+              prev.forEach(p => {
+                const id = p?.userId || p?.user_id;
+                if (id) map.set(id, p);
+              });
+              map.set(payload.player.userId, payload.player);
+              return Array.from(map.values());
+            });
+          }
+        },
         onStartCountdown: (payload) => {
           onGameStart(payload);
         }
@@ -103,6 +116,19 @@ const LudoLobby = ({ currentUser, onGameStart, onLeave, urlRoomCode, onRoomJoine
         onPlayersUpdate: (updatedPlayers) => {
           setPlayers(updatedPlayers);
         },
+        onPlayerJoined: (payload) => {
+          if (payload?.player) {
+            setPlayers(prev => {
+              const map = new Map();
+              prev.forEach(p => {
+                const id = p?.userId || p?.user_id;
+                if (id) map.set(id, p);
+              });
+              map.set(payload.player.userId, payload.player);
+              return Array.from(map.values());
+            });
+          }
+        },
         onStartCountdown: (payload) => {
           onGameStart(payload);
         }
@@ -137,17 +163,28 @@ const LudoLobby = ({ currentUser, onGameStart, onLeave, urlRoomCode, onRoomJoine
     setTimeout(() => setCopied(false), 2000);
   };
 
+  const hostUsername = ludoManager.hostUsername || ludoManager.roomRecord?.host_username || (ludoManager.isHost ? (currentUser?.username || ludoManager.username) : null);
+
   const sortedPlayers = useMemo(() => {
-    return [...players].sort((a, b) => {
+    const map = new Map();
+    players.forEach(p => {
+      const id = p?.userId || p?.user_id;
+      if (id && !map.has(id)) {
+        const isThisHost = Boolean(p?.isHost) || (hostUsername && p?.username === hostUsername);
+        map.set(id, { ...p, isHost: isThisHost });
+      }
+    });
+    const uniqueList = Array.from(map.values());
+
+    return uniqueList.sort((a, b) => {
       const aIsHost = a?.isHost ? 1 : 0;
       const bIsHost = b?.isHost ? 1 : 0;
       if (bIsHost !== aIsHost) return bIsHost - aIsHost;
       return (a?.joinTime || 0) - (b?.joinTime || 0);
     });
-  }, [players]);
+  }, [players, hostUsername]);
 
-  const hostPlayer = sortedPlayers[0];
-  const amIHost = Boolean(ludoManager.isHost) || (hostPlayer && hostPlayer.userId === ludoManager.userId);
+  const amIHost = Boolean(ludoManager.isHost) || (hostUsername && (currentUser?.username === hostUsername || ludoManager.username === hostUsername));
 
   const handleStartGame = () => {
     const playerIds = sortedPlayers.map(p => p.userId);
@@ -205,13 +242,13 @@ const LudoLobby = ({ currentUser, onGameStart, onLeave, urlRoomCode, onRoomJoine
           {/* Players List */}
           <div className="space-y-3">
             <h3 className="text-xs font-extrabold tracking-wider text-gray-400 uppercase">
-              PLAYERS ({players.length}/4)
+              PLAYERS ({sortedPlayers.length}/4)
             </h3>
             <div className="grid grid-cols-1 gap-2.5">
               {[0, 1, 2, 3].map(index => {
                 const p = sortedPlayers[index];
-                const isMe = p?.userId === ludoManager.userId;
-                const isHost = Boolean(p?.isHost) || (isMe && amIHost);
+                const isMe = (p?.userId === ludoManager.userId) || (p?.username === currentUser?.username);
+                const isHost = Boolean(p?.isHost);
 
                 return (
                   <div

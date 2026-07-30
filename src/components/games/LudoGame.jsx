@@ -200,10 +200,10 @@ const LudoGame = ({ currentUser }) => {
       }, 500);
     };
 
-    ludoManager.onEmoji = ({ emoji, username, userId }) => {
+    ludoManager.onEmoji = ({ emoji, username, userId, color }) => {
       if (userId && (userId === ludoManager.userId || userId === currentUser?.id)) return;
       const id = emojiIdRef.current++;
-      setFloatingEmojis(prev => [...prev, { id, emoji, username, x: Math.random() * 80 + 10 }]);
+      setFloatingEmojis(prev => [...prev, { id, emoji, username, color: color || 'red' }]);
       setTimeout(() => {
         setFloatingEmojis(prev => prev.filter(e => e.id !== id));
       }, 2500);
@@ -277,9 +277,12 @@ const LudoGame = ({ currentUser }) => {
       let updatedState = JSON.parse(JSON.stringify(gameState));
 
       for (const p of playersList) {
-        if (p.resigned || p.isOffline) continue;
+        if (p.resigned || p.isBot) continue;
 
-        const isOnline = presenceUserIds.includes(p.id);
+        const isOnline = onlinePlayers.some(op => {
+          const opId = op?.userId || op?.user_id;
+          return opId === p.id || opId === p.userId || op?.username === p.username;
+        });
         if (!isOnline) {
           const offlineStart = p.offlineSince || offlineTimersRef.current[p.id];
           if (!offlineStart) {
@@ -554,13 +557,15 @@ const LudoGame = ({ currentUser }) => {
 
   // 8. Emoji Reaction Action
   const handleSendEmoji = useCallback((emoji) => {
-    ludoManager.broadcastEmoji(emoji);
+    const player = gameState?.players[myPlayerId];
+    const pColor = player?.color || 'red';
+    ludoManager.broadcastEmoji(emoji, pColor);
     const id = emojiIdRef.current++;
-    setFloatingEmojis(prev => [...prev, { id, emoji, username: ludoManager.username, x: Math.random() * 80 + 10 }]);
+    setFloatingEmojis(prev => [...prev, { id, emoji, username: ludoManager.username, color: pColor }]);
     setTimeout(() => {
       setFloatingEmojis(prev => prev.filter(e => e.id !== id));
     }, 2500);
-  }, []);
+  }, [gameState, myPlayerId]);
 
   // 9. Resign / Forfeit Handler
   const handleResignMatch = useCallback(async () => {

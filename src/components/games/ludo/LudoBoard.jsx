@@ -28,6 +28,13 @@ const CORNER_POSITIONS = {
   yellow: 'bottom-3 right-3'
 };
 
+const COLOR_CORNER_POSITIONS = {
+  red:    { left: '15%', top: '72%' },
+  blue:   { left: '15%', top: '15%' },
+  green:  { left: '72%', top: '15%' },
+  yellow: { left: '72%', top: '72%' }
+};
+
 import { getAvatarPath } from '../../../utils/image';
 
 const EMOJI_LIST = ['👍', '🔥', '😂', '🎉', '😡', '👏', '👑', '😎'];
@@ -165,6 +172,24 @@ const LudoBoard = ({
           from { stroke-dashoffset: 0; }
           to { stroke-dashoffset: 140; }
         }
+        @keyframes float-up-emoji {
+          0% {
+            transform: translateY(0px) scale(0.4);
+            opacity: 0;
+          }
+          15% {
+            transform: translateY(-20px) scale(1.3);
+            opacity: 1;
+          }
+          75% {
+            transform: translateY(-70px) scale(1.1);
+            opacity: 1;
+          }
+          100% {
+            transform: translateY(-110px) scale(0.8);
+            opacity: 0;
+          }
+        }
       `}</style>
       
       {/* ─── LEFT SIDEBAR: PLAYERS & CHAT (Single Unified Card Container) ─── */}
@@ -281,19 +306,25 @@ const LudoBoard = ({
                 <Smile className="w-4 h-4" />
               </button>
               {showEmojiPicker && (
-                <div className={`absolute right-0 bottom-8 z-50 ${theme.cardBg} border ${theme.border} rounded-xl p-2 grid grid-cols-4 gap-1.5 shadow-2xl`}>
-                  {EMOJI_LIST.map(emoji => (
-                    <button
-                      key={emoji}
-                      onClick={() => {
-                        if (onSendEmoji) onSendEmoji(emoji);
-                        setShowEmojiPicker(false);
-                      }}
-                      className="text-lg hover:scale-125 transition-transform p-1 cursor-pointer"
-                    >
-                      {emoji}
-                    </button>
-                  ))}
+                <div className={`absolute right-0 bottom-9 z-[999] min-w-[210px] w-52 ${isDarkMode ? 'bg-slate-900 border-slate-700 text-white' : 'bg-white border-slate-200 text-slate-900'} border rounded-2xl p-2.5 shadow-2xl backdrop-blur-xl animate-fade-in`}>
+                  <div className="text-[10px] font-extrabold uppercase tracking-wider text-gray-400 mb-1.5 px-1">
+                    Quick Reactions
+                  </div>
+                  <div className="grid grid-cols-4 gap-1.5">
+                    {EMOJI_LIST.map(emoji => (
+                      <button
+                        key={emoji}
+                        type="button"
+                        onClick={() => {
+                          if (onSendEmoji) onSendEmoji(emoji);
+                          setShowEmojiPicker(false);
+                        }}
+                        className="h-10 text-2xl flex items-center justify-center rounded-xl hover:bg-amber-500/20 hover:scale-110 active:scale-95 transition-all cursor-pointer select-none"
+                      >
+                        {emoji}
+                      </button>
+                    ))}
+                  </div>
                 </div>
               )}
             </div>
@@ -340,16 +371,25 @@ const LudoBoard = ({
       <div className="flex-grow flex items-center justify-center py-2 min-w-0">
         <div className="relative flex items-center justify-center p-2 rounded-3xl bg-slate-200 dark:bg-slate-900 shadow-2xl border-4 border-slate-300 dark:border-slate-800 w-full max-w-[min(600px,78vh)]">
         
-        {/* Floating Emojis Overlay */}
-        {(floatingEmojis || []).map(item => (
-          <div
-            key={item.id}
-            className="absolute z-50 pointer-events-none animate-bounce text-4xl"
-            style={{ left: `${item.x}%`, top: '30%' }}
-          >
-            {item.emoji}
-          </div>
-        ))}
+        {/* Floating Emojis Overlay positioned over sender's corner home block */}
+        {(floatingEmojis || []).map(item => {
+          const itemColor = item.color || 'red';
+          const pos = COLOR_CORNER_POSITIONS[itemColor] || COLOR_CORNER_POSITIONS.red;
+
+          return (
+            <div
+              key={item.id}
+              className="absolute z-[100] pointer-events-none text-5xl filter drop-shadow-xl select-none"
+              style={{
+                left: pos.left,
+                top: pos.top,
+                animation: 'float-up-emoji 2.5s cubic-bezier(0.25, 1, 0.5, 1) forwards'
+              }}
+            >
+              {item.emoji}
+            </div>
+          );
+        })}
 
         {/* SVG Ludo Board */}
         <svg
@@ -599,6 +639,11 @@ const LudoBoard = ({
           const bubble = chatBubbles[color];
           const isTopCorner = color === 'blue' || color === 'green';
           const bubblePositionClass = isTopCorner ? 'top-14 left-0' : 'bottom-14 left-0';
+
+          const isPlayerOnline = gameMode === 'local' || p.isBot || onlinePlayers.some(op => {
+            const opId = op?.userId || op?.user_id;
+            return opId === p.id || opId === p.userId || op?.username === p.username;
+          });
 
           return (
             <div
