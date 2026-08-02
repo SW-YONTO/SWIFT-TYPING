@@ -147,15 +147,16 @@ export default function TypistDeepDive({
               ) : (
                 <div className="px-3 py-1 bg-emerald-500/15 hover:bg-emerald-500/25 border border-emerald-500/30 text-emerald-500 font-extrabold text-xs rounded-full backdrop-blur-md flex items-center gap-1.5 shadow-sm transition">
                   <Clock className="w-3.5 h-3.5 text-emerald-500" />
-                  <span>Last DB Update: {(() => {
+                  <span>Updated : {(() => {
                     const rawTime = selectedTypist.lastSeenTime || selectedTypist.updated_at || selectedTypist.last_seen;
-                    if (!rawTime) return new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-                    try {
-                      const d = new Date(rawTime);
-                      return isNaN(d.getTime()) ? 'Just now' : d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-                    } catch (e) {
-                      return 'Just now';
-                    }
+                    const d = rawTime ? new Date(rawTime) : new Date();
+                    if (isNaN(d.getTime())) return 'Just now';
+                    const hh = String(d.getHours()).padStart(2, '0');
+                    const mm = String(d.getMinutes()).padStart(2, '0');
+                    const dd = String(d.getDate()).padStart(2, '0');
+                    const month = String(d.getMonth() + 1).padStart(2, '0');
+                    const yy = String(d.getFullYear()).slice(-2);
+                    return `${hh}:${mm} ${dd}/${month}/${yy}`;
                   })()}</span>
                 </div>
               )}
