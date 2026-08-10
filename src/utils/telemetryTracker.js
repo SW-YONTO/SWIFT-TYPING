@@ -288,14 +288,18 @@ class TelemetryTracker {
   }
 
   async checkBanStatus(username = '') {
-    const targetUser = (username || '').toLowerCase();
-    const targetDev = (this.deviceId || '').toLowerCase();
+    const targetUser = (username || '').toLowerCase().trim();
+    if (!targetUser) {
+      localStorage.removeItem('swift_device_banned');
+      localStorage.removeItem('swift_ban_reason');
+      return false;
+    }
 
     try {
       const bannedList = JSON.parse(localStorage.getItem('swift_banned_devices') || '[]');
       const localFound = bannedList.find(b => {
-        const d = (b.device_id || '').toLowerCase();
-        return b.is_banned && (d === targetDev || (targetUser && d === targetUser));
+        const d = (b.device_id || '').toLowerCase().trim();
+        return b.is_banned && d === targetUser;
       });
 
       if (localFound) {
@@ -312,9 +316,7 @@ class TelemetryTracker {
 
     try {
       const targets = Array.from(new Set([
-        this.deviceId,
-        targetDev,
-        username,
+        username.trim(),
         targetUser
       ])).filter(Boolean);
 
@@ -333,8 +335,8 @@ class TelemetryTracker {
 
         try {
           const list = JSON.parse(localStorage.getItem('swift_banned_devices') || '[]');
-          if (!list.some(b => b.device_id?.toLowerCase() === targetDev)) {
-            list.unshift({ device_id: username || this.deviceId, is_banned: true, ban_reason: reason, banned_at: new Date().toISOString() });
+          if (!list.some(b => b.device_id?.toLowerCase() === targetUser)) {
+            list.unshift({ device_id: targetUser, is_banned: true, ban_reason: reason, banned_at: new Date().toISOString() });
             localStorage.setItem('swift_banned_devices', JSON.stringify(list));
           }
         } catch (e) { }

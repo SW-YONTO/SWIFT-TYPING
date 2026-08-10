@@ -48,11 +48,8 @@ function App() {
   const [currentUser, setCurrentUser] = useState(null);
   const [currentPage, setCurrentPage] = useState('lessons');
   const [newCertificate, setNewCertificate] = useState(null);
-  const [viewingCertificate, setViewingCertificate] = useState(null);
-  // Synchronous initialization from localStorage prevents 1-second unban flash on reload
-  const [isBanned, setIsBanned] = useState(() => {
-    return localStorage.getItem('swift_device_banned') === 'true';
-  });
+  const [viewingCertificate, setViewingCertificate] = useState(null);  // Synchronous initialization from localStorage prevents flash, checked per active account
+  const [isBanned, setIsBanned] = useState(false);
   const [banReason, setBanReason] = useState(() => {
     return localStorage.getItem('swift_ban_reason') || 'No reason specified.';
   });
@@ -103,7 +100,14 @@ function App() {
 
     const checkBan = async () => {
       const activeUser = user || userManager.getCurrentUser();
-      const username = activeUser?.username || '';
+      if (!activeUser || !activeUser.username) {
+        setIsBanned(false);
+        localStorage.removeItem('swift_device_banned');
+        localStorage.removeItem('swift_ban_reason');
+        return;
+      }
+
+      const username = activeUser.username;
       const wasBanned = isBannedRef.current;
       const banned = await telemetry.checkBanStatus(username);
 
@@ -115,8 +119,8 @@ function App() {
           showToast('error', 'Account Suspended', 'Your account has been suspended by Administrator.');
         }
       } else {
+        setIsBanned(false);
         if (wasBanned) {
-          setIsBanned(false);
           showToast('success', 'Account Unbanned', 'Your account has been unbanned by Administrator! Welcome back.');
         }
       }
@@ -252,11 +256,15 @@ function App() {
       if (banned) {
         setIsBanned(true);
         setBanReason(localStorage.getItem('swift_ban_reason') || 'Suspended by Administrator.');
+      } else {
+        setIsBanned(false);
       }
     }
   };
 
   const handleLogout = () => {
+    localStorage.removeItem('swift_device_banned');
+    localStorage.removeItem('swift_ban_reason');
     setCurrentUser(null);
     userManager.setCurrentUser(null);
     setIsBanned(false);

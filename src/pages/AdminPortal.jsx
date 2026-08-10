@@ -454,13 +454,13 @@ export default function AdminPortal() {
 
   const handleQuickBan = async (user) => {
     const username = user.username || '';
-    const deviceId = user.deviceId || user.device_id || username || user.id;
-    if (!username && !deviceId) return;
+    const banTarget = username || user.id || user.deviceId || user.device_id;
+    if (!banTarget) return;
 
-    const alreadyBanned = banManager.isBanned(username) || banManager.isBanned(deviceId) || bannedDevices.some(b => b.device_id?.toLowerCase() === username.toLowerCase() || b.device_id?.toLowerCase() === deviceId.toLowerCase());
+    const alreadyBanned = banManager.isBanned(banTarget) || bannedDevices.some(b => b.device_id?.toLowerCase() === banTarget.toLowerCase());
 
     if (alreadyBanned) {
-      handleUnbanUser(username || deviceId);
+      handleUnbanUser(banTarget);
     } else {
       setCustomBanReason('Abuse of service or leaderboard cheating.');
       setPendingBanUser(user);
@@ -471,25 +471,21 @@ export default function AdminPortal() {
     if (!pendingBanUser) return;
     const user = pendingBanUser;
     const username = user.username || '';
-    const deviceId = user.deviceId || user.device_id || username || user.id;
+    const banTarget = username || user.id || user.deviceId || user.device_id;
     const reason = customBanReason.trim() || 'Abuse of service or leaderboard cheating.';
 
-    // Local updates
-    if (username) banManager.ban(username, reason);
-    if (deviceId) banManager.ban(deviceId, reason);
+    // Local updates — ban target account
+    if (banTarget) banManager.ban(banTarget, reason);
 
     const updated = banManager.getBanned();
     setBannedDevices(updated);
-    adminAuditManager.logAction('USER_BAN', username || deviceId, `Reason: ${reason}`);
-    setStatusMsg(`🚫 Account '${username || deviceId}' suspended! Reason: ${reason}`);
+    adminAuditManager.logAction('USER_BAN', banTarget, `Reason: ${reason}`);
+    setStatusMsg(`🚫 Account '${banTarget}' suspended! Reason: ${reason}`);
 
-    // Supabase cloud sync
+    // Supabase cloud sync — upsert exact account identifier
     try {
-      if (navigator.onLine) {
-        const records = [];
-        if (username) records.push({ device_id: username, is_banned: true, ban_reason: reason });
-        if (deviceId && deviceId !== username) records.push({ device_id: deviceId, is_banned: true, ban_reason: reason });
-        await supabase.from('user_moderation').upsert(records);
+      if (navigator.onLine && banTarget) {
+        await supabase.from('user_moderation').upsert([{ device_id: banTarget, is_banned: true, ban_reason: reason }]);
       }
     } catch (e) { }
 
@@ -597,26 +593,29 @@ export default function AdminPortal() {
         }
       }
 
-      // 2. Remove from Supabase Cloud Database tables
+      // 2. Remove from Supabase Cloud Database tables safely with exact matching
       for (const t of targets) {
         const username = typeof t === 'string' ? t : t.username;
-        const deviceId = typeof t === 'object' ? (t.deviceId || t.device_id || t.id) : t;
+        const targetId = typeof t === 'object' ? t.id : null;
+        const targetUserId = typeof t === 'object' ? t.user_id : null;
+        const isGenericName = !username || username.toLowerCase() === 'anonymous typist' || username.toLowerCase() === 'typist';
 
-        adminAuditManager.logAction('USER_DELETE', username || deviceId || 'unknown', 'Deleted user profile from local & cloud');
+        adminAuditManager.logAction('USER_DELETE', username || targetId || 'unknown', 'Deleted user profile from local & cloud');
 
         if (navigator.onLine) {
-          if (username) {
-            await supabase.from('user_telemetry').delete().ilike('username', username);
-            await supabase.from('user_telemetry').delete().ilike('id', `%${username}%`);
-            await supabase.from('user_moderation').delete().ilike('device_id', username);
-            await supabase.from('issued_certificates').delete().ilike('username', username);
-            await supabase.from('unban_requests').delete().ilike('username', username);
+          // Delete exact matching row from user_telemetry by primary key ID or user_id
+          if (targetId) {
+            await supabase.from('user_telemetry').delete().eq('id', targetId);
           }
-          if (deviceId && deviceId.toLowerCase() !== username?.toLowerCase()) {
-            await supabase.from('user_telemetry').delete().ilike('device_id', deviceId);
-            await supabase.from('user_telemetry').delete().ilike('id', `%${deviceId}%`);
-            await supabase.from('user_moderation').delete().ilike('device_id', deviceId);
-            await supabase.from('unban_requests').delete().ilike('device_id', deviceId);
+          if (targetUserId) {
+            await supabase.from('user_telemetry').delete().eq('user_id', targetUserId);
+          }
+
+          // Delete by exact username if it is a specific named user (never delete generic placeholders en masse)
+          if (username && !isGenericName) {
+            await supabase.from('user_telemetry').delete().eq('username', username);
+            await supabase.from('issued_certificates').delete().eq('username', username);
+            await supabase.from('unban_requests').delete().eq('username', username);
           }
         }
       }
