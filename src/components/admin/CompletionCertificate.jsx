@@ -17,20 +17,21 @@ export default function CompletionCertificate({
     if (onClose) onClose();
   };
 
-  if (!user) return null;
-
-  const username = user.username || 'Typist';
-  const avgWPM = user.averageWPM || user.wpm || user.bestWPM || 75;
-  const dateStr = user.date || new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
-  const certId = user.id || `CERT-${username.substring(0, 4).toUpperCase()}-${Math.floor(100000 + Math.random() * 900000)}`;
+  const username = user?.username || 'Typist';
+  const avgWPM = user?.averageWPM || user?.wpm || user?.bestWPM || 75;
+  const dateStr = user?.date || new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+  const certId = user?.id || `CERT-${username.substring(0, 4).toUpperCase()}-${Math.floor(100000 + Math.random() * 900000)}`;
 
   useEffect(() => {
+    if (!user) return;
     const originalTitle = document.title;
     document.title = `swift typing (${username})`;
     return () => {
       document.title = originalTitle;
     };
-  }, [username]);
+  }, [user, username]);
+
+  if (!user) return null;
 
   // Retrieve total practice time spent (default to 4 hours if none exists)
   let totalTime = user.totalTime || user.total_time || 14400; 

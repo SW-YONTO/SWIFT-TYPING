@@ -66,7 +66,6 @@ const DayDetailModal = ({ stats, onClose, theme }) => {
 
   // Bar chart: WPM per session (non-game only)
   const typingTests = stats.tests.filter(t => t.type !== 'game' && (t.wpm || 0) > 0);
-  const maxWpm = typingTests.length > 0 ? Math.max(...typingTests.map(t => t.wpm || 0)) : 1;
 
   const statCards = [
     { label: 'Sessions',    value: stats.count,                         color: 'blue',   icon: BarChart2  },

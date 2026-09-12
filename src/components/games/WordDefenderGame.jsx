@@ -55,7 +55,7 @@ const BOLT_WORDS = [
   "surge", "zap", "volt", "flash", "spark", "shock", "burst", "pulse"
 ];
 
-const WordDefenderGame = ({ currentUser }) => {
+const WordDefenderGame = ({ _currentUser }) => {
   const { theme, isDarkMode } = useTheme();
   
   // Game state

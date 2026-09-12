@@ -1,6 +1,6 @@
 import { supabase } from './supabaseClient';
 
-const APP_VERSION = '3.26.9'; // Swift Typing Version
+const APP_VERSION = '3.26.11'; // Swift Typing Version
 
 /**
  * Anonymous persistent device identifier
@@ -165,6 +165,10 @@ class TelemetryTracker {
 
       if (error) {
         console.warn('⚠️ Supabase user_telemetry upsert alert:', error.message);
+      } else {
+        try {
+          localStorage.setItem(`typing_app_last_sync_${targetUser.id}`, new Date().toISOString());
+        } catch (e) {}
       }
     } catch (err) {
       console.warn('Failed to sync user progress to cloud:', err);
@@ -221,7 +225,8 @@ class TelemetryTracker {
       const { data } = await supabase
         .from('user_telemetry')
         .select('*')
-        .or(`user_id.eq.${userId},username.ilike.${username}`)
+        .or(`user_id.eq.${userId},username.ilike.${cleanUser || username}`)
+        .order('updated_at', { ascending: false })
         .limit(1);
 
       if (data && data.length > 0) {
@@ -242,22 +247,72 @@ class TelemetryTracker {
       const remoteLessons = cloudRecord.completed_lessons || [];
       const localLessons = localProg.completedLessons || [];
 
-      const remoteJson = JSON.stringify((remoteLessons || []).map(l => typeof l === 'string' ? l : l.lessonId).sort());
-      const localJson = JSON.stringify((localLessons || []).map(l => typeof l === 'string' ? l : l.lessonId).sort());
+      // If admin explicitly reset all progress (lessons_completed_count is 0 and total_tests is 0 in cloud)
+      if (cloudRecord.lessons_completed_count === 0 && Array.isArray(remoteLessons) && remoteLessons.length === 0 && (cloudRecord.total_tests === 0 || cloudRecord.total_time_seconds === 0) && localLessons.length > 0) {
+        console.log('🔄 [CLIENT DETECTED ADMIN RESET]: Resetting local progress to match cloud reset');
+        localProg.completedLessons = [];
+        localProg.testResults = [];
+        if (localProg.stats) {
+          localProg.stats.totalTests = 0;
+          localProg.stats.totalTime = 0;
+          localProg.stats.totalCharacters = 0;
+          localProg.stats.bestWPM = 0;
+          localProg.stats.bestAccuracy = 0;
+        }
+        localStorage.setItem(progKey, JSON.stringify(localProg));
+        if (typeof onCloudUpdate === 'function') {
+          onCloudUpdate(cloudRecord, 0);
+        }
+        return;
+      }
 
-      const hasNewData = remoteJson !== localJson;
+      // ── MERGE: Take the UNION of local and remote lessons ──
+      // Build a map keyed by lessonId, preferring the entry with real data (non-zero WPM)
+      const mergedMap = new Map();
 
-      if (hasNewData) {
-        localProg.completedLessons = remoteLessons;
+      // Add all local lessons first
+      localLessons.forEach(l => {
+        const id = typeof l === 'string' ? l : l.lessonId;
+        if (id) mergedMap.set(id, l);
+      });
+
+      // Merge remote lessons — only overwrite if remote has better data or local doesn't have it
+      remoteLessons.forEach(l => {
+        const id = typeof l === 'string' ? l : l.lessonId;
+        if (!id) return;
+        const existing = mergedMap.get(id);
+        if (!existing) {
+          // Remote has a lesson local doesn't — ADD it
+          mergedMap.set(id, l);
+        } else {
+          // Both have it — keep the one with real WPM data (not admin-placeholder 0)
+          const existingWpm = typeof existing === 'object' ? (existing.wpm || 0) : 0;
+          const remoteWpm = typeof l === 'object' ? (l.wpm || 0) : 0;
+          if (remoteWpm > existingWpm) {
+            mergedMap.set(id, l);
+          }
+        }
+      });
+
+      const mergedLessons = Array.from(mergedMap.values());
+
+      // Check if the merge actually changed anything
+      const localIds = new Set(localLessons.map(l => typeof l === 'string' ? l : l.lessonId).filter(Boolean));
+      const mergedIds = new Set(mergedLessons.map(l => typeof l === 'string' ? l : l.lessonId).filter(Boolean));
+      const newlyAddedIds = [...mergedIds].filter(id => !localIds.has(id));
+      const hasNewLessons = newlyAddedIds.length > 0;
+
+      if (hasNewLessons) {
+        localProg.completedLessons = mergedLessons;
         if (cloudRecord.best_wpm) localProg.stats.bestWPM = Math.max(localProg.stats?.bestWPM || 0, cloudRecord.best_wpm);
         if (cloudRecord.total_time_seconds) localProg.stats.totalTime = Math.max(localProg.stats?.totalTime || 0, cloudRecord.total_time_seconds);
 
         localStorage.setItem(progKey, JSON.stringify(localProg));
 
-        console.log('🎉 [CLIENT LOCAL PROGRESS SYNCED FROM CLOUD]: Updated lessons count =', remoteLessons.length);
+        console.log('🎉 [CLIENT LOCAL PROGRESS MERGED FROM CLOUD]: Total lessons after merge =', mergedLessons.length, '(local had', localIds.size, ', remote had', remoteLessons.length, ', new:', newlyAddedIds, ')');
 
         if (typeof onCloudUpdate === 'function') {
-          onCloudUpdate(cloudRecord, remoteLessons.length);
+          onCloudUpdate(cloudRecord, mergedLessons.length, newlyAddedIds);
         }
       }
     } catch (e) {
@@ -280,7 +335,7 @@ class TelemetryTracker {
   /**
    * Called whenever a test or lesson finishes
    */
-  recordTest({ wpm = 0, accuracy = 0, timeSpent = 0, type = 'test' }) {
+  recordTest(_testData = {}) {
     const currentUserId = localStorage.getItem('typing_app_current_user');
     if (currentUserId) {
       this.syncUserProgress(currentUserId);
@@ -295,6 +350,62 @@ class TelemetryTracker {
       return false;
     }
 
+    // ── ONLINE: Always check Supabase FIRST (source of truth) ──
+    if (navigator.onLine) {
+      try {
+        const targets = Array.from(new Set([
+          username.trim(),
+          targetUser
+        ])).filter(Boolean);
+
+        const { data } = await supabase
+          .from('user_moderation')
+          .select('*')
+          .in('device_id', targets)
+          .eq('is_banned', true)
+          .limit(1);
+
+        if (data && data.length > 0) {
+          // Cloud says BANNED — cache locally for this account
+          const item = data[0];
+          const reason = item.ban_reason || 'Suspended by Administrator.';
+          localStorage.setItem('swift_device_banned', 'true');
+          localStorage.setItem('swift_ban_reason', reason);
+
+          // Update local ban list (per-account entry)
+          try {
+            const list = JSON.parse(localStorage.getItem('swift_banned_devices') || '[]');
+            const idx = list.findIndex(b => b.device_id?.toLowerCase() === targetUser);
+            const entry = { device_id: targetUser, is_banned: true, ban_reason: reason, banned_at: new Date().toISOString() };
+            if (idx >= 0) {
+              list[idx] = entry;
+            } else {
+              list.unshift(entry);
+            }
+            localStorage.setItem('swift_banned_devices', JSON.stringify(list));
+          } catch (e) { }
+
+          return true;
+        } else {
+          // Cloud says NOT BANNED — clear ALL local ban flags for this user
+          localStorage.removeItem('swift_device_banned');
+          localStorage.removeItem('swift_ban_reason');
+
+          // Remove this specific username from local ban list
+          try {
+            const list = JSON.parse(localStorage.getItem('swift_banned_devices') || '[]');
+            const cleaned = list.filter(b => b.device_id?.toLowerCase() !== targetUser);
+            localStorage.setItem('swift_banned_devices', JSON.stringify(cleaned));
+          } catch (e) { }
+
+          return false;
+        }
+      } catch (e) {
+        // Network error — fall through to local cache below
+      }
+    }
+
+    // ── OFFLINE fallback: check local cache for THIS specific username only ──
     try {
       const bannedList = JSON.parse(localStorage.getItem('swift_banned_devices') || '[]');
       const localFound = bannedList.find(b => {
@@ -310,46 +421,10 @@ class TelemetryTracker {
       }
     } catch (e) { }
 
-    if (!navigator.onLine) {
-      return localStorage.getItem('swift_device_banned') === 'true';
-    }
-
-    try {
-      const targets = Array.from(new Set([
-        username.trim(),
-        targetUser
-      ])).filter(Boolean);
-
-      const { data } = await supabase
-        .from('user_moderation')
-        .select('*')
-        .in('device_id', targets)
-        .eq('is_banned', true)
-        .limit(1);
-
-      if (data && data.length > 0) {
-        const item = data[0];
-        const reason = item.ban_reason || 'Suspended by Administrator.';
-        localStorage.setItem('swift_device_banned', 'true');
-        localStorage.setItem('swift_ban_reason', reason);
-
-        try {
-          const list = JSON.parse(localStorage.getItem('swift_banned_devices') || '[]');
-          if (!list.some(b => b.device_id?.toLowerCase() === targetUser)) {
-            list.unshift({ device_id: targetUser, is_banned: true, ban_reason: reason, banned_at: new Date().toISOString() });
-            localStorage.setItem('swift_banned_devices', JSON.stringify(list));
-          }
-        } catch (e) { }
-
-        return true;
-      } else {
-        localStorage.removeItem('swift_device_banned');
-        localStorage.removeItem('swift_ban_reason');
-        return false;
-      }
-    } catch (e) {
-      return localStorage.getItem('swift_device_banned') === 'true';
-    }
+    // No ban found locally for this specific username
+    localStorage.removeItem('swift_device_banned');
+    localStorage.removeItem('swift_ban_reason');
+    return false;
   }
 }
 

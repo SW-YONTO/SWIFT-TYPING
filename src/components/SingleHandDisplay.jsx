@@ -19,7 +19,6 @@ const SingleHandDisplay = React.memo(({ activeKey, settings = {} }) => {
     const viewportWidth = window.innerWidth;
     const viewportHeight = window.innerHeight;
     const aspectRatio = viewportWidth / viewportHeight;
-    const dpr = window.devicePixelRatio || 1;
 
     let styles = {
       width: '150%',
@@ -112,7 +111,17 @@ const SingleHandDisplay = React.memo(({ activeKey, settings = {} }) => {
     
     if (activeKey && activeKey !== ' ') {
       const keyToShow = activeKey.toLowerCase();
-      activeGroup = container.querySelector(`g[id="${keyToShow}"]`);
+      try {
+        const groups = container.getElementsByTagName('g');
+        for (let i = 0; i < groups.length; i++) {
+          if (groups[i].id === keyToShow) {
+            activeGroup = groups[i];
+            break;
+          }
+        }
+      } catch {
+        activeGroup = null;
+      }
       
       if (activeGroup && isLeftHand) {
         leftHandState = keyToShow;

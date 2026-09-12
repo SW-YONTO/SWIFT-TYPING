@@ -14,6 +14,7 @@ import { telemetry } from './utils/telemetryTracker';
 import { supabase } from './utils/supabaseClient';
 
 import { extractPromoCodeFromUrl } from './utils/promoCodes';
+import { typingLessons } from './data/lessons';
 
 // Lazy-loaded page components for code splitting
 const TypingLessons = React.lazy(() => import('./pages/TypingLessons'));
@@ -99,7 +100,7 @@ function App() {
     } catch (e) {}
 
     const checkBan = async () => {
-      const activeUser = user || userManager.getCurrentUser();
+      const activeUser = userManager.getCurrentUser();
       if (!activeUser || !activeUser.username) {
         setIsBanned(false);
         localStorage.removeItem('swift_device_banned');
@@ -212,12 +213,48 @@ function App() {
     const unsubscribe = telemetry.subscribeToCloudProgressUpdates(
       currentUser.id,
       currentUser.username,
-      (cloudRecord, lessonsCount) => {
-        showToast(
-          'unlock',
-          'Progress Updated',
-          `Administrator has updated your curriculum progress! (${lessonsCount} lessons unlocked)`
-        );
+      (cloudRecord, lessonsCount, newlyAddedIds = []) => {
+        if (lessonsCount === 0 && (!newlyAddedIds || newlyAddedIds.length === 0)) {
+          showToast(
+            'info',
+            'Progress Reset',
+            'Administrator has reset your curriculum progress.'
+          );
+        } else if (newlyAddedIds && newlyAddedIds.length === 1) {
+          const lessonId = newlyAddedIds[0];
+          let lessonTitle = lessonId;
+          for (const unit of Object.values(typingLessons)) {
+            const found = unit.lessons?.find(l => l.id === lessonId);
+            if (found) {
+              lessonTitle = found.title;
+              break;
+            }
+          }
+          showToast(
+            'unlock',
+            'Lesson Unlocked',
+            `Administrator unlocked "${lessonTitle}" for you!`
+          );
+        } else if (newlyAddedIds && newlyAddedIds.length > 1 && newlyAddedIds.length <= 3) {
+          const titles = newlyAddedIds.map(id => {
+            for (const unit of Object.values(typingLessons)) {
+              const found = unit.lessons?.find(l => l.id === id);
+              if (found) return found.title;
+            }
+            return id;
+          }).join(', ');
+          showToast(
+            'unlock',
+            'Lessons Unlocked',
+            `Administrator unlocked: ${titles}`
+          );
+        } else {
+          showToast(
+            'unlock',
+            'Curriculum Updated',
+            `Administrator unlocked ${newlyAddedIds?.length || lessonsCount} lessons! (${lessonsCount}/83 completed)`
+          );
+        }
         setCurrentUser(prev => ({ ...prev }));
       }
     );
@@ -491,12 +528,11 @@ function ThemeMatchedToast({ toastNotif, setToastNotif }) {
 // ─── Theme-based Certificate Toast & Modal Notifier Component ──────
 function CertificateNotifier({
   newCertificate,
-  setNewCertificate,
   handleDismissCertToast,
   viewingCertificate,
   setViewingCertificate
 }) {
-  const { theme, isDarkMode } = useTheme();
+  const { theme } = useTheme();
 
   if (!newCertificate && !viewingCertificate) return null;
 

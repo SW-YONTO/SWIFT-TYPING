@@ -1,7 +1,7 @@
 {
   "name": "swift-typing",
   "private": true,
-  "version": "3.26.10",
+  "version": "3.26.11",
   "author": "SW-YONTO (Suraj Maurya)",
   "type": "module",
   "description": "A comprehensive offline typing tutor desktop application",

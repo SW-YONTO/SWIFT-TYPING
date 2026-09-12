@@ -583,7 +583,6 @@ const SliceTypeGame = ({ currentUser }) => {
         ctx.shadowBlur = isTargeted ? 12 : 5;
 
         const padX = 14;
-        const padY = 8;
         const rectX = startX - padX;
         const rectY = word.y - 18;
         const rectW = word.width + (padX * 2);

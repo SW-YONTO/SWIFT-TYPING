@@ -33,10 +33,6 @@ const ArenaTypingRace = ({ text, onProgress, onFinish, opponentProgress, opponen
     };
   }, []);
 
-  const words = text.split(' ');
-  const inputWords = input.split(' ');
-  const currentWordIndex = input.endsWith(' ') ? inputWords.length - 1 : inputWords.length - 1;
-  
   // Calculate progress percentage based on characters typed correctly
   const targetChars = text.length;
   const typedChars = input.length;

@@ -3,7 +3,7 @@ import { Activity, Check, Copy, User, Trophy, Zap, TrendingUp, Target, Clock } f
 
 export default function TelemetryLogStream({
   theme,
-  isDarkMode,
+  _isDarkMode,
   cardClass,
   subTextClass,
   telemetryLogs,

@@ -187,6 +187,32 @@ export default function AdminPortal() {
     return () => clearInterval(interval);
   }, [isAuthenticated, autoRefreshInterval]);
 
+  // Realtime listener for live typist progress updates from Supabase
+  useEffect(() => {
+    if (!isAuthenticated) return;
+    let debounceTimer = null;
+
+    const channel = supabase
+      .channel('admin_user_telemetry_realtime')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'user_telemetry' },
+        () => {
+          // Debounce by 1200ms to bundle updates and prevent duplicate network queries
+          clearTimeout(debounceTimer);
+          debounceTimer = setTimeout(() => {
+            fetchAdminData();
+          }, 1200);
+        }
+      )
+      .subscribe();
+
+    return () => {
+      clearTimeout(debounceTimer);
+      supabase.removeChannel(channel);
+    };
+  }, [isAuthenticated]);
+
   // ─── Auth ─────────────────────────────────────────────────────
   const triggerShake = () => { setIsShaking(true); setTimeout(() => setIsShaking(false), 600); };
 
@@ -331,8 +357,20 @@ export default function AdminPortal() {
         typistMap[existingKey].averageAccuracy = typistMap[existingKey].averageAccuracy || acc;
         typistMap[existingKey].bestWPM = Math.max(typistMap[existingKey].bestWPM || 0, bestWpm);
         typistMap[existingKey].totalTimeSeconds = Math.max(typistMap[existingKey].totalTimeSeconds || 0, timeSec);
-        typistMap[existingKey].completedLessons = log.completed_lessons || typistMap[existingKey].completedLessons || [];
-        typistMap[existingKey].testResults = log.test_results || typistMap[existingKey].testResults || [];
+
+        // Retain larger lessons array so older logs never overwrite fresher progress
+        const existingCount = (typistMap[existingKey].completedLessons || []).length;
+        const incomingCount = (log.completed_lessons || []).length;
+        if (incomingCount > existingCount) {
+          typistMap[existingKey].completedLessons = log.completed_lessons;
+        }
+
+        const existingTests = (typistMap[existingKey].testResults || []).length;
+        const incomingTests = (log.test_results || []).length;
+        if (incomingTests > existingTests) {
+          typistMap[existingKey].testResults = log.test_results;
+        }
+
         typistMap[existingKey].totalTests = Math.max(typistMap[existingKey].totalTests || 0, tests);
         if (logTime && (!typistMap[existingKey].lastSeenTime || new Date(logTime).getTime() > new Date(typistMap[existingKey].lastSeenTime).getTime())) {
           typistMap[existingKey].lastSeenTime = logTime;
@@ -356,7 +394,15 @@ export default function AdminPortal() {
       }
     });
     setRegisteredUsersList(Object.values(typistMap));
-    setRegisteredUsersList(Object.values(typistMap));
+
+    // Live update selectedTypist if one is currently open so deep dive updates automatically
+    setSelectedTypist(prev => {
+      if (!prev) return null;
+      const targetName = (prev.username && prev.username !== 'Anonymous Typist') ? prev.username.toLowerCase() : null;
+      const targetId = prev.id?.toLowerCase();
+      const updated = (targetName && typistMap[targetName]) || (targetId && Object.values(typistMap).find(u => u.id?.toLowerCase() === targetId));
+      return updated ? { ...prev, ...updated } : prev;
+    });
 
     // Merge Supabase bans with local banManager bans
     const localBans = banManager.getBanned() || [];
@@ -671,7 +717,6 @@ export default function AdminPortal() {
 
   const handleIssueCertQuick = async (user) => {
     const certWpm = user.averageWPM || 60;
-    const certDate = new Date().toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' });
 
     let totalTime = 14400; // default 4 hours
     try {
@@ -738,7 +783,7 @@ export default function AdminPortal() {
   };
 
   // ─── Reset Typist Progress ──────────────────────────────────
-  const handleResetUserProgress = (username) => {
+  const handleResetUserProgress = async (username) => {
     if (!username) return;
     if (!window.confirm(`Are you sure you want to reset ALL lesson & test progress for '${username}'? This cannot be undone.`)) return;
 
@@ -750,29 +795,87 @@ export default function AdminPortal() {
       stats: { totalTests: 0, totalTime: 0, totalCharacters: 0, bestWPM: 0, bestAccuracy: 0 }
     };
     progressManager.saveUserProgress(localUser.id, fresh);
+
+    // Sync reset to Supabase — find and update the user's existing row
+    try {
+      if (navigator.onLine) {
+        const { data: existing } = await supabase
+          .from('user_telemetry')
+          .select('id')
+          .ilike('username', username)
+          .order('updated_at', { ascending: false })
+          .limit(1);
+
+        if (existing && existing.length > 0) {
+          await supabase.from('user_telemetry').update({
+            completed_lessons: [],
+            test_results: [],
+            lessons_completed_count: 0,
+            total_tests: 0,
+            total_time_seconds: 0,
+            average_wpm: 0,
+            best_wpm: 0,
+            updated_at: new Date().toISOString()
+          }).eq('id', existing[0].id);
+        }
+      }
+    } catch (e) { }
+
     adminAuditManager.logAction('PROGRESS_UPDATE', username, 'Reset all lesson & test progress to 0');
+    setSelectedTypist(prev => prev ? ({ ...prev, completedLessons: [], lessons_completed_count: 0, totalTests: 0, totalTimeSeconds: 0, averageWPM: 0, bestWPM: 0 }) : prev);
     setStatusMsg(`🔄 Reset all progress for '${username}'.`);
     fetchAdminData();
   };
 
   // ─── Granular Single Lesson Toggle ─────────────────────────
-  const handleToggleSingleLesson = (username, lessonId) => {
+  const handleToggleSingleLesson = async (username, lessonId) => {
     if (!username) return;
     const localUser = getOrCreateLocalUser(username);
     const progress = progressManager.getUserProgress(localUser.id);
-    const exists = progress.completedLessons.some(l => l.lessonId === lessonId);
+    
+    // Use full union list (remote cloud telemetry + local) so user's true progress is never lost
+    const currentLessons = getUserCompletedLessons();
+    const exists = currentLessons.some(l => (typeof l === 'string' ? l : l.lessonId) === lessonId);
+    let updatedLessons;
     if (exists) {
-      progress.completedLessons = progress.completedLessons.filter(l => l.lessonId !== lessonId);
+      updatedLessons = currentLessons.filter(l => (typeof l === 'string' ? l : l.lessonId) !== lessonId);
     } else {
-      progress.completedLessons.push({
-        lessonId,
-        wpm: 60,
-        accuracy: 95,
-        completedAt: new Date().toISOString()
-      });
+      updatedLessons = [
+        ...currentLessons,
+        {
+          lessonId,
+          wpm: 0,
+          accuracy: 0,
+          unlockedByAdmin: true,
+          completedAt: new Date().toISOString()
+        }
+      ];
     }
+    progress.completedLessons = updatedLessons;
     progressManager.saveUserProgress(localUser.id, progress);
+
+    // Sync toggle to Supabase — find the user's existing row
+    try {
+      if (navigator.onLine) {
+        const { data: existing } = await supabase
+          .from('user_telemetry')
+          .select('id, device_id')
+          .ilike('username', username)
+          .order('updated_at', { ascending: false })
+          .limit(1);
+
+        if (existing && existing.length > 0) {
+          await supabase.from('user_telemetry').update({
+            completed_lessons: updatedLessons,
+            lessons_completed_count: updatedLessons.length,
+            updated_at: new Date().toISOString()
+          }).eq('id', existing[0].id);
+        }
+      }
+    } catch (e) { }
+
     adminAuditManager.logAction('PROGRESS_UPDATE', username, `${exists ? 'Locked' : 'Unlocked'} single lesson '${lessonId}'`);
+    setSelectedTypist(prev => prev ? ({ ...prev, completedLessons: updatedLessons, lessons_completed_count: updatedLessons.length }) : prev);
     setStatusMsg(`${exists ? '🔒 Locked' : '🔓 Unlocked'} lesson '${lessonId}' for ${username}!`);
     fetchAdminData();
   };
@@ -789,15 +892,16 @@ export default function AdminPortal() {
 
     const unlockCount = Math.ceil(flatLessons.length * (percentage / 100));
     const progress = progressManager.getUserProgress(localUser.id);
+    const existingLessons = getUserCompletedLessons();
 
     // Preserve existing real stats (do NOT overwrite WPM, accuracy, or practice time with random numbers)
     const existingWpm = progress.stats?.bestWPM || selectedTypist.averageWPM || 60;
     const existingAcc = selectedTypist.avgAcc || 95;
 
     const newCompletedLessons = flatLessons.slice(0, unlockCount).map(lessonId => {
-      const found = (progress.completedLessons || []).find(c => c.lessonId === lessonId);
+      const found = existingLessons.find(c => (typeof c === 'string' ? c : c.lessonId) === lessonId);
       if (found) {
-        return found; // KEEP ORIGINAL UNTOUCHED (genuine WPM, accuracy, completedAt)!
+        return typeof found === 'string' ? { lessonId: found, wpm: 60, accuracy: 95 } : found; // KEEP ORIGINAL UNTOUCHED (genuine WPM, accuracy, completedAt)!
       }
       return {
         lessonId,
@@ -811,15 +915,37 @@ export default function AdminPortal() {
     progress.completedLessons = newCompletedLessons;
     progressManager.saveUserProgress(localUser.id, progress);
 
-    // Sync to master Supabase table user_telemetry so client receives realtime push
+    // Sync to master Supabase table user_telemetry — find the user's EXISTING row first
     try {
       if (navigator.onLine) {
+        let existingRowId = null;
+        let existingDeviceId = null;
+        let existingUserId = null;
+        try {
+          const { data: existing } = await supabase
+            .from('user_telemetry')
+            .select('id, device_id, user_id')
+            .ilike('username', selectedTypist.username)
+            .order('updated_at', { ascending: false })
+            .limit(1);
+
+          if (existing && existing.length > 0) {
+            existingRowId = existing[0].id;
+            existingDeviceId = existing[0].device_id;
+            existingUserId = existing[0].user_id;
+          }
+        } catch (e) { }
+
+        // Use existing row ID if found, otherwise create a deterministic one
         const cleanUser = selectedTypist.username.toLowerCase().replace(/[^a-z0-9]/g, '_');
-        const rowId = `${selectedTypist.deviceId || 'dev_' + selectedTypist.id}_${cleanUser}`;
+        const rowId = existingRowId || `${selectedTypist.deviceId || selectedTypist.id || 'admin_pushed'}_${cleanUser}`;
+        const deviceId = existingDeviceId || selectedTypist.deviceId || selectedTypist.id || 'admin_pushed';
+        const userId = existingUserId || selectedTypist.userId || selectedTypist.id || localUser.id;
+
         const payload = {
           id: rowId,
-          device_id: selectedTypist.deviceId || selectedTypist.id || 'admin_pushed',
-          user_id: localUser.id,
+          device_id: deviceId,
+          user_id: userId,
           username: selectedTypist.username,
           client_type: selectedTypist.clientType?.toLowerCase() || 'web',
           os_platform: 'web',
@@ -836,13 +962,16 @@ export default function AdminPortal() {
           updated_at: new Date().toISOString()
         };
 
-        console.log('⚡ [ADMIN PUSH PROGRESS]: Upserting master user_telemetry payload for', selectedTypist.username, payload);
+        console.log('⚡ [ADMIN PUSH PROGRESS]: Upserting to', existingRowId ? 'EXISTING' : 'NEW', 'row:', rowId, 'for', selectedTypist.username, payload);
 
         await supabase.from('user_telemetry').upsert([payload], { onConflict: 'id' });
       }
     } catch (e) {
       console.error('Failed to push admin progress update to Supabase user_telemetry:', e);
     }
+
+    // Update selectedTypist state immediately
+    setSelectedTypist(prev => prev ? ({ ...prev, completedLessons: newCompletedLessons, lessons_completed_count: newCompletedLessons.length }) : prev);
 
     adminAuditManager.logAction('PROGRESS_UPDATE', selectedTypist.username, `Bulk progress set to ${percentage}% (${unlockCount} lessons)`);
     setStatusMsg(`🔓 Unlocked ${percentage}% (${unlockCount}/${flatLessons.length}) lessons for ${selectedTypist.username}!`);
@@ -1103,16 +1232,45 @@ export default function AdminPortal() {
     };
   };
 
-  // Get completed lessons list for selected user
+  // Get completed lessons list for selected user — combines remote cloud telemetry and local storage
   const getUserCompletedLessons = () => {
     if (!selectedTypist || !selectedTypist.username) return [];
+
+    const remoteLessons = (selectedTypist.completedLessons && Array.isArray(selectedTypist.completedLessons))
+      ? selectedTypist.completedLessons
+      : ((selectedTypist.completed_lessons && Array.isArray(selectedTypist.completed_lessons)) ? selectedTypist.completed_lessons : []);
+
     const localProg = getTypistProgress();
-    if (localProg?.completedLessons && localProg.completedLessons.length > 0) {
-      return localProg.completedLessons;
+    const localLessons = (localProg?.completedLessons && Array.isArray(localProg.completedLessons))
+      ? localProg.completedLessons
+      : [];
+
+    // Union merge: remote lessons (cloud) takes primary authority, supplemented by any local lessons
+    const mergedMap = new Map();
+    remoteLessons.forEach(l => {
+      const id = typeof l === 'string' ? l : l?.lessonId;
+      if (id) mergedMap.set(id, typeof l === 'string' ? { lessonId: id, wpm: 60, accuracy: 95 } : l);
+    });
+
+    localLessons.forEach(l => {
+      const id = typeof l === 'string' ? l : l?.lessonId;
+      if (!id) return;
+      const existing = mergedMap.get(id);
+      if (!existing) {
+        mergedMap.set(id, typeof l === 'string' ? { lessonId: id, wpm: 60, accuracy: 95 } : l);
+      } else {
+        const existingWpm = existing.wpm || 0;
+        const localWpm = typeof l === 'object' ? (l.wpm || 0) : 0;
+        if (localWpm > existingWpm) {
+          mergedMap.set(id, l);
+        }
+      }
+    });
+
+    if (mergedMap.size > 0) {
+      return Array.from(mergedMap.values());
     }
-    if (selectedTypist.completedLessons && Array.isArray(selectedTypist.completedLessons) && selectedTypist.completedLessons.length > 0) {
-      return selectedTypist.completedLessons;
-    }
+
     const username = selectedTypist.username.trim().toLowerCase();
     const typistLogs = telemetryLogs.filter(l => (l.username || l.event_data?.username || '').trim().toLowerCase() === username);
     for (const log of typistLogs) {

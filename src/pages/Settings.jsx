@@ -70,7 +70,6 @@ const Settings = ({ currentUser, settings, onSettingsChange, onUserUpdate }) => 
   const [newUsername, setNewUsername] = useState(currentUser?.username || '');
   const [showAnalytics, setShowAnalytics] = useState(false);
   const [showAchievements, setShowAchievements] = useState(false);
-  const [showCertModal, setShowCertModal] = useState(false);
   const [soundEnabled, setSoundEnabled] = useState(() => soundEffects.getConfig().enabled);
   const [soundVolume, setSoundVolume] = useState(() => soundEffects.getConfig().volume);
   const [streakData, setStreakData] = useState(() => streakManager.checkStreak(currentUser?.id));
@@ -95,64 +94,123 @@ const Settings = ({ currentUser, settings, onSettingsChange, onUserUpdate }) => 
     window.addEventListener('online', handleOnline);
     window.addEventListener('offline', handleOffline);
 
-    if (!isElectron) return;
+    if (!isElectron || !window.electronAPI) return;
 
-    const unsubscribeChecking = window.electronAPI.onCheckingForUpdate(() => {
-      setUpdateStatus('checking');
-    });
-
-    const unsubscribeAvailable = window.electronAPI.onUpdateAvailable((info) => {
-      setUpdateVersion(info);
-      setUpdateStatus('available');
-    });
-
-    const unsubscribeNotAvailable = window.electronAPI.onUpdateNotAvailable(() => {
-      setUpdateStatus('not-available');
-    });
-
-    const unsubscribeProgress = window.electronAPI.onDownloadProgress((progressObj) => {
-      setUpdateStatus('downloading');
-      setUpdateProgress(Math.round(progressObj.percent || 0));
-    });
-
-    const unsubscribeDownloaded = window.electronAPI.onUpdateDownloaded((info) => {
-      setUpdateVersion(info);
-      setUpdateStatus('downloaded');
-    });
-
-    const unsubscribeError = window.electronAPI.onUpdateError((err) => {
-      setUpdateStatus('error');
-      setUpdateError(typeof err === 'string' ? err : 'Error checking/downloading update');
-    });
+    const unsubs = [];
+    try {
+      if (typeof window.electronAPI.onCheckingForUpdate === 'function') {
+        unsubs.push(window.electronAPI.onCheckingForUpdate(() => setUpdateStatus('checking')));
+      }
+      if (typeof window.electronAPI.onUpdateAvailable === 'function') {
+        unsubs.push(window.electronAPI.onUpdateAvailable((info) => {
+          setUpdateVersion(info);
+          setUpdateStatus('available');
+        }));
+      }
+      if (typeof window.electronAPI.onUpdateNotAvailable === 'function') {
+        unsubs.push(window.electronAPI.onUpdateNotAvailable(() => setUpdateStatus('not-available')));
+      }
+      if (typeof window.electronAPI.onDownloadProgress === 'function') {
+        unsubs.push(window.electronAPI.onDownloadProgress((progressObj) => {
+          setUpdateStatus('downloading');
+          setUpdateProgress(Math.round(progressObj.percent || 0));
+        }));
+      }
+      if (typeof window.electronAPI.onUpdateDownloaded === 'function') {
+        unsubs.push(window.electronAPI.onUpdateDownloaded((info) => {
+          setUpdateVersion(info);
+          setUpdateStatus('downloaded');
+        }));
+      }
+      if (typeof window.electronAPI.onUpdateError === 'function') {
+        unsubs.push(window.electronAPI.onUpdateError((err) => {
+          setUpdateStatus('error');
+          setUpdateError(typeof err === 'string' ? err : (err?.message || 'Error checking or downloading update'));
+        }));
+      }
+    } catch (e) {
+      console.warn('Failed to register updater listeners:', e);
+    }
 
     return () => {
       window.removeEventListener('online', handleOnline);
       window.removeEventListener('offline', handleOffline);
-      unsubscribeChecking();
-      unsubscribeAvailable();
-      unsubscribeNotAvailable();
-      unsubscribeProgress();
-      unsubscribeDownloaded();
-      unsubscribeError();
+      unsubs.forEach(fn => {
+        if (typeof fn === 'function') fn();
+      });
     };
   }, [isElectron]);
 
-  const handleCheckForUpdates = () => {
-    if (!isOnline) return;
+  const handleCheckForUpdates = async () => {
+    if (!isOnline) {
+      setUpdateStatus('error');
+      setUpdateError('Internet connection required to check for updates.');
+      return;
+    }
     setUpdateStatus('checking');
     setUpdateError('');
-    window.electronAPI.checkForUpdates();
+    try {
+      if (window.electronAPI?.checkForUpdates) {
+        window.electronAPI.checkForUpdates();
+      } else {
+        // Fallback for Web browser users: check GitHub releases directly
+        const res = await fetch('https://api.github.com/repos/SW-YONTO/SWIFT-TYPING/releases/latest');
+        if (res.ok) {
+          const data = await res.json();
+          const latestVersion = data.tag_name ? data.tag_name.replace(/^v/, '') : '3.26.11';
+          const p1 = latestVersion.split('.').map(Number);
+          const p2 = '3.26.11'.split('.').map(Number);
+          let isNewer = false;
+          for (let i = 0; i < 3; i++) {
+            if ((p1[i] || 0) > (p2[i] || 0)) { isNewer = true; break; }
+            if ((p1[i] || 0) < (p2[i] || 0)) { break; }
+          }
+          if (isNewer) {
+            setUpdateVersion({ version: latestVersion, releaseDate: data.published_at, note: data.body });
+            setUpdateStatus('available');
+          } else {
+            setUpdateVersion({ version: latestVersion, releaseDate: data.published_at });
+            setUpdateStatus('not-available');
+          }
+        } else {
+          setUpdateStatus('not-available');
+        }
+      }
+    } catch (e) {
+      setUpdateStatus('error');
+      setUpdateError(e?.message || 'Failed to check for updates.');
+    }
   };
 
   const handleDownloadUpdate = () => {
-    if (!isOnline) return;
+    if (!isOnline) {
+      setUpdateStatus('error');
+      setUpdateError('Internet connection required to download update.');
+      return;
+    }
     setUpdateStatus('downloading');
     setUpdateProgress(0);
-    window.electronAPI.downloadUpdate();
+    try {
+      if (window.electronAPI?.downloadUpdate) {
+        window.electronAPI.downloadUpdate();
+      } else {
+        setUpdateStatus('error');
+        setUpdateError('Download updater API is not available.');
+      }
+    } catch (e) {
+      setUpdateStatus('error');
+      setUpdateError(e?.message || 'Failed to start download.');
+    }
   };
 
   const handleQuitAndInstall = () => {
-    window.electronAPI.quitAndInstall();
+    try {
+      if (window.electronAPI?.quitAndInstall) {
+        window.electronAPI.quitAndInstall();
+      }
+    } catch (e) {
+      console.warn('Failed to quit and install:', e);
+    }
   };
 
   // Update streak data on mount

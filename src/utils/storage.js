@@ -283,13 +283,6 @@ export const progressManager = {
       });
     } catch (e) {}
 
-    // Update stats
-    progress.stats.totalTests += 1;
-    progress.stats.totalTime += testResult.timeSpent;
-    progress.stats.totalCharacters += testResult.totalCharacters;
-    progress.stats.bestWPM = Math.max(progress.stats.bestWPM, testResult.wpm);
-    progress.stats.bestAccuracy = Math.max(progress.stats.bestAccuracy, testResult.accuracy);
-
     progressManager.saveUserProgress(userId, progress);
 
     // Update user summary - EXCLUDE games from WPM/accuracy averages
@@ -1364,8 +1357,8 @@ export const banManager = {
   },
   isBanned: (identifier) => {
     if (!identifier) return false;
-    const clean = identifier.toLowerCase();
+    const clean = identifier.toLowerCase().trim();
     const list = banManager.getBanned();
-    return list.some(b => b.device_id?.toLowerCase() === clean);
+    return list.some(b => (b.device_id || '').toLowerCase().trim() === clean);
   }
 };

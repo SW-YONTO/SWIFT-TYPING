@@ -53,7 +53,7 @@ const LudoBoard = ({
   chatHistory = [],
   onSendChat,
   onResign,
-  movingTokenId = null,
+  _movingTokenId = null,
   activeAnimation = null,
   onAnimationComplete,
   onlinePlayers = []
@@ -640,7 +640,7 @@ const LudoBoard = ({
           const isTopCorner = color === 'blue' || color === 'green';
           const bubblePositionClass = isTopCorner ? 'top-14 left-0' : 'bottom-14 left-0';
 
-          const isPlayerOnline = gameMode === 'local' || p.isBot || onlinePlayers.some(op => {
+          const _isPlayerOnline = gameMode === 'local' || p.isBot || onlinePlayers.some(op => {
             const opId = op?.userId || op?.user_id;
             return opId === p.id || opId === p.userId || op?.username === p.username;
           });

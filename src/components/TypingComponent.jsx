@@ -382,7 +382,6 @@ const TypingComponent = ({
   const [capsLockOn, setCapsLockOn] = useState(false); // Caps Lock indicator
   const [soundEnabled, setSoundEnabled] = useState(() => soundEffects.getConfig().enabled);
   const [newAchievement, setNewAchievement] = useState(null); // For achievement toast
-  const [isCalculating, setIsCalculating] = useState(false);
   // Safe localStorage operations with error handling
   const safeLocalStorage = useMemo(() => ({
     getItem: (key) => {

@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import { useTheme } from '../../../contexts/ThemeContext';
 
 const DICE_FACES = {
   1: [[1,1]],
@@ -11,9 +10,7 @@ const DICE_FACES = {
 };
 
 const LudoDice = ({ value, isRolling, canRoll, onRoll, playerColor }) => {
-  const { theme } = useTheme();
   const [displayValue, setDisplayValue] = useState(value || 1);
-  const [animating, setAnimating] = useState(false);
 
   useEffect(() => {
     let interval = null;

@@ -16,7 +16,7 @@ export default function TypistDeepDive({
   isDarkMode,
   cardClass,
   subTextClass,
-  inputClass,
+  _inputClass,
   selectedTypist,
   typistAnalytics,
   handleExportBackup,
@@ -27,7 +27,7 @@ export default function TypistDeepDive({
   handleUnlockLessons,
   handleToggleSingleLesson,
   handleQuickBan,
-  handleResetUserProgress,
+  _handleResetUserProgress,
   setCertificateUser,
   userCompletedLessons = [],
   isBanned = false,
@@ -100,7 +100,7 @@ export default function TypistDeepDive({
   const units = Object.entries(typingLessons).map(([unitId, unitData]) => {
     const totalCount = unitData.lessons.length;
     const completedCount = unitData.lessons.filter(l => 
-      userCompletedLessons.some(c => c.lessonId === l.id)
+      userCompletedLessons.some(c => (typeof c === 'string' ? c : c?.lessonId) === l.id)
     ).length;
 
     return {
@@ -121,9 +121,6 @@ export default function TypistDeepDive({
   const chartStroke   = isDarkMode ? '#94a3b8' : '#64748b';
   const chartGrid     = isDarkMode ? '#374151' : '#e2e8f0';
   const chartAccent   = theme.chartColor || theme.css?.['--theme-primary'] || (isDarkMode ? '#38bdf8' : '#2563eb');
-  const tooltipBg     = isDarkMode ? '#1f2937' : '#ffffff';
-  const tooltipBorder = isDarkMode ? '#374151' : '#cbd5e1';
-  const tooltipText   = isDarkMode ? '#f9fafb' : '#0f172a';
 
   const toggleUnitExpand = (unitId) => {
     setExpandedUnits(prev => ({ ...prev, [unitId]: !prev[unitId] }));
@@ -402,7 +399,7 @@ export default function TypistDeepDive({
                 {expandedUnits[unit.id] && (
                   <div className="pt-2 border-t border-dashed border-gray-500/20 space-y-1">
                     {unit.lessons.map(l => {
-                      const isDone = userCompletedLessons.some(c => c.lessonId === l.id);
+                      const isDone = userCompletedLessons.some(c => (typeof c === 'string' ? c : c?.lessonId) === l.id);
                       return (
                         <div 
                           key={l.id} 

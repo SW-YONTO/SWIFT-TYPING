@@ -8,7 +8,7 @@ import { useLocation } from 'react-router-dom';
 
 const TypingLessons = ({ currentUser, settings }) => {
   const [selectedLesson, setSelectedLesson] = useState(null);
-  const [selectedUnitId, setSelectedUnitId] = useState(null);
+  const [_selectedUnitId, setSelectedUnitId] = useState(null);
   const [showTyping, setShowTyping] = useState(false);
   const [showProgress, setShowProgress] = useState(false);
   const { theme } = useTheme();
@@ -35,21 +35,32 @@ const TypingLessons = ({ currentUser, settings }) => {
   }, []);
 
   const isLessonCompleted = (lessonId) => {
-    return userProgress.completedLessons.some(lesson => lesson.lessonId === lessonId);
+    return (userProgress.completedLessons || []).some(lesson => {
+      const id = typeof lesson === 'string' ? lesson : lesson?.lessonId;
+      return id === lessonId;
+    });
   };
 
   const isLessonUnlocked = (unitId, lessonIndex) => {
+    const unit = typingLessons[unitId];
+    if (!unit || !unit.lessons || !unit.lessons[lessonIndex]) return false;
+
+    // If THIS lesson is completed (or unlocked by admin), it is ALWAYS unlocked
+    if (isLessonCompleted(unit.lessons[lessonIndex].id)) return true;
+
     // First lesson of each unit is always unlocked
     if (lessonIndex === 0) return true;
     
-    // Check if previous lesson is completed
-    const unit = typingLessons[unitId];
+    // Check if previous lesson is completed or unlocked
     const previousLessonId = unit.lessons[lessonIndex - 1].id;
     return isLessonCompleted(previousLessonId);
   };
 
   const getLessonResult = (lessonId) => {
-    return userProgress.completedLessons.find(lesson => lesson.lessonId === lessonId);
+    return (userProgress.completedLessons || []).find(lesson => {
+      const id = typeof lesson === 'string' ? lesson : lesson?.lessonId;
+      return id === lessonId;
+    });
   };
 
   const getNextLessonToPlay = () => {
@@ -80,7 +91,7 @@ const TypingLessons = ({ currentUser, settings }) => {
     const allUnits = Object.entries(typingLessons);
     let nextLessonId = null;
     outer: for (let u = 0; u < allUnits.length; u++) {
-      const [uid, unit] = allUnits[u];
+      const [_uid, unit] = allUnits[u];
       for (let i = 0; i < unit.lessons.length; i++) {
         if (unit.lessons[i].id === selectedLesson.id) {
           // Check next lesson in same unit
@@ -331,12 +342,12 @@ const TypingLessons = ({ currentUser, settings }) => {
                   return (
                     <div
                       key={lesson.id}
-                      className={`p-4 rounded-lg border-2 transition-all ${
+                      className={`p-4 rounded-lg border-2 transition-all cursor-pointer ${
                         unlocked
                           ? completed
                             ? `border-green-500 ${theme.cardBg} hover:shadow-md ring-1 ring-green-200`
-                            : `${theme.border} ${theme.cardBg} hover:shadow-md cursor-pointer hover:${theme.border}`
-                          : `${theme.border} ${theme.cardBg} opacity-60`
+                            : `${theme.border} ${theme.cardBg} hover:shadow-md hover:${theme.border}`
+                          : `${theme.border} ${theme.cardBg} opacity-60 cursor-not-allowed`
                       }`}
                       onClick={() => unlocked && handleStartLesson(lesson, unitId)}
                     >
@@ -355,7 +366,7 @@ const TypingLessons = ({ currentUser, settings }) => {
 
                       <p className={`text-sm ${theme.textSecondary} mb-3`}>{lesson.description}</p>
 
-                      {result && (
+                      {result && (result.wpm > 0 || result.accuracy > 0) && (
                         <div className={`flex items-center gap-4 text-xs ${theme.textSecondary} mb-2`}>
                           <span>WPM: {result.wpm}</span>
                           <span>Accuracy: {result.accuracy}%</span>
@@ -384,13 +395,20 @@ const TypingLessons = ({ currentUser, settings }) => {
                       {completed && (
                         <div className="flex items-center justify-between">
                           <span className="text-sm text-green-600 font-medium">Completed</span>
-                          <button className={`text-xs ${theme.accent} hover:${theme.accentHover}`}>
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleStartLesson(lesson, unitId);
+                            }}
+                            className={`text-xs ${theme.accent} hover:${theme.accentHover} font-medium cursor-pointer px-2 py-1 rounded`}
+                          >
                             Practice Again
                           </button>
                         </div>
                       )}
 
-                      {!unlocked && (
+                      {!unlocked && !completed && (
                         <div className="flex items-center justify-between">
                           <span className={`text-sm ${theme.textSecondary}`}>Locked</span>
                           <span className={`text-xs ${theme.textSecondary} opacity-75`}>Complete previous lesson</span>

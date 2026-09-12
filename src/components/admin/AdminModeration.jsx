@@ -21,21 +21,6 @@ export default function AdminModeration({
   handleToggleReadAppeal
 }) {
   const [activeSubTab, setActiveSubTab] = useState('moderation'); // 'moderation' | 'audit' | 'mail'
-  const [copiedText, setCopiedText] = useState(false);
-
-  // Mailto builder helper (F4: Client Free Mail Explanation)
-  const supportEmail = 'support@swifttyping.app';
-  const mailtoSubject = encodeURIComponent('Swift Typing — Account Unban / Support Request');
-  const mailtoBody = encodeURIComponent(
-    `Hello Swift Typing Support Team,\n\nI am writing regarding my account/device status.\n\nUsername: \nDevice ID: \nReason for request: \n\nThank you!`
-  );
-  const mailtoUrl = `mailto:${supportEmail}?subject=${mailtoSubject}&body=${mailtoBody}`;
-
-  const copyMailto = () => {
-    navigator.clipboard.writeText(`To: ${supportEmail}\nSubject: Swift Typing — Account Unban / Support Request\nBody: Hello Swift Typing Support Team...`);
-    setCopiedText(true);
-    setTimeout(() => setCopiedText(false), 2000);
-  };
 
   return (
     <div className="space-y-6">

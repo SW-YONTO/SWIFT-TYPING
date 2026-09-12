@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useTheme } from '../../contexts/ThemeContext';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useSearchParams } from 'react-router-dom';
 import { ludoManager } from '../../utils/ludoManager';
-import { rollDice, applyDiceRoll, getValidMoves, applyMove, skipTurn, handlePlayerResign, createGame, SAFE_POSITIONS, START_POSITIONS, getNextStepTokenState, calculatePlayerRankings, evaluateBestBotMove } from './ludo/ludoEngine';
+import { rollDice, applyDiceRoll, getValidMoves, applyMove, skipTurn, handlePlayerResign, createGame, SAFE_POSITIONS, START_POSITIONS, calculatePlayerRankings, evaluateBestBotMove } from './ludo/ludoEngine';
 import LudoLobby from './ludo/LudoLobby';
 import LudoBoard from './ludo/LudoBoard';
 import { Trophy, RotateCcw, Home, Sword, Crown } from 'lucide-react';
@@ -12,7 +12,6 @@ import { getAvatarPath } from '../../utils/image';
 
 const LudoGame = ({ currentUser }) => {
   const { theme } = useTheme();
-  const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const urlRoomCode = searchParams.get('room') || '';
   const [phase, setPhase] = useState('lobby'); // 'lobby' | 'playing' | 'gameover'
@@ -27,7 +26,7 @@ const LudoGame = ({ currentUser }) => {
   const [chatBubbles, setChatBubbles] = useState({ red: '', blue: '', green: '', yellow: '' });
   const [chatHistory, setChatHistory] = useState([]);
   const [onlinePlayers, setOnlinePlayers] = useState([]);
-  const [movingTokenId, setMovingTokenId] = useState(null);
+  const [movingTokenId, _setMovingTokenId] = useState(null);
   const [activeAnimation, setActiveAnimation] = useState(null);
   const emojiIdRef = useRef(0);
   const skipTimerRef = useRef(null);
@@ -271,7 +270,6 @@ const LudoGame = ({ currentUser }) => {
     const interval = setInterval(async () => {
       const now = Date.now();
       const playersList = Object.values(gameState.players);
-      const presenceUserIds = onlinePlayers.map(op => op.userId || op.user_id);
 
       let stateChanged = false;
       let updatedState = JSON.parse(JSON.stringify(gameState));

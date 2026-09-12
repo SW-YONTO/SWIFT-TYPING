@@ -121,7 +121,7 @@ class ArenaManager {
           onMatchEvent(payload);
         }
       })
-      .on('presence', { event: 'leave' }, ({ key, leftPresences }) => {
+      .on('presence', { event: 'leave' }, ({ leftPresences }) => {
         const leftUserId = leftPresences[0]?.userId;
         if (leftUserId === opponentId && onMatchEvent) {
           onMatchEvent({ type: 'opponent_left' });
