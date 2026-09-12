@@ -301,36 +301,18 @@ class TelemetryTracker {
       const mergedIds = new Set(mergedLessons.map(l => typeof l === 'string' ? l : l.lessonId).filter(Boolean));
       const newlyAddedIds = [...mergedIds].filter(id => !localIds.has(id));
       const hasNewLessons = newlyAddedIds.length > 0;
-      // Merge remote test results into local testResults so Activity Calendar is restored
-      const remoteTests = cloudRecord.test_results || [];
-      const localTests = localProg.testResults || [];
-      let testsMerged = false;
 
-      if (Array.isArray(remoteTests) && remoteTests.length > 0) {
-        const localTimestamps = new Set(localTests.map(t => t.completedAt).filter(Boolean));
-        const missingTests = remoteTests.filter(t => t.completedAt && !localTimestamps.has(t.completedAt));
-        if (missingTests.length > 0 || (localTests.length === 0 && remoteTests.length > 0)) {
-          const mergedTests = [...localTests, ...missingTests].sort((a, b) => new Date(a.completedAt || 0) - new Date(b.completedAt || 0));
-          localProg.testResults = mergedTests;
-          testsMerged = true;
-          console.log('📅 [CLIENT CALENDAR & TEST RESULTS RESTORED FROM CLOUD]: Restored', missingTests.length, 'tests (Total:', mergedTests.length, ')');
-        }
-      }
-
-      if (hasNewLessons || testsMerged) {
+      if (hasNewLessons) {
         localProg.completedLessons = mergedLessons;
         if (!localProg.stats) localProg.stats = {};
         if (cloudRecord.best_wpm) localProg.stats.bestWPM = Math.max(localProg.stats?.bestWPM || 0, cloudRecord.best_wpm);
         if (cloudRecord.total_time_seconds) localProg.stats.totalTime = Math.max(localProg.stats?.totalTime || 0, cloudRecord.total_time_seconds);
-        if (localProg.testResults?.length) {
-          localProg.stats.totalTests = Math.max(localProg.stats?.totalTests || 0, localProg.testResults.length, cloudRecord.total_tests || 0);
-        }
 
         localStorage.setItem(progKey, JSON.stringify(localProg));
 
         console.log('🎉 [CLIENT LOCAL PROGRESS MERGED FROM CLOUD]: Total lessons after merge =', mergedLessons.length, '(local had', localIds.size, ', remote had', remoteLessons.length, ', new:', newlyAddedIds, ')');
 
-        if (hasNewLessons && typeof onCloudUpdate === 'function') {
+        if (typeof onCloudUpdate === 'function') {
           onCloudUpdate(cloudRecord, mergedLessons.length, newlyAddedIds);
         }
       }
