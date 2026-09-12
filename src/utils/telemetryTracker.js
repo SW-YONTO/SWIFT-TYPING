@@ -330,7 +330,7 @@ class TelemetryTracker {
 
         console.log('🎉 [CLIENT LOCAL PROGRESS MERGED FROM CLOUD]: Total lessons after merge =', mergedLessons.length, '(local had', localIds.size, ', remote had', remoteLessons.length, ', new:', newlyAddedIds, ')');
 
-        if (typeof onCloudUpdate === 'function') {
+        if (hasNewLessons && typeof onCloudUpdate === 'function') {
           onCloudUpdate(cloudRecord, mergedLessons.length, newlyAddedIds);
         }
       }
