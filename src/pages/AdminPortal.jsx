@@ -1292,34 +1292,121 @@ export default function AdminPortal() {
   const handleExportBackup = () => {
     if (!selectedTypist) return;
     const username = selectedTypist.username?.toLowerCase() || '';
-    const logs = telemetryLogs.filter(l => l.event_data?.username?.toLowerCase() === username);
-    let totalTests = 0, totalTime = 0, maxWpm = 0, wpmSum = 0, accSum = 0;
-    const testResults = [];
+    const logs = telemetryLogs.filter(l => (l.username || l.event_data?.username || '').toLowerCase() === username);
+    
+    // 1. Full authentic completed lessons (NOT empty array!)
+    const completedLessons = getUserCompletedLessons();
+    
+    // 2. Real test results if present, otherwise supplemented by logs
+    const localProg = getTypistProgress();
+    const remoteTestResults = (Array.isArray(selectedTypist.test_results) && selectedTypist.test_results.length > 0)
+      ? selectedTypist.test_results
+      : ((Array.isArray(selectedTypist.testResults) && selectedTypist.testResults.length > 0)
+        ? selectedTypist.testResults
+        : (localProg?.testResults || []));
 
-    logs.forEach(log => {
-      const d = log.event_data || {};
-      const tests = Number(d.tests_completed) || 1;
-      const wpm = Number(d.avg_wpm || d.wpm) || 0;
-      const acc = Number(d.avg_accuracy || d.accuracy) || 95;
-      const time = Number(d.total_time_seconds) || tests * 60;
-      totalTests += tests; totalTime += time;
-      maxWpm = Math.max(maxWpm, Number(d.max_wpm || wpm) || 0);
-      wpmSum += wpm * tests; accSum += acc * tests;
-      for (let i = 0; i < tests; i++) testResults.push({ wpm, accuracy: acc, timeSpent: Math.round(time / tests), completedAt: log.created_at, type: 'test' });
+    let totalTests = 0, totalTime = 0, maxWpm = 0, wpmSum = 0, accSum = 0;
+    const testResults = [...remoteTestResults];
+
+    if (testResults.length > 0) {
+      totalTests = testResults.length;
+      testResults.forEach(r => {
+        totalTime += (Number(r.timeSpent) || 0);
+        const w = Number(r.wpm) || 0;
+        const a = Number(r.accuracy) || 95;
+        maxWpm = Math.max(maxWpm, w);
+        wpmSum += w;
+        accSum += a;
+      });
+    } else {
+      // Fallback to synthesizing from telemetryLogs if user had no granular testResults array
+      logs.forEach(log => {
+        const d = log.event_data || {};
+        const tests = Number(d.tests_completed) || 1;
+        const wpm = Number(d.avg_wpm || d.wpm) || 0;
+        const acc = Number(d.avg_accuracy || d.accuracy) || 95;
+        const time = Number(d.total_time_seconds) || tests * 60;
+        totalTests += tests; totalTime += time;
+        maxWpm = Math.max(maxWpm, Number(d.max_wpm || wpm) || 0);
+        wpmSum += wpm * tests; accSum += acc * tests;
+        for (let i = 0; i < tests; i++) {
+          testResults.push({
+            wpm,
+            accuracy: acc,
+            timeSpent: Math.round(time / tests),
+            completedAt: log.created_at || new Date().toISOString(),
+            type: 'test'
+          });
+        }
+      });
+    }
+
+    const avgWpm = totalTests ? Math.round(wpmSum / totalTests) : (selectedTypist.averageWPM || 0);
+    const avgAcc = totalTests ? Math.round(accSum / totalTests) : (selectedTypist.averageAccuracy || 95);
+    maxWpm = Math.max(maxWpm, selectedTypist.bestWPM || avgWpm);
+    totalTime = Math.max(totalTime, selectedTypist.totalTimeSeconds || 0);
+
+    // Active dates for streak & Activity Calendar
+    const activeDateSet = new Set();
+    testResults.forEach(r => {
+      if (r.completedAt) {
+        try {
+          activeDateSet.add(new Date(r.completedAt).toISOString().split('T')[0]);
+        } catch (e) {}
+      }
     });
+    logs.forEach(l => {
+      const t = l.created_at || l.last_seen;
+      if (t) {
+        try {
+          activeDateSet.add(new Date(t).toISOString().split('T')[0]);
+        } catch (e) {}
+      }
+    });
+    const activeDates = Array.from(activeDateSet).sort();
 
     const backup = {
-      version: '2.0.0', exportDate: new Date().toISOString(),
-      user: { id: selectedTypist.id || `recovered_${Date.now()}`, username: selectedTypist.username, avatar: 'avatar1.png', totalTests, averageWPM: totalTests ? Math.round(wpmSum / totalTests) : 0, averageAccuracy: totalTests ? Math.round(accSum / totalTests) : 95 },
-      progress: { completedLessons: [], testResults, settings: { theme: 'blue', timeLimit: 60, wordLimit: 50, showVirtualHand: false }, stats: { totalTests, totalTime, totalCharacters: totalTests * 5 * (totalTests ? Math.round(wpmSum / totalTests) : 50), bestWPM: maxWpm, bestAccuracy: totalTests ? Math.round(accSum / totalTests) : 95 } },
-      streak: { currentStreak: 1, bestStreak: 1, lastActiveDate: new Date().toISOString().split('T')[0], activeDates: logs.map(l => new Date(l.created_at).toISOString().split('T')[0]) },
-      achievements: [], keyStats: {}
+      version: '2.0.0',
+      exportDate: new Date().toISOString(),
+      user: {
+        id: selectedTypist.userId || selectedTypist.id || `recovered_${Date.now()}`,
+        username: selectedTypist.username,
+        avatar: selectedTypist.avatar || 'avatar1.png',
+        totalTests,
+        averageWPM: avgWpm,
+        averageAccuracy: avgAcc
+      },
+      progress: {
+        completedLessons, // Full completed curriculum list
+        testResults,       // Authentic tests with completedAt timestamps for Activity Calendar
+        settings: localProg?.settings || { theme: 'blue', timeLimit: 60, wordLimit: 50, showVirtualHand: false },
+        stats: {
+          totalTests: Math.max(totalTests, selectedTypist.totalTests || 0, completedLessons.length),
+          totalTime,
+          totalCharacters: totalTests * 5 * avgWpm,
+          bestWPM: maxWpm,
+          bestAccuracy: avgAcc
+        }
+      },
+      streak: {
+        currentStreak: Math.min(activeDates.length, 3),
+        longestStreak: Math.max(activeDates.length, 1),
+        lastPracticeDate: activeDates[activeDates.length - 1] || new Date().toISOString().split('T')[0],
+        practiceHistory: activeDates
+      },
+      achievements: localProg?.achievements || [],
+      keyStats: localProg?.keyStats || {}
     };
 
     const blob = new Blob([JSON.stringify(backup, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
-    const a = document.createElement('a'); a.href = url; a.download = `swift-typing-recovery-${selectedTypist.username}.json`;
-    document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(url);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `swift-typing-recovery-${selectedTypist.username}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
 
     adminAuditManager.logAction('EXPORT_DATA', selectedTypist.username, 'Exported JSON recovery file');
     setStatusMsg(`💾 Recovery file exported for ${selectedTypist.username}!`);

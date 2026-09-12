@@ -1093,14 +1093,73 @@ export const dataManager = {
         }
       }
 
-      // Import progress
+      // Import progress — union merge with existing data so neither old tests nor new progress is lost!
       if (data.progress) {
-        progressManager.saveUserProgress(userId, data.progress);
+        const existingProg = progressManager.getUserProgress(userId);
+        const importedProg = data.progress;
+
+        // Merge completed lessons
+        const lessonMap = new Map();
+        (existingProg.completedLessons || []).forEach(l => {
+          const id = typeof l === 'string' ? l : l?.lessonId;
+          if (id) lessonMap.set(id, l);
+        });
+        (importedProg.completedLessons || []).forEach(l => {
+          const id = typeof l === 'string' ? l : l?.lessonId;
+          if (id) {
+            const current = lessonMap.get(id);
+            if (!current) {
+              lessonMap.set(id, l);
+            } else {
+              const curWpm = typeof current === 'object' ? (current.wpm || 0) : 0;
+              const impWpm = typeof l === 'object' ? (l.wpm || 0) : 0;
+              if (impWpm > curWpm) lessonMap.set(id, l);
+            }
+          }
+        });
+
+        // Merge test results (by completedAt timestamp)
+        const testMap = new Map();
+        (existingProg.testResults || []).forEach(t => {
+          if (t.completedAt) testMap.set(t.completedAt, t);
+        });
+        (importedProg.testResults || []).forEach(t => {
+          if (t.completedAt && !testMap.has(t.completedAt)) testMap.set(t.completedAt, t);
+        });
+
+        const mergedProg = {
+          ...importedProg,
+          completedLessons: Array.from(lessonMap.values()),
+          testResults: Array.from(testMap.values()).sort((a, b) => new Date(a.completedAt || 0) - new Date(b.completedAt || 0)),
+          stats: {
+            totalTests: Math.max(existingProg.stats?.totalTests || 0, importedProg.stats?.totalTests || 0, testMap.size),
+            totalTime: Math.max(existingProg.stats?.totalTime || 0, importedProg.stats?.totalTime || 0),
+            totalCharacters: Math.max(existingProg.stats?.totalCharacters || 0, importedProg.stats?.totalCharacters || 0),
+            bestWPM: Math.max(existingProg.stats?.bestWPM || 0, importedProg.stats?.bestWPM || 0),
+            bestAccuracy: Math.max(existingProg.stats?.bestAccuracy || 0, importedProg.stats?.bestAccuracy || 0)
+          }
+        };
+
+        progressManager.saveUserProgress(userId, mergedProg);
       }
       
-      // Import streak data
+      // Import streak data — union merge practice history
       if (data.streak) {
-        streakManager.saveStreakData(userId, data.streak);
+        const existingStreak = streakManager.getStreakData(userId);
+        const importedStreak = data.streak;
+        const mergedHistory = Array.from(new Set([
+          ...(existingStreak.practiceHistory || []),
+          ...(importedStreak.practiceHistory || []),
+          ...(importedStreak.activeDates || [])
+        ])).sort();
+
+        streakManager.saveStreakData(userId, {
+          ...importedStreak,
+          longestStreak: Math.max(existingStreak.longestStreak || 0, importedStreak.longestStreak || 0, importedStreak.bestStreak || 0),
+          currentStreak: Math.max(existingStreak.currentStreak || 0, importedStreak.currentStreak || 0),
+          lastPracticeDate: mergedHistory[mergedHistory.length - 1] || importedStreak.lastPracticeDate || importedStreak.lastActiveDate,
+          practiceHistory: mergedHistory
+        });
       }
       
       // Import achievements
