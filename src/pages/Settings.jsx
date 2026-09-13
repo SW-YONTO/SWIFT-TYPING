@@ -72,6 +72,9 @@ const Settings = ({ currentUser, settings, onSettingsChange, onUserUpdate }) => 
   const [showAchievements, setShowAchievements] = useState(false);
   const [soundEnabled, setSoundEnabled] = useState(() => soundEffects.getConfig().enabled);
   const [soundVolume, setSoundVolume] = useState(() => soundEffects.getConfig().volume);
+  const [soundTypeState, setSoundTypeState] = useState(() => soundEffects.getConfig().soundType || 'default');
+  const [autoSaved, setAutoSaved] = useState(false);
+  const autoSaveTimerRef = useRef(null);
   const [streakData, setStreakData] = useState(() => streakManager.checkStreak(currentUser?.id));
   const [importStatus, setImportStatus] = useState(null);
   const fileInputRef = useRef(null);
@@ -337,6 +340,14 @@ const Settings = ({ currentUser, settings, onSettingsChange, onUserUpdate }) => 
     });
   }, [settings, themeKey, fontSize, fontFamily, currentUser]);
 
+  const triggerAutoSaveFeedback = () => {
+    setAutoSaved(true);
+    if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current);
+    autoSaveTimerRef.current = setTimeout(() => {
+      setAutoSaved(false);
+    }, 2000);
+  };
+
   const handleSettingChange = (key, value) => {
     const newSettings = { ...localSettings, [key]: value };
     setLocalSettings(newSettings);
@@ -349,11 +360,17 @@ const Settings = ({ currentUser, settings, onSettingsChange, onUserUpdate }) => 
       changeFontSize(value);
     } else if (key === 'fontFamily') {
       changeFontFamily(value);
-    } else if (key === 'showVirtualHand') {
-      // Immediately save showVirtualHand to storage and notify parent
+    }
+
+    // Auto-save to storage & notify parent app immediately
+    if (currentUser?.id) {
       progressManager.updateSettings(currentUser.id, newSettings);
+    }
+    if (onSettingsChange) {
       onSettingsChange(newSettings);
     }
+
+    triggerAutoSaveFeedback();
   };
 
   const handleUsernameEdit = () => {
@@ -655,22 +672,40 @@ const Settings = ({ currentUser, settings, onSettingsChange, onUserUpdate }) => 
                       <Moon className="w-4 h-4 text-indigo-400" /> Dark Themes
                     </h3>
                     <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                      {Object.entries(themes).filter(([, themeData]) => themeData.mode === 'dark').map(([key, themeData]) => (
-                        <div
-                          key={key}
-                          className={`p-3 rounded-lg border-2 cursor-pointer transition-all hover:scale-105 ${
-                            themeKey === key
-                              ? `${theme.primary} border-transparent shadow-lg text-white`
-                              : `${theme.inputBg} ${theme.border} hover:${theme.border} ${theme.text}`
-                          }`}
-                          onClick={() => handleSettingChange('theme', key)}
-                        >
-                          <div className={`w-full h-6 rounded-md mb-2 ${themeData.primary} shadow-sm`}></div>
-                          <div className="text-center">
-                            <div className="text-xs font-medium">{themeData.name}</div>
+                      {Object.entries(themes).filter(([, themeData]) => themeData.mode === 'dark').map(([key, themeData]) => {
+                        const isDiwali = key === 'diwali';
+                        const isSelected = themeKey === key;
+                        return (
+                          <div
+                            key={key}
+                            className={`relative p-3 rounded-xl border-2 cursor-pointer transition-all duration-300 hover:scale-105 ${
+                              isSelected
+                                ? isDiwali
+                                  ? 'bg-gradient-to-br from-amber-950/70 to-[#191124] border-amber-400 shadow-[0_0_22px_rgba(245,158,11,0.45)] text-amber-200 ring-2 ring-amber-400/60'
+                                  : `${theme.primary} border-transparent shadow-lg text-white`
+                                : isDiwali
+                                  ? 'bg-[#191124] border-amber-500/60 hover:border-amber-400 shadow-[0_0_12px_rgba(245,158,11,0.2)] text-[#fef3c7]'
+                                  : `${theme.inputBg} ${theme.border} hover:${theme.border} ${theme.text}`
+                            }`}
+                            onClick={() => handleSettingChange('theme', key)}
+                          >
+                            {isDiwali && (
+                              <span className="absolute -top-2.5 right-2 px-2 py-0.5 rounded-full bg-gradient-to-r from-amber-500 to-orange-500 text-black font-black text-[9px] shadow-sm tracking-wider uppercase">
+                                Festive ✨
+                              </span>
+                            )}
+                            <div className={`w-full h-6 rounded-md mb-2 shadow-sm ${
+                              isDiwali ? 'bg-gradient-to-r from-amber-500 via-orange-500 to-amber-400' : themeData.primary
+                            }`}></div>
+                            <div className="text-center">
+                              <div className="text-xs font-semibold flex items-center justify-center gap-1">
+                                {isDiwali && <span>🪔</span>}
+                                <span>{themeData.name}</span>
+                              </div>
+                            </div>
                           </div>
-                        </div>
-                      ))}
+                        );
+                      })}
                     </div>
                   </div>
                 </div>
@@ -1103,6 +1138,83 @@ const Settings = ({ currentUser, settings, onSettingsChange, onUserUpdate }) => 
                             </div>
                           </div>
                           
+                          {/* Keyboard Sound Profiles */}
+                          <div className="pt-2 border-t border-gray-700/40">
+                            <div className="flex items-center justify-between mb-2.5">
+                              <label className={`block text-xs font-semibold uppercase tracking-wider ${theme.textSecondary}`}>
+                                Keyboard Sound Profile
+                              </label>
+                              <span className={`text-[11px] ${theme.textSecondary}`}>Default is active by default</span>
+                            </div>
+                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                              {/* 1. Default (Classic) */}
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  soundEffects.setSoundType('default');
+                                  setSoundTypeState('default');
+                                  soundEffects.playKeypress();
+                                  triggerAutoSaveFeedback();
+                                }}
+                                className={`p-3.5 rounded-xl border-2 text-left transition-all cursor-pointer ${
+                                  soundTypeState === 'default' || soundTypeState === 'mechanical' || !soundTypeState
+                                    ? `${theme.primary} border-transparent text-white shadow-md scale-[1.02]`
+                                    : `${theme.inputBg} ${theme.border} ${theme.text} hover:${theme.border}`
+                                }`}
+                              >
+                                <div className="flex items-center justify-between mb-1">
+                                  <span className="font-bold text-sm">Default</span>
+                                  <span className="text-[10px] uppercase font-bold px-1.5 py-0.5 rounded bg-blue-500/20 text-blue-300">Classic</span>
+                                </div>
+                                <div className="text-xs opacity-75">Original typing sound</div>
+                              </button>
+
+                              {/* 2. Thocky */}
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  soundEffects.setSoundType('thocky');
+                                  setSoundTypeState('thocky');
+                                  soundEffects.playKeypress();
+                                  triggerAutoSaveFeedback();
+                                }}
+                                className={`p-3.5 rounded-xl border-2 text-left transition-all cursor-pointer ${
+                                  soundTypeState === 'thocky'
+                                    ? `${theme.primary} border-transparent text-white shadow-md scale-[1.02]`
+                                    : `${theme.inputBg} ${theme.border} ${theme.text} hover:${theme.border}`
+                                }`}
+                              >
+                                <div className="flex items-center justify-between mb-1">
+                                  <span className="font-bold text-sm">Thocky</span>
+                                  <span className="text-[10px] uppercase font-bold px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300">Cream</span>
+                                </div>
+                                <div className="text-xs opacity-75">Deep, buttery acoustic thock</div>
+                              </button>
+
+                              {/* 3. Cherry MX */}
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  soundEffects.setSoundType('cherry');
+                                  setSoundTypeState('cherry');
+                                  soundEffects.playKeypress();
+                                  triggerAutoSaveFeedback();
+                                }}
+                                className={`p-3.5 rounded-xl border-2 text-left transition-all cursor-pointer ${
+                                  soundTypeState === 'cherry'
+                                    ? `${theme.primary} border-transparent text-white shadow-md scale-[1.02]`
+                                    : `${theme.inputBg} ${theme.border} ${theme.text} hover:${theme.border}`
+                                }`}
+                              >
+                                <div className="flex items-center justify-between mb-1">
+                                  <span className="font-bold text-sm">Cherry MX</span>
+                                  <span className="text-[10px] uppercase font-bold px-1.5 py-0.5 rounded bg-cyan-500/20 text-cyan-300">Clicky</span>
+                                </div>
+                                <div className="text-xs opacity-75">Crisp, tactile snap & click</div>
+                              </button>
+                            </div>
+                          </div>
+
                           {/* Sound Test Buttons */}
                           <div className="flex gap-2 mt-4">
                             <button
@@ -1210,33 +1322,52 @@ const Settings = ({ currentUser, settings, onSettingsChange, onUserUpdate }) => 
               <h2 className={`text-xl font-semibold ${theme.text} mb-6`}>Recent Activity</h2>
               
               <div className="space-y-3">
-                {userProgress.testResults.slice(-5).reverse().map((result, index) => (
-                  <div key={index} className={`py-3 border-b ${theme.border} last:border-b-0`}>
-                    <div className="flex justify-between items-start">
-                      <div className="flex-1">
-                        <div className={`text-sm font-medium ${theme.text} truncate`}>
-                          {result.testTitle || result.content}
+                {userProgress.testResults.slice(-5).reverse().map((result, index) => {
+                  let displayTitle = (result.testTitle || result.content || 'Typing Practice').trim();
+                  displayTitle = displayTitle.replace(/^(Adaptive Flow:\s*|Weak Key Drill:\s*)/i, '');
+                  if (displayTitle.length > 26) {
+                    displayTitle = displayTitle.slice(0, 24) + '…';
+                  }
+
+                  return (
+                    <div key={index} className={`py-3 border-b ${theme.border} last:border-b-0`}>
+                      <div className="flex justify-between items-center gap-3">
+                        <div className="flex-1 min-w-0 pr-2">
+                          <div 
+                            className={`text-xs sm:text-sm font-medium ${theme.text} truncate`} 
+                            title={result.testTitle || result.content || displayTitle}
+                          >
+                            {displayTitle}
+                          </div>
+                          <div className={`text-[11px] ${theme.textSecondary} mt-0.5`}>
+                            {new Date(result.completedAt).toLocaleDateString()}
+                          </div>
                         </div>
-                        <div className={`text-xs ${theme.textSecondary} mt-1`}>
-                          {new Date(result.completedAt).toLocaleDateString()}
+                        <div className="text-right shrink-0 whitespace-nowrap min-w-[70px]">
+                          {result.type === 'game' ? (
+                            <>
+                              <div className="text-xs sm:text-sm font-bold text-purple-600 whitespace-nowrap">
+                                {result.score || result.wpm} pts
+                              </div>
+                              <div className={`text-[11px] ${theme.textSecondary} whitespace-nowrap`}>
+                                {result.accuracy}% acc
+                              </div>
+                            </>
+                          ) : (
+                            <>
+                              <div className="text-xs sm:text-sm font-bold text-blue-600 whitespace-nowrap">
+                                {result.wpm} WPM
+                              </div>
+                              <div className={`text-[11px] ${theme.textSecondary} whitespace-nowrap`}>
+                                {result.accuracy}% acc
+                              </div>
+                            </>
+                          )}
                         </div>
-                      </div>
-                      <div className="text-right ml-3">
-                        {result.type === 'game' ? (
-                          <>
-                            <div className="text-sm font-bold text-purple-600">{result.score || result.wpm} pts</div>
-                            <div className={`text-xs ${theme.textSecondary}`}>{result.accuracy}% acc</div>
-                          </>
-                        ) : (
-                          <>
-                            <div className="text-sm font-bold text-blue-600">{result.wpm} WPM</div>
-                            <div className={`text-xs ${theme.textSecondary}`}>{result.accuracy}% acc</div>
-                          </>
-                        )}
                       </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
                 
                 {userProgress.testResults.length === 0 && (
                   <div className={`text-center ${theme.textSecondary} py-8`}>
@@ -1602,6 +1733,16 @@ const Settings = ({ currentUser, settings, onSettingsChange, onUserUpdate }) => 
         onClose={() => setShowAchievements(false)}
       />
       
+      {/* Floating Bottom Auto-Save Pill */}
+      {autoSaved && (
+        <div className="fixed bottom-8 left-1/2 -translate-x-1/2 z-50 pointer-events-none transition-all duration-300">
+          <div className="flex items-center gap-2.5 px-6 py-3 rounded-full bg-slate-900/95 text-emerald-400 border border-emerald-500/50 shadow-[0_12px_32px_rgba(0,0,0,0.7)] backdrop-blur-md text-sm font-bold tracking-wide animate-bounce-subtle">
+            <Check className="w-4 h-4 text-emerald-400 stroke-[3]" />
+            <span>Settings saved automatically</span>
+          </div>
+        </div>
+      )}
+
       <Footer />
     </div>
   );

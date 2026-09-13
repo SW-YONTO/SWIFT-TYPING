@@ -1,4 +1,5 @@
 import { telemetry } from './telemetryTracker';
+import { diwaliTheme, ENABLE_DIWALI } from '../addons/diwali';
 
 // Local storage utilities for multi-user support
 export const STORAGE_KEYS = {
@@ -965,7 +966,8 @@ export const themes = {
       '--sidebar-ring': 'oklch(0.75 0.17 70)',
       '--radius': '0.625rem'
     }
-  }
+  },
+  ...(ENABLE_DIWALI ? { diwali: diwaliTheme } : {})
 };
 
 // Daily Streak Manager
@@ -1245,8 +1247,8 @@ export const keyStatsManager = {
     return stats;
   },
   
-  // Get weak keys (keys with high error rate)
-  getWeakKeys: (userId, minAttempts = 10, maxAccuracy = 90) => {
+  // Get weak keys (keys with high error rate, accuracy < 75%)
+  getWeakKeys: (userId, minAttempts = 10, maxAccuracy = 75) => {
     const stats = keyStatsManager.getKeyStats(userId);
     const weakKeys = [];
     

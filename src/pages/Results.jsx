@@ -24,10 +24,12 @@ import {
   Award,
   Star,
   Home,
-  ChevronRight
+  ChevronRight,
+  Keyboard
 } from 'lucide-react';
 import { typingLessons } from '../data/lessons';
 import { useTheme } from '../contexts/ThemeContext';
+import { weakKeyManager } from '../utils/weakKeyManager';
 
 // Register Chart.js components
 ChartJS.register(
@@ -65,6 +67,10 @@ const Results = () => {
   const { theme } = useTheme();
   const results = location.state?.results;
   const [countdown, setCountdown] = useState(5);
+
+  const weakKeys = (results?.weakKeys && Array.isArray(results.weakKeys) && results.weakKeys.length > 0)
+    ? results.weakKeys
+    : [];
 
   // Find next lesson data from lessons list (if we have a nextLessonId)
   const getNextLesson = () => {
@@ -497,6 +503,27 @@ const Results = () => {
             <Home className="w-5 h-5" />
             Back to Home
           </button>
+
+          {/* Practice Weak Keys (Same row & same size as Back to Home, shown when weak keys < 75% detected) */}
+          {weakKeys && weakKeys.length > 0 && (
+            <button
+              onClick={() => {
+                const drillContent = weakKeyManager.generateDrill(weakKeys);
+                navigate('/courses', {
+                  state: {
+                    practiceDrill: true,
+                    drillTitle: `Weak Keys (${weakKeys.slice(0, 3).map(k => k.key.toUpperCase()).join(', ')}${weakKeys.length > 3 ? '…' : ''})`,
+                    drillContent: drillContent,
+                  }
+                });
+              }}
+              className="flex items-center gap-2 px-8 py-3 rounded-xl transition-all hover-lift font-semibold border-2 border-amber-500/50 bg-amber-500/10 text-amber-400 hover:bg-amber-500/20 hover:border-amber-400 cursor-pointer shadow-sm"
+              title={`Practice weak keys: ${weakKeys.map(k => `${k.key.toUpperCase()} (${k.accuracy}%)`).join(', ')}`}
+            >
+              <Keyboard className="w-5 h-5 text-amber-400" />
+              <span>Practice Weak Keys</span>
+            </button>
+          )}
         </div>
       </div>
     </div>

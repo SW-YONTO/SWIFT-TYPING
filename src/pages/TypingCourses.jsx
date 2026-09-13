@@ -1,8 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { useLocation } from 'react-router-dom';
 import { Gauge, Play, ArrowRight, Zap, Target, Type, Hash, AtSign, Keyboard, Clock, Trophy, Activity } from 'lucide-react';
 import { typingCourses } from '../data/lessons';
 import TypingComponent from '../components/TypingComponent';
 import { progressManager } from '../utils/storage';
+import { weakKeyManager } from '../utils/weakKeyManager';
 import { useTheme } from '../contexts/ThemeContext';
 
 /* ── Category config ─────────────────────────────────────────────────────── */
@@ -40,8 +42,34 @@ const TypingCourses = ({ currentUser, settings }) => {
   const [showTyping, setShowTyping] = useState(false);
   const [activeCategory, setActiveCategory] = useState('all');
   const { theme } = useTheme();
+  const location = useLocation();
 
-  const userProgress = progressManager.getUserProgress(currentUser.id);
+  const userProgress = progressManager.getUserProgress(currentUser?.id);
+  const weakKeys = currentUser?.id ? weakKeyManager.getWeakKeys(currentUser.id) : [];
+
+  const handleStartWeakKeyPractice = () => {
+    const drillContent = weakKeyManager.generateDrill(weakKeys);
+    setSelectedCourse({
+      id: 'adaptive_weak_keys',
+      title: `Weak Keys (${weakKeys.slice(0, 3).map(k => k.key.toUpperCase()).join(', ')}${weakKeys.length > 3 ? '…' : ''})`,
+      content: drillContent
+    });
+    setShowTyping(true);
+  };
+
+  // Auto-start drill when navigated from Results page
+  useEffect(() => {
+    const state = location.state;
+    if (state?.practiceDrill && state?.drillContent) {
+      setSelectedCourse({
+        id: 'adaptive_weak_keys',
+        title: state.drillTitle || 'Practice Weak Keys',
+        content: state.drillContent
+      });
+      setShowTyping(true);
+      window.history.replaceState({}, '');
+    }
+  }, [location.state]);
 
   /* ── helpers ──────────────────────────────────────────────────────────── */
 
@@ -138,10 +166,25 @@ const TypingCourses = ({ currentUser, settings }) => {
           {/* Subtle background decoration */}
           <div className="absolute top-0 right-0 w-64 h-64 bg-gradient-to-bl from-blue-500/5 to-purple-500/5 rounded-full blur-3xl pointer-events-none" />
           
-          <h2 className={`text-xl font-bold ${theme.text} mb-5 flex items-center gap-2`}>
-            <Activity className="w-5 h-5 text-blue-500 animate-pulse" />
-            Your Flow Stats
-          </h2>
+          <div className="flex items-center justify-between mb-5 flex-wrap gap-3">
+            <h2 className={`text-xl font-bold ${theme.text} flex items-center gap-2`}>
+              <Activity className="w-5 h-5 text-blue-500 animate-pulse" />
+              Your Flow Stats
+            </h2>
+            {weakKeys.length > 0 && (
+              <button
+                onClick={handleStartWeakKeyPractice}
+                className="flex items-center gap-2 px-4 py-1.5 rounded-full bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-black font-bold text-xs transition-all shadow-md active:scale-95 cursor-pointer animate-fade-in"
+                title={`Target weak keys: ${weakKeys.map(k => k.key.toUpperCase()).join(', ')}`}
+              >
+                <Keyboard className="w-3.5 h-3.5" />
+                <span>Practice Weak Keys</span>
+                <span className="px-1.5 py-0.2 rounded bg-black/20 text-black font-extrabold text-[10px]">
+                  {weakKeys.map(k => k.key.toUpperCase()).join(', ')}
+                </span>
+              </button>
+            )}
+          </div>
           
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-5">
             {/* Total Attempts Card */}

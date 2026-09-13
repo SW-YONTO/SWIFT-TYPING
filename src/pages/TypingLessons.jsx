@@ -16,7 +16,7 @@ const TypingLessons = ({ currentUser, settings }) => {
 
   const userProgress = progressManager.getUserProgress(currentUser.id);
 
-  // Auto-start lesson when coming back from Results page (Try Again / Next Lesson)
+  // Auto-start lesson when coming back from Results page (Try Again / Next Lesson / Practice Drill)
   useEffect(() => {
     const state = location.state;
     if (state?.retryLessonId && state?.retryLessonContent) {

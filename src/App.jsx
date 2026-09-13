@@ -15,6 +15,7 @@ import { supabase } from './utils/supabaseClient';
 
 import { extractPromoCodeFromUrl } from './utils/promoCodes';
 import { typingLessons } from './data/lessons';
+import { ENABLE_DIWALI, DiwaliOverlay, DiwaliBanner } from './addons/diwali';
 
 // Lazy-loaded page components for code splitting
 const TypingLessons = React.lazy(() => import('./pages/TypingLessons'));
@@ -374,6 +375,8 @@ function App() {
       <ErrorBoundary>
         <Router>
           <div className="min-h-screen transition-colors duration-300">
+            {ENABLE_DIWALI && <DiwaliBanner currentUser={currentUser} />}
+            {ENABLE_DIWALI && <DiwaliOverlay />}
             <Navigation
               currentPage={currentPage}
               onPageChange={setCurrentPage}

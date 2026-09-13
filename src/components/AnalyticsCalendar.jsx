@@ -292,8 +292,13 @@ const DayDetailModal = ({ stats, onClose, theme }) => {
                       >
                         <td className={`px-4 py-3 text-xs ${theme.textSecondary}`}>{i + 1}</td>
                         <td className={`px-4 py-3 max-w-[160px]`}>
-                          <div className={`text-sm font-medium ${theme.text} truncate`}>
-                            {test.testTitle || test.content || 'Typing Session'}
+                          <div 
+                            className={`text-xs sm:text-sm font-medium ${theme.text} truncate`}
+                            title={test.testTitle || test.content || 'Typing Session'}
+                          >
+                            {(test.testTitle || test.content || 'Typing Session')
+                              .replace(/^(Adaptive Flow:\s*|Weak Key Drill:\s*)/i, '')
+                              .slice(0, 24)}
                           </div>
                           <div className={`text-xs ${theme.textSecondary}`}>
                             {new Date(test.completedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}

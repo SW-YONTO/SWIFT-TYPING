@@ -26,12 +26,12 @@
 
 [[redirects]]
   from = "/downloads/SwiftTyping-Setup.zip"
-  to = "https://github.com/sw-esports/SWIFT-TYPING/releases/download/v3.26.11/Swift-Typing-v3.26.11.zip"
+  to = "https://github.com/sw-esports/SWIFT-TYPING/releases/download/v3.26.12/Swift-Typing-v3.26.12.zip"
   status = 302
   force = true
 
 [[redirects]]
-  from = "/downloads/Swift-Typing-Setup-3.26.11.zip"
-  to = "https://github.com/sw-esports/SWIFT-TYPING/releases/download/v3.26.11/Swift-Typing-v3.26.11.zip"
+  from = "/downloads/Swift-Typing-Setup-3.26.12.zip"
+  to = "https://github.com/sw-esports/SWIFT-TYPING/releases/download/v3.26.12/Swift-Typing-v3.26.12.zip"
   status = 302
   force = true

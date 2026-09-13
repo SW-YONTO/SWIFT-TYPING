@@ -9,6 +9,7 @@ import { useTheme } from '../contexts/ThemeContext';
 import { soundEffects } from '../utils/soundEffects';
 import { achievementManager, ACHIEVEMENTS } from '../utils/achievements';
 import { AchievementToast } from './AchievementsPanel';
+import { weakKeyManager } from '../utils/weakKeyManager';
 
 // High-performance continuous word rendering
 // Performance strategy:
@@ -608,6 +609,25 @@ const TypingComponent = ({
         finalWpmHistory.push({ time: finalTime, wpm: netWPM });
       }
 
+      // Detect weak keys tailored specifically to this lesson performance
+      let detectedWeakKeys = [];
+      try {
+        const keyAttempts = {};
+        const keyErrors = {};
+        for (let idx = 0; idx < userInput.length; idx++) {
+          const char = (generatedContent[idx] || '').toLowerCase();
+          if (/^[a-z0-9,.;'-]$/.test(char)) {
+            keyAttempts[char] = (keyAttempts[char] || 0) + 1;
+            if (allErrors.has(idx)) {
+              keyErrors[char] = (keyErrors[char] || 0) + 1;
+            }
+          }
+        }
+        detectedWeakKeys = weakKeyManager.detectLessonWeakKeys(keyAttempts, keyErrors, rawAccuracy);
+      } catch (e) {
+        console.warn('Failed to detect lesson weak keys:', e);
+      }
+
       const result = {
         wpm: netWPM,
         grossWPM: grossWPM,
@@ -620,6 +640,7 @@ const TypingComponent = ({
         content: title,
         wpmHistory: finalWpmHistory,
         completedAt: new Date().toISOString(),
+        weakKeys: detectedWeakKeys,
         // Lesson navigation info for Results page
         lessonId: lessonId,
         lessonContent: lessonContent || content,
@@ -760,6 +781,13 @@ const TypingComponent = ({
       // Character was added (typing forward)
       const i = newLength - 1;
       const isCorrect = value[i] === generatedContent[i];
+      const targetChar = generatedContent[i];
+
+      // Track key accuracy in weakKeyManager
+      try {
+        const currentUid = localStorage.getItem('typing_app_current_user') || 'default';
+        weakKeyManager.recordKey(currentUid, targetChar, isCorrect);
+      } catch {}
       
       const newErrors = new Set(errors);
       const newAllErrors = new Set(allErrors);
@@ -859,7 +887,7 @@ const TypingComponent = ({
       <div className={`transition-all duration-300 ${focusMode ? 'opacity-30 hover:opacity-100' : 'opacity-100'}`}>
         <div className={`flex flex-wrap items-center justify-between mb-4 p-4 ${theme.background} rounded-lg border ${theme.border}`}>
           {/* Left: Title */}
-          <h2 className={`text-xl font-bold ${theme.text}`}>{title}</h2>
+          <h2 className={`text-base sm:text-lg md:text-xl font-bold ${theme.text} truncate max-w-xs sm:max-w-sm md:max-w-md`} title={title}>{title}</h2>
           
           {/* Center: Live Stats with Animations - FIXED ICON COLORS */}
           <div className="flex items-center gap-6">
